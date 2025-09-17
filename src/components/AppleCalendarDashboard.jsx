@@ -326,25 +326,20 @@ const AppleCalendarDashboard = () => {
   const { user } = useAuth();
   const [activeId, setActiveId] = useState(null);
   const [draggedBooking, setDraggedBooking] = useState(null);
-  const [forceRender, setForceRender] = useState(0);
   
-  console.log('🚀 AppleCalendarDashboard component loaded!');
-  console.log('🔍 Current time:', new Date().toISOString());
-  console.log('🔍 User state:', user);
-  console.log('🔄 Component render count:', forceRender);
+  // Component initialization
   
-  // Force an alert to ensure component is loading
+  // Visual debug indicator - will be moved after bookings declaration
+  
+  // Component initialization
   React.useEffect(() => {
-    console.log('🚀 AppleCalendarDashboard useEffect triggered!');
-    
     // Test API call to verify authentication
     const testAPI = async () => {
       try {
         const { healthAPI } = await import('../lib/api.js');
-        const response = await healthAPI.check();
-        console.log('🔍 Health check response:', response.data);
+        await healthAPI.check();
       } catch (error) {
-        console.error('🔍 Health check failed:', error);
+        console.error('Health check failed:', error);
       }
     };
     
@@ -533,7 +528,7 @@ const AppleCalendarDashboard = () => {
 
   // Track layout orientation changes
   React.useEffect(() => {
-    console.log('🎨 Layout orientation changed to:', settings.layoutOrientation);
+    // Layout orientation changed
   }, [settings.layoutOrientation]);
 
   // Keep mini calendar in sync when selectedDate changes elsewhere
@@ -541,19 +536,15 @@ const AppleCalendarDashboard = () => {
     setCalendarBaseDate(selectedDate);
   }, [selectedDate]);
 
-  // Debug component mount/unmount and page refresh/navigation
+  // Component mount/unmount handling
   React.useEffect(() => {
-    console.log('📱 AppleCalendarDashboard mounted');
-    
     const handleBeforeUnload = (e) => {
-      console.log('🚨 Page about to refresh/navigate!');
-      console.trace('Refresh triggered from:');
+      // Page about to refresh/navigate
     };
     
     window.addEventListener('beforeunload', handleBeforeUnload);
     
     return () => {
-      console.log('📱 AppleCalendarDashboard unmounting');
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
@@ -593,29 +584,26 @@ const AppleCalendarDashboard = () => {
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     onSuccess: (data) => {
-      console.log('📥 Bookings query successful:', data);
+      // Bookings query successful
     },
   });
 
   const rooms = roomsData?.data || [];
   const bookings = bookingsData?.data?.bookings || [];
   
-  // Debug: Track when bookings data changes
+  // Bookings data loaded
+  
+  // Visual debug indicator removed for production
+
+  // Track bookings data changes for debugging (development only)
   React.useEffect(() => {
-    console.log('📊 Bookings data changed:', {
-      bookings: bookings?.map(b => ({
-        customerName: b.customerName,
-        roomId: b.roomId,
-        room: b.room,
-        timeIn: b.timeIn,
-        timeOut: b.timeOut
-      })),
-      timestamp: new Date().toISOString(),
-      bookingsLength: bookings?.length,
-      bookingsData: bookingsData,
-      queryData: queryClient.getQueryData(['bookings'])
-    });
-  }, [bookings, bookingsData]);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📊 Bookings data changed:', {
+        bookingsLength: bookings?.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [bookings]);
   
   // Debug logging (removed for production)
   
@@ -624,11 +612,9 @@ const AppleCalendarDashboard = () => {
   // Mutation for moving bookings with optimistic update
   const moveBookingMutation = useMutation({
     mutationFn: (data) => {
-      console.log('🚀 Calling move API with data:', data);
       return bookingsAPI.move(data);
     },
     onMutate: async (variables) => {
-      console.log('🔄 Optimistic update starting with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
 
@@ -636,39 +622,18 @@ const AppleCalendarDashboard = () => {
         const oldBookings = previous?.data?.bookings || [];
         const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId, targetNewTimeIn, targetNewTimeOut } = variables || {};
 
-        console.log('🔄 Optimistic update variables:', variables);
-
         // Find current records
-        console.log('🔍 Looking for source booking with ID:', bookingId);
-        console.log('🔍 Available booking IDs:', oldBookings.map(b => ({ id: b._id, customerName: b.customerName })));
-        
         const sourceIdx = oldBookings.findIndex(b => b._id === bookingId);
         const targetIdx = targetBookingId ? oldBookings.findIndex(b => b._id === targetBookingId) : -1;
         
-        console.log('🔍 Found indices:', { sourceIdx, targetIdx });
-        
         if (sourceIdx === -1) {
-          console.error('❌ Source booking not found!', { bookingId, availableIds: oldBookings.map(b => b._id) });
+          console.error('❌ Source booking not found!', { bookingId });
           return { previous };
         }
 
         const source = oldBookings[sourceIdx];
         const target = targetIdx !== -1 ? oldBookings[targetIdx] : null;
         const newRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === newRoomId || r.id === newRoomId) : null) || source.room || source.roomId;
-        
-        console.log('🔄 Optimistic update - found records:', {
-          sourceIdx,
-          targetIdx,
-          source: source.customerName,
-          target: target?.customerName,
-          newRoom: newRoom?.name
-        });
-        console.log('🏠 Room lookup:', {
-          newRoomId,
-          newRoomIdType: typeof newRoomId,
-          foundRoom: newRoom,
-          rooms: rooms.map(r => ({ _id: r._id, id: r.id, name: r.name, _idType: typeof r._id, idType: typeof r.id }))
-        });
 
         let updated = [...oldBookings];
 
@@ -678,14 +643,7 @@ const AppleCalendarDashboard = () => {
           const sourceRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === targetRoomId || r.id === targetRoomId) : null) || source.room || source.roomId;
           const targetRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === newRoomId || r.id === newRoomId) : null) || target.room || target.roomId;
           
-          console.log('🔄 Room lookup for swap:', {
-            targetRoomId,
-            newRoomId,
-            sourceRoom: sourceRoom?.name,
-            targetRoom: targetRoom?.name,
-            newRoom: newRoom?.name,
-            availableRooms: rooms.map(r => ({ _id: r._id, id: r.id, name: r.name }))
-          });
+          // Room lookup for swap
           
           const sourceNew = {
             ...source,
@@ -707,48 +665,12 @@ const AppleCalendarDashboard = () => {
             endTime: targetNewTimeOut,
           };
           
-          console.log('🔄 Swap optimistic update:', {
-            sourceNew: {
-              customerName: sourceNew.customerName,
-              room: sourceNew.room?.name,
-              roomId: sourceNew.roomId,
-              timeIn: sourceNew.timeIn,
-              timeOut: sourceNew.timeOut
-            },
-            targetNew: {
-              customerName: targetNew.customerName,
-              room: targetNew.room?.name,
-              roomId: targetNew.roomId,
-              timeIn: targetNew.timeIn,
-              timeOut: targetNew.timeOut
-            },
-            roomLookup: {
-              newRoomId,
-              targetRoomId,
-              newRoom: newRoom?.name,
-              sourceRoom: sourceRoom?.name,
-              targetRoom: targetRoom?.name
-            }
-          });
+          // Swap optimistic update
           
           updated[sourceIdx] = sourceNew;
           updated[targetIdx] = targetNew;
           
-          console.log('🔄 After swap update - source booking:', {
-            index: sourceIdx,
-            customerName: updated[sourceIdx].customerName,
-            room: updated[sourceIdx].room?.name,
-            timeIn: updated[sourceIdx].timeIn,
-            timeOut: updated[sourceIdx].timeOut
-          });
-          
-          console.log('🔄 After swap update - target booking:', {
-            index: targetIdx,
-            customerName: updated[targetIdx].customerName,
-            room: updated[targetIdx].room?.name,
-            timeIn: updated[targetIdx].timeIn,
-            timeOut: updated[targetIdx].timeOut
-          });
+          // Swap update completed
         } else {
         // Simple move
         updated[sourceIdx] = {
@@ -761,108 +683,23 @@ const AppleCalendarDashboard = () => {
           endTime: newTimeOut,
         };
         
-        console.log('🔄 Updated booking after move:', {
-          customerName: updated[sourceIdx].customerName,
-          room: updated[sourceIdx].room,
-          roomId: updated[sourceIdx].roomId,
-          newRoomId: newRoomId,
-          newRoom: newRoom,
-          timeIn: updated[sourceIdx].timeIn,
-          timeOut: updated[sourceIdx].timeOut,
-          startTime: updated[sourceIdx].startTime,
-          endTime: updated[sourceIdx].endTime,
-          bookingId: updated[sourceIdx]._id || updated[sourceIdx].id
-        });
+        // Move update completed
         }
 
-        // Apply optimistic update with a small delay to ensure proper sequencing
-        setTimeout(() => {
-          queryClient.setQueryData(['bookings'], (old) => {
-            const newData = {
-              ...(old || {}),
-              data: {
-                ...((old || {}).data || {}),
-                bookings: updated,
-              },
-            };
-            
-            console.log('🔄 Query data update - old data:', old);
-            console.log('🔄 Query data update - new data:', newData);
-            console.log('🔄 Query data update - updated bookings:', updated);
-            
-            return newData;
-          });
-        }, 50);
-        
-        console.log('🔄 Query data updated - new bookings:', updated);
-        console.log('🔄 Query data updated - moved booking:', updated[sourceIdx]);
-        if (targetIdx !== -1) {
-          console.log('🔄 Query data updated - swapped booking:', updated[targetIdx]);
-        }
-        
-        // Debug: Check if the updated bookings are being processed correctly
-        console.log('🔄 All updated bookings after swap:', updated.map(b => ({
-          customerName: b.customerName,
-          roomId: b.roomId,
-          room: b.room,
-          timeIn: b.timeIn,
-          timeOut: b.timeOut,
-          _id: b._id
-        })));
-        
-        // Debug: Check if the query data was actually updated
-        setTimeout(() => {
-          const currentQueryData = queryClient.getQueryData(['bookings']);
-          console.log('🔄 Query data after update (delayed check):', currentQueryData);
-          console.log('🔄 Current bookings in query data:', currentQueryData?.data?.bookings?.map(b => ({
-            customerName: b.customerName,
-            roomId: b.roomId,
-            room: b.room,
-            timeIn: b.timeIn,
-            timeOut: b.timeOut
-          })));
-          
-          // Test: Check if the swap actually happened in the query data
-          const johnDoe = currentQueryData?.data?.bookings?.find(b => b.customerName?.includes('John'));
-          const janeSmith = currentQueryData?.data?.bookings?.find(b => b.customerName?.includes('Jane'));
-          if (johnDoe && janeSmith) {
-            console.log('🔄 Swap verification in query data:', {
-              johnDoe: {
-                customerName: johnDoe.customerName,
-                roomId: johnDoe.roomId,
-                room: johnDoe.room?.name,
-                timeIn: johnDoe.timeIn
-              },
-              janeSmith: {
-                customerName: janeSmith.customerName,
-                roomId: janeSmith.roomId,
-                room: janeSmith.room?.name,
-                timeIn: janeSmith.timeIn
-              }
-            });
-          }
-          
-          // Force re-render to ensure UI updates
-          console.log('🔄 Forcing component re-render...');
-          setForceRender(prev => prev + 1);
-          
-          // Also try to manually trigger a query refetch
-          console.log('🔄 Manually triggering query refetch...');
-          queryClient.refetchQueries({ queryKey: ['bookings'] });
-          
-          // Force a complete cache invalidation and refetch
-          console.log('🔄 Invalidating and refetching queries...');
-          queryClient.invalidateQueries({ queryKey: ['bookings'] });
-          
-          // Also try to completely replace the query data
-          console.log('🔄 Completely replacing query data...');
-          queryClient.setQueryData(['bookings'], {
+        // Apply optimistic update to React Query cache
+        queryClient.setQueryData(['bookings'], (old) => {
+          const newData = {
+            ...(old || {}),
             data: {
+              ...((old || {}).data || {}),
               bookings: updated,
-              total: updated.length
-            }
-          });
-        }, 100);
+            },
+          };
+          
+          return newData;
+        });
+        
+        // Optimistic update completed
       } catch (e) {
         console.warn('Optimistic move update failed:', e);
       }
@@ -879,18 +716,14 @@ const AppleCalendarDashboard = () => {
       } catch {}
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Move mutation successful:', data);
-      console.log('🔄 About to invalidate queries - current bookings data:', queryClient.getQueryData(['bookings']));
-      
       if (variables?.targetBookingId) {
         toast.success(`🔄 Bookings swapped: ${data?.data?.source?.customerName} ↔ ${data?.data?.target?.customerName}`);
       } else {
         toast.success('📍 Booking moved successfully');
       }
       
-      // Note: Query invalidation removed for mock API testing
-      // In a real app, this would refresh data from the server
-      // queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      // Invalidate queries to ensure data consistency
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
     onSettled: () => {
       // Additional cleanup if needed
@@ -901,8 +734,7 @@ const AppleCalendarDashboard = () => {
   const updateBookingMutation = useMutation({
     mutationFn: ({ id, data }) => bookingsAPI.update(id, data),
     onSuccess: () => {
-      // Note: Query invalidation removed for mock API testing
-      // queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
   });
 
@@ -953,12 +785,8 @@ const AppleCalendarDashboard = () => {
     onSettled: () => {},
   });
   const normalizedBookings = useMemo(() => {
-    console.log('🔄 Normalizing bookings - raw bookings:', bookings);
-    console.log('🔄 Normalizing bookings - bookings type:', typeof bookings, 'isArray:', Array.isArray(bookings));
-    
     // Safety check: ensure bookings is always an array
     if (!bookings || !Array.isArray(bookings)) {
-      console.log('⚠️ No bookings data or not an array');
       return [];
     }
     
@@ -972,56 +800,13 @@ const AppleCalendarDashboard = () => {
       timeOut: b.timeOut || b.endTime,
     }));
 
-    console.log('🔄 Mapped bookings:', mapped);
-    console.log('🔄 Mapped bookings details:', mapped.map(b => ({
-      customerName: b.customerName,
-      roomId: b.roomId,
-      room: b.room,
-      timeIn: b.timeIn,
-      timeOut: b.timeOut,
-      startTime: b.startTime,
-      endTime: b.endTime,
-      _id: b._id
-    })));
-    
-    // Debug: Check for specific bookings after swap
-    const johnDoe = mapped.find(b => b.customerName?.includes('John'));
-    const janeSmith = mapped.find(b => b.customerName?.includes('Jane'));
-    if (johnDoe || janeSmith) {
-      console.log('🔄 Swap debugging - found specific bookings:', {
-        johnDoe: johnDoe ? {
-          customerName: johnDoe.customerName,
-          roomId: johnDoe.roomId,
-          room: johnDoe.room,
-          timeIn: johnDoe.timeIn,
-          timeOut: johnDoe.timeOut
-        } : null,
-        janeSmith: janeSmith ? {
-          customerName: janeSmith.customerName,
-          roomId: janeSmith.roomId,
-          room: janeSmith.room,
-          timeIn: janeSmith.timeIn,
-          timeOut: janeSmith.timeOut
-        } : null
-      });
-    }
-
     // Filter bookings that overlap with the selected date
     const selectedStart = moment(selectedDate).startOf('day');
     const selectedEnd = moment(selectedDate).endOf('day');
     
-    console.log('📅 Date filtering - selected date:', selectedDate, 'start:', selectedStart.format(), 'end:', selectedEnd.format());
-    console.log('📅 Selected date details:', {
-      year: selectedDate.getFullYear(),
-      month: selectedDate.getMonth(),
-      date: selectedDate.getDate(),
-      day: selectedDate.getDay()
-    });
-    
     const filtered = mapped.filter(b => {
       // Safety check for booking object
       if (!b || typeof b !== 'object') {
-        console.warn('⚠️ Invalid booking object in filter:', b);
         return false;
       }
       
@@ -1030,27 +815,9 @@ const AppleCalendarDashboard = () => {
       
       // Check if booking overlaps with selected date
       const overlaps = bookingStart.isBefore(selectedEnd) && bookingEnd.isAfter(selectedStart);
-      console.log(`🔍 Date filter - Booking ${b.customerName || 'Unknown'}:`, {
-        start: bookingStart.format(),
-        end: bookingEnd.format(),
-        overlaps,
-        bookingYear: bookingStart.year(),
-        bookingMonth: bookingStart.month(),
-        bookingDate: bookingStart.date(),
-        selectedYear: selectedStart.year(),
-        selectedMonth: selectedStart.month(),
-        selectedDate: selectedStart.date(),
-        // Additional debugging for swap scenarios
-        isSourceBooking: b.customerName?.includes('John') || b.customerName?.includes('Jane'),
-        rawStartTime: b.startTime,
-        rawEndTime: b.endTime,
-        rawTimeIn: b.timeIn,
-        rawTimeOut: b.timeOut
-      });
       return overlaps;
     });
     
-    console.log('📅 Filtered bookings after date filtering:', filtered);
     return filtered;
   }, [bookings, selectedDate]);
   // Only show full-screen skeleton on first paint (no rooms loaded yet)
@@ -1167,25 +934,17 @@ const AppleCalendarDashboard = () => {
 
   // Calculate slot height once and use consistently
   const SLOT_HEIGHT = useMemo(() => {
-    const height = getResponsiveSlotHeight();
-    console.log('🔧 SLOT_HEIGHT calculated:', height, 'timeSlots:', timeSlots.length, 'windowHeight:', windowHeight);
-    return height;
+    return getResponsiveSlotHeight();
   }, [settings.verticalLayoutSlots, windowHeight, timeSlots]);
 
   // Group bookings by room and calculate positions
   const bookingsByRoom = useMemo(() => {
-    console.log('🏠 Calculating bookingsByRoom - normalizedBookings:', normalizedBookings);
-    console.log('🏠 Available rooms:', rooms);
-    console.log('🏠 BookingsByRoom dependencies - normalizedBookings length:', normalizedBookings?.length);
-    console.log('🏠 BookingsByRoom dependencies - rooms length:', rooms?.length);
-    
     const grouped = {};
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
     // Safety check for business hours
     if (!dayHours || !dayHours.openTime) {
-      console.warn('⚠️ No business hours found for day', weekday);
       return {};
     }
     
@@ -1193,17 +952,13 @@ const AppleCalendarDashboard = () => {
     
     // Safety check for open hour
     if (isNaN(openHour)) {
-      console.warn('⚠️ Invalid open hour:', dayHours.openTime);
       return {};
     }
     
     // Safety check: ensure normalizedBookings is always an array
     if (!normalizedBookings || !Array.isArray(normalizedBookings)) {
-      console.log('⚠️ No normalizedBookings or not an array');
       return {};
     }
-    
-    console.log('🏠 Processing bookings by room - total normalized bookings:', normalizedBookings.length);
     
     // Processing bookings by room
     
@@ -1225,58 +980,12 @@ const AppleCalendarDashboard = () => {
         const roomMatch = bookingRoomId == (room._id || room.id); // Use loose equality for type flexibility
         const statusMatch = booking.status !== 'cancelled' && booking.status !== 'no_show';
         
-        // Enhanced debugging for ALL bookings to see what's happening
-        console.log(`🔍 Room matching for ${booking.customerName}:`, {
-          bookingRoomId,
-          bookingRoomIdType: typeof bookingRoomId,
-          roomId: room._id || room.id,
-          roomIdType: typeof (room._id || room.id),
-          roomMatch,
-          statusMatch,
-          bookingRoomObject: booking.room,
-          bookingRoomIdValue: booking.roomId,
-          roomObject: room,
-          bookingId: booking._id || booking.id,
-          bookingStatus: booking.status,
-          strictEqual: bookingRoomId === (room._id || room.id),
-          looseEqual: bookingRoomId == (room._id || room.id),
-          // Additional debugging for swap scenarios
-          isSourceBooking: booking.customerName?.includes('John') || booking.customerName?.includes('Jane'),
-          bookingTimes: {
-            timeIn: booking.timeIn,
-            timeOut: booking.timeOut,
-            startTime: booking.startTime,
-            endTime: booking.endTime
-          }
-        });
+        // Room matching logic
         
         return roomMatch && statusMatch;
       });
       
-      // Debug room bookings for swap debugging
-      if (roomBookings.some(b => b.customerName?.includes('John') || b.customerName?.includes('Jane'))) {
-        console.log(`📊 Room ${room.name} bookings (swap debug):`, roomBookings.map(b => ({
-          customerName: b.customerName,
-          timeIn: b.timeIn,
-          timeOut: b.timeOut,
-          roomId: b.roomId,
-          room: b.room,
-          _id: b._id
-        })));
-      }
-      
-      console.log(`🏠 Room ${room.name} (${room._id || room.id}) has ${roomBookings.length} bookings:`, roomBookings.map(b => b.customerName));
-      
-      // Check if bookings are being filtered out
-      if (roomBookings.length === 0 && normalizedBookings.length > 0) {
-        console.warn(`⚠️ WARNING - No bookings found for room ${room.name} but ${normalizedBookings.length} total bookings exist`);
-        console.log('🔍 Debug - All normalized bookings:', normalizedBookings.map(b => ({
-          customerName: b.customerName,
-          roomId: b.roomId,
-          room: b.room,
-          roomMatch: (b.room?._id || b.roomId?._id || b.room?.id || b.roomId?.id) === (room._id || room.id)
-        })));
-      }
+      // Room bookings processed
       
       grouped[room._id || room.id] = roomBookings
         .map(booking => {
@@ -1313,61 +1022,14 @@ const AppleCalendarDashboard = () => {
           const startSlotIndex = Math.round(clampedStartMinutes / 15);
           const durationSlots = Math.round(clampedDuration / 15);
           
-          // Debug logging for positioning calculation
-          if (booking.customerName === 'Mike Johnson' || booking.customerName === 'Test Booking' || booking.customerName?.includes('1 hour') || booking.customerName?.includes('hour')) {
-            console.log(`🔍 ${booking.customerName} positioning debug:`, {
-              // Raw booking times
-              rawStartTime: booking.startTime,
-              rawEndTime: booking.endTime,
-              rawTimeIn: booking.timeIn,
-              rawTimeOut: booking.timeOut,
-              // Parsed times
-              parsedStart: start.format('YYYY-MM-DD HH:mm:ss'),
-              parsedEnd: end.format('YYYY-MM-DD HH:mm:ss'),
-              // Calculations
-              startMinutes,
-              endMinutes,
-              durationMinutes,
-              // Exact positioning (what we're using)
-              exactTopPixels: topPixels,
-              exactHeightPixels: heightPixels,
-              // Rounded positioning (old approach)
-              startSlotIndex,
-              durationSlots,
-              roundedTopPixels: startSlotIndex * SLOT_HEIGHT,
-              roundedHeightPixels: durationSlots * SLOT_HEIGHT,
-              SLOT_HEIGHT,
-              pixelsPerMinute,
-              clampedStartMinutes,
-              clampedEndMinutes,
-              clampedDuration
-            });
-          }
+          // Positioning calculation
           
           // Force minimum dimensions to ensure visibility, but only for very small durations
           const minHeight = 20; // Minimum 20px height
           const finalHeightPixels = Math.max(heightPixels, minHeight);
           
-          // Debug: Check if minimum height is being applied when it shouldn't be
-          if (finalHeightPixels !== heightPixels && heightPixels < minHeight) {
-            console.warn(`⚠️ Minimum height applied to ${booking.customerName}:`, {
-              calculatedHeight: heightPixels,
-              finalHeight: finalHeightPixels,
-              durationMinutes: clampedDuration,
-              SLOT_HEIGHT
-            });
-          }
-          
           // Safety check for valid dimensions
           if (isNaN(topPixels) || isNaN(finalHeightPixels) || finalHeightPixels <= 0) {
-            console.warn(`⚠️ Invalid booking dimensions for ${booking.customerName}:`, {
-              topPixels,
-              heightPixels,
-              finalHeightPixels,
-              clampedStartHours,
-              clampedDuration,
-              SLOT_HEIGHT
-            });
             return null;
           }
 
@@ -1380,38 +1042,20 @@ const AppleCalendarDashboard = () => {
             heightPixels: finalHeightPixels,
           };
           
-          // Debug logging for positioning
-          console.log(`🔍 Debug - Booking ${booking.customerName} positioning:`, {
-            startMinutes,
-            endMinutes,
-            durationMinutes,
-            startSlotIndex,
-            durationSlots,
-            topPixels,
-            heightPixels,
-            SLOT_HEIGHT,
-            startTime: booking.startTime,
-            endTime: booking.endTime,
-            dayStart: dayStart.format()
-          });
+          // Positioning calculated
           
           return result;
         })
         .filter(Boolean);
     });
     
-    console.log('🏠 Final bookingsByRoom result:', grouped);
     return grouped;
-  }, [rooms, normalizedBookings, selectedDate, getBusinessHoursForDay, businessHours, SLOT_HEIGHT, timeSlots, getActualRoomColumnWidth, windowWidth, sidebarOpen, forceRender]);
+  }, [rooms, normalizedBookings, selectedDate, getBusinessHoursForDay, businessHours, SLOT_HEIGHT, timeSlots, getActualRoomColumnWidth, windowWidth, sidebarOpen]);
 
   // Handle date navigation
   const navigateDate = (direction) => {
-    console.log('🗓️ Navigate date:', direction);
-    console.log('🗓️ Current selectedDate:', selectedDate);
     const newDate = moment(selectedDate).add(direction, 'day');
-    console.log('🗓️ New date will be:', newDate.toDate());
     setSelectedDate(newDate.toDate());
-    console.log('🗓️ Navigate date completed');
   };
 
   // Handle mini calendar month navigation only
@@ -1422,7 +1066,6 @@ const AppleCalendarDashboard = () => {
 
   // Handle calendar day click
   const handleDayClick = (day) => {
-    console.log('🗓️ Day clicked:', day.date.format('YYYY-MM-DD'));
     const picked = day.date.toDate();
     setSelectedDate(picked);
     setCalendarBaseDate(picked);
@@ -1498,17 +1141,8 @@ const AppleCalendarDashboard = () => {
       return [];
     }
     
-    console.log('🔍 Finding conflicts for:', {
-      roomId,
-      startTime,
-      endTime,
-      excludeBookingId,
-      totalBookings: normalizedBookings.length
-    });
-    
     const conflicts = normalizedBookings.filter(b => {
       if (b._id === excludeBookingId) {
-        console.log(`🔍 Skipping excluded booking: ${b.customerName}`);
         return false;
       }
       
@@ -1525,11 +1159,6 @@ const AppleCalendarDashboard = () => {
       const roomMatch = bookingRoomId == roomId; // Use loose equality for type flexibility
       
       if (!roomMatch) {
-        console.log(`🔍 Booking ${b.customerName} not in target room:`, {
-          bookingRoomId,
-          targetRoomId: roomId,
-          roomMatch
-        });
         return false;
       }
       
@@ -1541,18 +1170,9 @@ const AppleCalendarDashboard = () => {
       // Check for overlap
       const overlaps = newStart.isBefore(bEnd) && newEnd.isAfter(bStart);
       
-      console.log(`🔍 Checking overlap for ${b.customerName}:`, {
-        bookingStart: bStart.format(),
-        bookingEnd: bEnd.format(),
-        newStart: newStart.format(),
-        newEnd: newEnd.format(),
-        overlaps
-      });
-      
       return overlaps;
     });
     
-    console.log('🔍 Found conflicts:', conflicts.map(c => c.customerName));
     return conflicts;
   };
 
@@ -1573,44 +1193,28 @@ const AppleCalendarDashboard = () => {
     setDraggedBooking(null);
 
     if (!over) {
-      console.log('🚫 Drag ended without valid drop target');
       return;
     }
 
     const overId = String(over.id);
-    console.log('🎯 Drag ended over:', overId);
     
     if (!normalizedBookings || !Array.isArray(normalizedBookings)) {
-      console.log('🚫 No normalized bookings available');
       return;
     }
     const booking = normalizedBookings.find(b => b._id === active.id);
     
     if (!booking) {
-      console.log('🚫 Booking not found for active ID:', active.id);
       return;
     }
-    
-    console.log('📋 Moving booking:', booking.customerName);
 
     if (overId.startsWith('slot-')) {
       const rest = overId.slice('slot-'.length);
       const lastDash = rest.lastIndexOf('-');
       if (lastDash === -1) {
-        console.log('🚫 Invalid slot ID format:', overId);
         return;
       }
       const roomId = parseInt(rest.slice(0, lastDash));
       const timeSlotIndex = rest.slice(lastDash + 1);
-      console.log('🏠 Room ID extraction:', {
-        overId,
-        rest,
-        lastDash,
-        roomId,
-        timeSlotIndex,
-        roomIdType: typeof roomId,
-        availableRooms: rooms.map(r => ({ _id: r._id, id: r.id, name: r.name }))
-      });
       
       // Calculate new time slot for vertical view
       const weekday = selectedDate.getDay();
@@ -1629,46 +1233,20 @@ const AppleCalendarDashboard = () => {
       const duration = moment(booking.timeOut || booking.endTime).diff(moment(booking.timeIn || booking.startTime), 'minutes', true);
       const newTimeOut = dayStart.clone().add(slotHour, 'hours').add(slotMinute, 'minutes').add(duration, 'minutes').toISOString();
 
-      console.log('⏰ Time calculation:', {
-        timeSlotIndex,
-        slotIndex,
-        slotMinutes,
-        totalMinutes,
-        slotHour,
-        slotMinute,
-        openHour,
-        openMinute,
-        newTimeIn,
-        newTimeOut,
-        duration
-      });
-
       // Check if dropping on different room or time
       const currentRoomId = booking.room?._id || booking.roomId?._id || booking.roomId;
       const currentStartTime = moment(booking.timeIn || booking.startTime);
       const isSamePosition = currentRoomId === roomId && 
         currentStartTime.hour() === slotHour && 
         currentStartTime.minute() === slotMinute;
-        
-      console.log('🔄 Position check:', { currentRoomId, roomId, isSamePosition });
 
       if (!isSamePosition) {
         // Check for conflicts in the target position
         const conflicts = findBookingConflicts(roomId, newTimeIn, newTimeOut, booking._id);
-        console.log('🔍 Conflicts found:', conflicts.length);
         
         if (conflicts.length === 1) {
           // Single conflict - perform swap
           const targetBooking = conflicts[0];
-          console.log('🔄 Swapping bookings:', {
-            source: booking.customerName,
-            target: targetBooking.customerName,
-            sourceRoom: booking.room?.name || 'Unknown',
-            targetRoom: targetBooking.room?.name || 'Unknown',
-            newRoomId: roomId,
-            sourceNewTime: newTimeIn,
-            targetNewTime: targetBooking.timeIn || targetBooking.startTime
-          });
           
           // Calculate the target booking's new time (swap the start times)
           const targetDuration = moment(targetBooking.timeOut || targetBooking.endTime).diff(moment(targetBooking.timeIn || targetBooking.startTime), 'minutes', true);
@@ -1684,45 +1262,8 @@ const AppleCalendarDashboard = () => {
             .toISOString();
           const targetNewTimeOut = moment(targetNewTimeIn).add(targetDuration, 'minutes').toISOString();
           
-          console.log('🔄 Swap time calculation:', {
-            sourceOriginal: {
-              timeIn: booking.timeIn || booking.startTime,
-              timeOut: booking.timeOut || booking.endTime,
-              duration: sourceDuration
-            },
-            targetOriginal: {
-              timeIn: targetBooking.timeIn || targetBooking.startTime,
-              timeOut: targetBooking.timeOut || targetBooking.endTime,
-              duration: targetDuration
-            },
-            sourceNew: {
-              timeIn: newTimeIn,
-              timeOut: newTimeOut
-            },
-            targetNew: {
-              timeIn: targetNewTimeIn,
-              timeOut: targetNewTimeOut
-            }
-          });
-          
           // Get target room ID (source's original room)
           const targetRoomId = booking.room?._id || booking.roomId?._id || booking.roomId;
-          
-          console.log('🔄 Room ID details for swap:', {
-            sourceBooking: {
-              customerName: booking.customerName,
-              room: booking.room,
-              roomId: booking.roomId,
-              targetRoomId
-            },
-            targetBooking: {
-              customerName: targetBooking.customerName,
-              room: targetBooking.room,
-              roomId: targetBooking.roomId
-            },
-            newRoomId,
-            roomId
-          });
           
           moveBookingMutation.mutate({
             bookingId: booking._id,
@@ -1736,13 +1277,6 @@ const AppleCalendarDashboard = () => {
           });
         } else if (conflicts.length === 0) {
           // No conflicts - simple move
-          console.log('📍 Moving booking:', booking.customerName, 'to new position');
-          console.log('📤 Mutation data:', {
-            bookingId: booking._id,
-            newRoomId: roomId,
-            newTimeIn,
-            newTimeOut,
-          });
           moveBookingMutation.mutate({
             bookingId: booking._id,
             newRoomId: roomId,
@@ -1751,11 +1285,8 @@ const AppleCalendarDashboard = () => {
           });
         } else {
           // Multiple conflicts - show error
-          console.warn('⚠️ Cannot drop: Multiple booking conflicts detected');
           toast.error('Cannot place booking here: Multiple conflicting reservations detected.');
         }
-      } else {
-        console.log('📍 Same position - no action needed');
       }
     } else if (overId.startsWith('booking-')) {
       // Handle direct booking-to-booking swap
@@ -1763,7 +1294,6 @@ const AppleCalendarDashboard = () => {
       const targetBooking = normalizedBookings?.find(b => b._id === targetId);
       if (targetBooking && targetBooking._id !== booking._id) {
         const targetRoomId = targetBooking.room?._id || targetBooking.roomId?._id || targetBooking.roomId;
-        console.log('🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
         moveBookingMutation.mutate({
           bookingId: booking._id,
           newRoomId: targetRoomId,
@@ -1867,6 +1397,8 @@ const AppleCalendarDashboard = () => {
   // Render both layouts but show only the active one
   return (
     <>
+      {/* Debug Indicator removed for production */}
+      
       {/* Traditional Schedule Layout */}
       {settings.layoutOrientation === 'rooms-y-time-x' && (
         <TraditionalSchedule
@@ -2089,7 +1621,7 @@ const AppleCalendarDashboard = () => {
           onDragEnd={handleDragEnd}
         >
           <div className="flex-1 relative max-h-[calc(100vh-200px)] overflow-hidden">
-            <div key={`schedule-grid-${forceRender}-${JSON.stringify(bookingsByRoom)}`} className="flex flex-col h-full">
+            <div className="flex flex-col h-full">
               {/* Sticky Header Row */}
               <div className="flex border-b border-gray-200 bg-gray-50 flex-shrink-0 z-20">
                 <div className="h-16 border-r border-gray-200 bg-gray-50" style={{ width: TIME_COL_WIDTH }}></div>
@@ -2213,17 +1745,9 @@ const AppleCalendarDashboard = () => {
                     pointerEvents: 'auto',
                   };
                   
-                  console.log(`🔍 Debug - Rendering booking ${booking.customerName} with style:`, style);
-                  console.log(`🔍 Debug - SLOT_HEIGHT used for rendering:`, SLOT_HEIGHT);
-                  
                   // Check for invisible booking issues
                   if (booking.heightPixels <= 0 || booking.topPixels < 0) {
-                    console.warn(`⚠️ WARNING - Booking ${booking.customerName} has invalid dimensions:`, {
-                      heightPixels: booking.heightPixels,
-                      topPixels: booking.topPixels,
-                      widthPixels: booking.widthPixels,
-                      leftPixels: booking.leftPixels
-                    });
+                    return null; // Skip invalid bookings
                   }
                   
                   return (
