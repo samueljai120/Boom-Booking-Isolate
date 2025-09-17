@@ -1,0 +1,1540 @@
+import React, { useState, useMemo } from 'react';
+import { useSettings } from '../contexts/SettingsContext';
+import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import moment from 'moment-timezone';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { roomsAPI, bookingsAPI } from '../lib/api';
+import { Card, CardContent } from './ui/Card';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Grid3X3, 
+  Settings, 
+  Menu,
+  Plus,
+  Calendar as CalendarIcon
+} from 'lucide-react';
+import BookingModal from './BookingModal';
+import InstructionsModal from './InstructionsModal';
+import ReservationViewModal from './ReservationViewModal';
+import LoadingSkeleton from './LoadingSkeleton';
+import toast from 'react-hot-toast';
+import {
+  DndContext,
+  DragOverlay,
+  rectIntersection,
+  pointerWithin,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+} from '@dnd-kit/core';
+
+// Enhanced draggable booking component with resize functionality (horizontal layout)
+const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle, onClick, onResize }) => {
+  const [isResizing, setIsResizing] = useState(false);
+  const [isQuickEdit, setIsQuickEdit] = useState(false);
+  const [resizeHandle, setResizeHandle] = useState(null); // 'left' or 'right'
+  const [longPressTimer, setLongPressTimer] = useState(null);
+  const [wasDragged, setWasDragged] = useState(false);
+  const rootRef = React.useRef(null);
+  
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    isDragging,
+  } = useDraggable({
+    id: booking._id,
+    disabled: isResizing || !isQuickEdit, // Drag only in quick edit
+  });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `booking-${booking._id}`,
+  });
+
+  const dragStyle = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : customStyle?.zIndex || 10,
+  } : {};
+
+  const hoverStyle = isOver && !isResizing ? {
+    boxShadow: '0 4px 12px rgba(251, 146, 60, 0.4)',
+    borderColor: 'rgb(251, 146, 60)',
+    borderWidth: '2px',
+  } : {};
+
+  const resizeStyle = isResizing ? {
+    boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+    borderColor: 'rgb(59, 130, 246)',
+    borderWidth: '2px',
+    cursor: 'ew-resize',
+  } : {};
+
+  const combinedStyle = { ...customStyle, ...dragStyle, ...hoverStyle, ...resizeStyle };
+
+  // Suppress accidental click after drag end
+  React.useEffect(() => {
+    if (isDragging) return;
+    if (!isDragging && transform) return;
+    setWasDragged(true);
+    const t = setTimeout(() => setWasDragged(false), 150);
+    return () => clearTimeout(t);
+  }, [isDragging]);
+
+  // Handle long press to enter resize mode
+  const handleMouseDown = () => {
+    const timer = setTimeout(() => {
+      setIsQuickEdit(true);
+      setLongPressTimer(null);
+    }, 600);
+    setLongPressTimer(timer);
+  };
+
+  React.useEffect(() => {
+    const cancel = () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        setLongPressTimer(null);
+      }
+    };
+    window.addEventListener('cancel-long-press', cancel);
+    return () => {
+      window.removeEventListener('cancel-long-press', cancel);
+    };
+  }, [longPressTimer]);
+
+  const handleMouseUp = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  // Handle resize drag for horizontal layout
+  const handleResizeMouseDown = (e, handle) => {
+    e.stopPropagation();
+    if (!isResizing) {
+      setIsResizing(true);
+    }
+    setResizeHandle(handle);
+    const startX = e.clientX;
+    const startWidth = customStyle?.width || 140;
+    const startLeft = customStyle?.left || 0;
+
+    const handleMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      
+      if (handle === 'left') {
+        // Resize from left (change start time)
+        const newLeft = startLeft + deltaX;
+        const newWidth = startWidth - deltaX;
+        if (newWidth > 40) { // Minimum width
+          onResize?.(booking._id, { left: newLeft, width: newWidth, handle: 'left' });
+        }
+      } else if (handle === 'right') {
+        // Resize from right (change end time)
+        const newWidth = startWidth + deltaX;
+        if (newWidth > 40) { // Minimum width
+          onResize?.(booking._id, { left: startLeft, width: newWidth, handle: 'right' });
+        }
+      }
+    };
+
+    const handleMouseUpResize = () => {
+      setResizeHandle(null);
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUpResize);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUpResize);
+  };
+
+  // Exit resize mode on Escape key
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isResizing) {
+          setIsResizing(false);
+          setResizeHandle(null);
+        }
+        if (isQuickEdit) {
+          setIsQuickEdit(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isResizing]);
+
+  const dragProps = isResizing ? {} : { ...listeners, ...attributes };
+
+  // Exit quick edit on outside click
+  React.useEffect(() => {
+    if (!isQuickEdit) return;
+    const onDocMouseDown = (e) => {
+      if (!rootRef.current) return;
+      if (!rootRef.current.contains(e.target)) {
+        setIsQuickEdit(false);
+        setIsResizing(false);
+        setResizeHandle(null);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown, true);
+    return () => document.removeEventListener('mousedown', onDocMouseDown, true);
+  }, [isQuickEdit]);
+
+  const handleRootClick = (e) => {
+    if (isResizing || isDragging || wasDragged || isQuickEdit) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onClick?.(e);
+  };
+
+  return (
+    <div
+      ref={(node) => {
+        setNodeRef(node);
+        setDropRef(node);
+        rootRef.current = node;
+      }}
+      style={combinedStyle}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseLeave}
+      onDoubleClick={() => onDoubleClick(booking)}
+      onClick={handleRootClick}
+      className={`absolute top-1 bottom-1 rounded-lg p-2 shadow-sm border text-white text-xs transition-all duration-200 group ${
+        isResizing ? 'cursor-ew-resize ring-2 ring-blue-300' : isQuickEdit ? 'cursor-move ring-2 ring-blue-300 animate-pulse' : 'cursor-grab active:cursor-grabbing'
+      } ${isOver && !isResizing ? 'ring-2 ring-orange-300' : ''} ${isDragging ? 'rotate-1 scale-105' : ''}`}
+      title={
+        isResizing 
+          ? 'Resize mode - drag edges to resize, press Escape to exit' 
+          : isOver 
+            ? `Drop here to swap with ${booking.customerName}` 
+            : `Long press to resize, drag to move ${booking.customerName}`
+      }
+    >
+      {/* Drag area (enabled only in Quick Edit, excludes edges) */}
+      {isQuickEdit && (
+        <div
+          className="absolute inset-1 z-0"
+          {...attributes}
+          {...listeners}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+          }}
+        />
+      )}
+
+      {/* Edit button (appears on hover) */}
+      {!isResizing && (
+        <button
+          type="button"
+          className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center w-5 h-5 rounded bg-white/90 text-gray-700 text-[10px]"
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+          title="Edit booking"
+        >
+          ✎
+        </button>
+      )}
+      {/* Left resize handle - always available */}
+      <div
+        className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-blue-500/50 z-10"
+        onMouseDown={(e) => handleResizeMouseDown(e, 'left')}
+      />
+
+      {/* Right resize handle - always available */}
+      <div
+        className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-blue-500/50 z-10"
+        onMouseDown={(e) => handleResizeMouseDown(e, 'right')}
+      />
+
+      {/* Resize mode indicator */}
+      {isResizing && (
+        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+          Resize Mode - ESC to exit
+        </div>
+      )}
+
+      {/* Swap indicator */}
+      {isOver && !isResizing && (
+        <div className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center animate-pulse">
+          🔄
+        </div>
+      )}
+
+      {children}
+    </div>
+  );
+};
+
+// Droppable slot component with swap indication
+const DroppableSlot = ({ id, children, className, style, onClick, bookings = [], draggedBooking }) => {
+  const { isOver, setNodeRef } = useDroppable({
+    id,
+  });
+
+  // Simplified visual feedback - just show basic hover states for now
+  let backgroundClass = '';
+  if (isOver && draggedBooking) {
+    backgroundClass = 'bg-blue-100 border-2 border-blue-300';
+  } else if (isOver) {
+    backgroundClass = 'bg-blue-50';
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className} ${backgroundClass} transition-colors duration-200 relative`}
+      style={style}
+      onClick={onClick}
+      title={draggedBooking && isOver ? 'Drop to place booking' : ''}
+    >
+      {children}
+    </div>
+  );
+};
+
+const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChange, onSettingsClick }) => {
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  // Mini calendar month base (independent from selected date)
+  const [calendarBaseDate, setCalendarBaseDate] = useState(selectedDate);
+  const { settings } = useSettings();
+  const { getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusinessHours } = useBusinessHours();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeId, setActiveId] = useState(null);
+  const [draggedBooking, setDraggedBooking] = useState(null);
+  const [showInstructions, setShowInstructions] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Scroll synchronization refs (first column <-> grid)
+  const leftColumnRef = React.useRef(null);
+  const gridScrollRef = React.useRef(null);
+
+  const syncLeftFromGrid = React.useCallback(() => {
+    try {
+      if (!leftColumnRef.current || !gridScrollRef.current) return;
+      if (leftColumnRef.current.scrollTop !== gridScrollRef.current.scrollTop) {
+        leftColumnRef.current.scrollTop = gridScrollRef.current.scrollTop;
+      }
+    } catch {}
+  }, []);
+
+  const syncGridFromLeft = React.useCallback(() => {
+    try {
+      if (!leftColumnRef.current || !gridScrollRef.current) return;
+      if (gridScrollRef.current.scrollTop !== leftColumnRef.current.scrollTop) {
+        gridScrollRef.current.scrollTop = leftColumnRef.current.scrollTop;
+      }
+    } catch {}
+  }, []);
+
+  // Configure drag sensors with better activation
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4,
+        delay: 0,
+        tolerance: 2,
+      },
+    }),
+    useSensor(KeyboardSensor)
+  );
+
+  // Fetch rooms with optimized settings
+  const { data: roomsData, isLoading: roomsLoading, error: roomsError } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => roomsAPI.getAll(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    keepPreviousData: true,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  // Fetch bookings for selected date with optimized settings
+  const { data: bookingsData, isFetching: bookingsFetching, isLoading: bookingsLoading, error: bookingsError } = useQuery({
+    queryKey: ['bookings', selectedDate],
+    queryFn: async () => {
+      console.log('🔍 Fetching bookings for date:', selectedDate);
+      const result = await bookingsAPI.getAll({ date: selectedDate });
+      console.log('🔍 Bookings API result:', result);
+      return result;
+    },
+    staleTime: 10 * 60 * 1000,
+    cacheTime: 15 * 60 * 1000,
+    keepPreviousData: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: 0,
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  const rooms = roomsData?.data || [];
+  const bookings = bookingsData?.data?.bookings || bookingsData?.data || [];
+
+  // Mutation for moving bookings with optimistic update
+  const moveBookingMutation = useMutation({
+    mutationFn: (data) => {
+      console.log('🚀 TraditionalSchedule: Calling move API with data:', data);
+      return bookingsAPI.move(data);
+    },
+    onMutate: async (variables) => {
+      console.log('🔄 TraditionalSchedule: Optimistic update starting with variables:', variables);
+      await queryClient.cancelQueries({ queryKey: ['bookings'] });
+      const previous = queryClient.getQueryData(['bookings']);
+      try {
+        const oldBookings = previous?.data?.bookings || [];
+        const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId } = variables || {};
+        const sourceIdx = oldBookings.findIndex(b => b._id === bookingId);
+        const targetIdx = targetBookingId ? oldBookings.findIndex(b => b._id === targetBookingId) : -1;
+        if (sourceIdx === -1) return { previous };
+        const source = oldBookings[sourceIdx];
+        const target = targetIdx !== -1 ? oldBookings[targetIdx] : null;
+        const newRoom = rooms.find(r => r._id === newRoomId) || source.room || source.roomId;
+        let updated = [...oldBookings];
+        if (target && targetBookingId) {
+          const sourceNew = {
+            ...source,
+            room: newRoom,
+            roomId: newRoom,
+            timeIn: newTimeIn,
+            timeOut: newTimeOut,
+            startTime: newTimeIn,
+            endTime: newTimeOut,
+          };
+          const targetNew = {
+            ...target,
+            room: source.room || source.roomId,
+            roomId: source.room || source.roomId,
+            timeIn: source.timeIn || source.startTime,
+            timeOut: source.timeOut || source.endTime,
+            startTime: source.timeIn || source.startTime,
+            endTime: source.timeOut || source.endTime,
+          };
+          updated[sourceIdx] = sourceNew;
+          updated[targetIdx] = targetNew;
+        } else {
+          updated[sourceIdx] = {
+            ...source,
+            room: newRoom,
+            roomId: newRoom,
+            timeIn: newTimeIn,
+            timeOut: newTimeOut,
+            startTime: newTimeIn,
+            endTime: newTimeOut,
+          };
+          
+          console.log('🔄 TraditionalSchedule: Updated booking after move:', {
+            customerName: updated[sourceIdx].customerName,
+            room: updated[sourceIdx].room,
+            roomId: updated[sourceIdx].roomId,
+            newRoomId: newRoomId,
+            newRoom: newRoom
+          });
+        }
+        queryClient.setQueryData(['bookings'], (old) => ({
+          ...(old || {}),
+          data: {
+            ...((old || {}).data || {}),
+            bookings: updated,
+          },
+        }));
+      } catch (e) {
+        console.warn('Optimistic move update failed:', e);
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['bookings'], context.previous);
+      }
+      try {
+        const message = _err?.response?.data?.message || _err?.response?.data?.error || 'Failed to move booking';
+        toast.error(message);
+      } catch {}
+    },
+    onSuccess: (data, variables) => {
+      console.log('✅ TraditionalSchedule: Move mutation successful:', data);
+      console.log('🔄 TraditionalSchedule: About to invalidate queries - current bookings data:', queryClient.getQueryData(['bookings']));
+      toast.success(variables?.targetBookingId ? 'Booking swapped' : 'Booking moved');
+      // Note: Query invalidation removed for mock API testing
+      // queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+    onSettled: () => {
+      // Additional cleanup if needed
+    },
+  });
+
+  // Mutation for updating bookings
+  const updateBookingMutation = useMutation({
+    mutationFn: ({ id, data }) => bookingsAPI.update(id, data),
+    onSuccess: () => {
+      // Note: Query invalidation removed for mock API testing
+      // queryClient.invalidateQueries(['bookings']);
+    },
+  });
+
+  // Mutation for resizing bookings with optimistic update
+  const resizeBookingMutation = useMutation({
+    mutationFn: bookingsAPI.resize,
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: ['bookings'] });
+      const previous = queryClient.getQueryData(['bookings']);
+      try {
+        const oldBookings = previous?.data?.bookings || [];
+        const { bookingId, newStartTime, newEndTime } = variables || {};
+        const idx = oldBookings.findIndex(b => b._id === bookingId);
+        if (idx === -1) return { previous };
+        const updated = [...oldBookings];
+        const current = updated[idx];
+        updated[idx] = {
+          ...current,
+          timeIn: newStartTime,
+          timeOut: newEndTime,
+          startTime: newStartTime,
+          endTime: newEndTime,
+        };
+        queryClient.setQueryData(['bookings'], (old) => ({
+          ...(old || {}),
+          data: {
+            ...((old || {}).data || {}),
+            bookings: updated,
+          },
+        }));
+      } catch (e) {
+        console.warn('Optimistic resize update failed:', e);
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['bookings'], context.previous);
+      }
+      try {
+        const message = _err?.response?.data?.message || _err?.response?.data?.error || 'Failed to resize booking';
+        toast.error(message);
+      } catch {}
+    },
+    onSuccess: () => {
+      toast.success('Booking resized');
+    },
+    onSettled: () => {},
+  });
+  const normalizedBookings = useMemo(() => {
+    const mapped = bookings.map(b => ({
+      ...b,
+      roomId: b.roomId || b.room,
+      room: b.room || b.roomId,
+      startTime: b.startTime || b.timeIn,
+      endTime: b.endTime || b.timeOut,
+      timeIn: b.timeIn || b.startTime,
+      timeOut: b.timeOut || b.endTime,
+    }));
+
+    // Filter bookings that overlap with the selected date
+    const selectedStart = moment(selectedDate).startOf('day');
+    const selectedEnd = moment(selectedDate).endOf('day');
+    
+    return mapped.filter(b => {
+      const bookingStart = moment(b.startTime || b.timeIn);
+      const bookingEnd = moment(b.endTime || b.timeOut);
+      
+      // Check if booking overlaps with selected date
+      return bookingStart.isBefore(selectedEnd) && bookingEnd.isAfter(selectedStart);
+    });
+  }, [bookings, selectedDate]);
+
+  // Removed debug logging to fix white screen issue
+
+  // Only show big skeleton initially; while refetching, keep previous data
+  const initialRoomsLoaded = !!roomsData?.data;
+  const isLoading = roomsLoading && !initialRoomsLoaded;
+  const hasError = roomsError || bookingsError;
+  
+  // Debug loading state (commented out for cleaner console)
+  // console.log('🔍 TraditionalSchedule Debug:', { roomsData, roomsLoading, initialRoomsLoaded, isLoading, hasError });
+  // console.log('🔍 Bookings Debug:', { bookingsData, bookings, normalizedBookings, bookingsLoading, bookingsError });
+
+  // Get room type color
+  const getRoomTypeColor = (type) => {
+    const colors = {
+      medium: '#3B82F6',
+      large: '#10B981',
+      party: '#F59E0B',
+    };
+    return colors[type] || '#3B82F6';
+  };
+
+  // Generate time slots using business hours from API
+  const timeSlots = useMemo(() => {
+    const timezone = settings.timezone || 'America/New_York';
+    const slots = [];
+    
+    // Get business hours for the selected date
+    const weekday = selectedDate.getDay();
+    const dayHours = getBusinessHoursForDay(weekday);
+    
+    if (dayHours.isClosed) {
+      return [];
+    }
+    
+    // Parse open and close times
+    const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
+    const [closeHour, closeMinute] = dayHours.closeTime.split(':').map(Number);
+    
+    // Check if this is late night hours (close time is next day)
+    const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
+    
+    // Construct midnight of the selected date in the selected timezone
+    const dateInTz = moment.tz(
+      {
+        year: selectedDate.getFullYear(),
+        month: selectedDate.getMonth(),
+        day: selectedDate.getDate(),
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
+      timezone
+    );
+    
+    // Generate time slots every 15 minutes within business hours
+    let currentHour = openHour;
+    let currentMinute = openMinute;
+    let totalMinutes = 0;
+    const maxSlots = 200; // Prevent infinite loops (200 slots = 50 hours max)
+    
+    while (totalMinutes < maxSlots * 15) {
+      const slotTime = dateInTz.clone().add(currentHour, 'hours').add(currentMinute, 'minutes');
+      const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+      
+      // For late night hours, check if we've reached the close time
+      if (isLateNight) {
+        const currentTotalMinutes = currentHour * 60 + currentMinute;
+        const closeTotalMinutes = closeHour * 60 + closeMinute;
+        
+        // If we've passed midnight and reached close time, stop
+        if (currentTotalMinutes >= 24 * 60 && currentTotalMinutes >= closeTotalMinutes + 24 * 60) {
+          break;
+        }
+        // If we're still before midnight and haven't reached close time, continue
+        if (currentTotalMinutes < 24 * 60 && currentTotalMinutes < closeTotalMinutes) {
+          // Continue
+        } else if (currentTotalMinutes >= 24 * 60) {
+          // We've passed midnight, check if we've reached the close time
+          if (currentTotalMinutes >= closeTotalMinutes + 24 * 60) {
+            break;
+          }
+        }
+      } else {
+        // Normal hours - stop when we reach close time
+        if (currentHour > closeHour || (currentHour === closeHour && currentMinute >= closeMinute)) {
+          break;
+        }
+      }
+      
+      slots.push({
+        time: slotTime.format('h:mm A'),
+        hour: currentHour,
+        minute: currentMinute,
+        minutes: currentHour * 60 + currentMinute,
+        slotTime,
+        timeString,
+        isNextDay: currentHour >= 24 || (isLateNight && currentHour < openHour)
+      });
+      
+      currentMinute += 15;
+      if (currentMinute >= 60) {
+        currentMinute = 0;
+        currentHour += 1;
+      }
+      
+      // Handle hour overflow for late night hours
+      if (currentHour >= 24) {
+        currentHour = currentHour % 24;
+      }
+      
+      totalMinutes += 15;
+    }
+    
+    return slots;
+  }, [getBusinessHoursForDay, settings.timezone, selectedDate]);
+
+  // Calculate consistent slot dimensions based on settings
+  const baseSlotWidth = settings?.horizontalLayoutSlots?.slotWidth === 'small' ? 100 : settings?.horizontalLayoutSlots?.slotWidth === 'large' ? 160 : 140;
+  const baseSlotHeight = settings?.horizontalLayoutSlots?.slotHeight === 'small' ? 84 : settings?.horizontalLayoutSlots?.slotHeight === 'large' ? 136 : 112;
+  const widthScaleFactor = settings?.horizontalLayoutSlots?.widthScaleFactor || 0.4; // Default 40%
+  const heightScaleFactor = settings?.horizontalLayoutSlots?.heightScaleFactor || 1.0; // Default 100%
+  
+  // Use consistent 15-minute intervals since time slots are hardcoded to 15 minutes
+  const SLOT_WIDTH = baseSlotWidth * widthScaleFactor;
+  const SLOT_HEIGHT = baseSlotHeight * heightScaleFactor;
+  
+  // Debug logging for slot dimensions calculation
+  console.log('🔧 TraditionalSchedule slot dimensions calculated:', {
+    SLOT_WIDTH,
+    SLOT_HEIGHT,
+    baseSlotWidth,
+    baseSlotHeight,
+    widthScaleFactor,
+    heightScaleFactor,
+    timeSlotsCount: timeSlots.length,
+    note: 'Time slots are hardcoded to 15-minute intervals'
+  });
+
+  // Group bookings by room and calculate positions
+  const bookingsByRoom = useMemo(() => {
+    const grouped = {};
+    const weekday = selectedDate.getDay();
+    const dayHours = getBusinessHoursForDay(weekday);
+    const [openHour] = dayHours.openTime.split(':').map(Number);
+    
+    rooms.forEach(room => {
+      const roomId = room._id || room.id;
+      grouped[roomId] = normalizedBookings
+        .filter(booking => {
+          // Improved room matching logic - handle both object and ID cases
+          let bookingRoomId;
+          if (typeof booking.roomId === 'object' && booking.roomId !== null) {
+            // roomId is an object, get the _id or id
+            bookingRoomId = booking.roomId._id || booking.roomId.id;
+          } else if (typeof booking.room === 'object' && booking.room !== null) {
+            // room is an object, get the _id or id
+            bookingRoomId = booking.room._id || booking.room.id;
+          } else {
+            // roomId or room is a primitive value
+            bookingRoomId = booking.roomId || booking.room;
+          }
+          
+          const roomMatch = bookingRoomId === roomId;
+          const statusMatch = booking.status !== 'cancelled' && booking.status !== 'no_show';
+          
+          return roomMatch && statusMatch;
+        })
+        .map(booking => {
+          // ULTRA-SIMPLE APPROACH: Manual timezone handling
+          const timezone = settings.timezone || 'America/New_York';
+          
+          // Parse booking times and convert to local timezone
+          const startTime = moment(booking.startTime || booking.timeIn).tz(timezone);
+          const endTime = moment(booking.endTime || booking.timeOut).tz(timezone);
+          
+          // Create business day start (6 PM = 18:00) at midnight of selected date in the selected timezone
+          const dateInTz = moment.tz(
+            {
+              year: selectedDate.getFullYear(),
+              month: selectedDate.getMonth(),
+              day: selectedDate.getDate(),
+              hour: 0,
+              minute: 0,
+              second: 0,
+              millisecond: 0,
+            },
+            timezone
+          );
+          const businessDayStart = dateInTz.clone().add(openHour, 'hours');
+          
+          // Calculate exact position and duration from business start with maximum precision
+          const startMinutesFromBusinessStart = startTime.diff(businessDayStart, 'minutes', true);
+          const endMinutesFromBusinessStart = endTime.diff(businessDayStart, 'minutes', true);
+          
+          // Calculate exact duration in minutes, then convert to hours for pixel calculation
+          const exactDurationMinutes = endMinutesFromBusinessStart - startMinutesFromBusinessStart;
+          const exactDurationHours = exactDurationMinutes / 60;
+          
+          // Clamp to visible business hours
+          const visibleStartMinutes = Math.max(0, startMinutesFromBusinessStart);
+          const [closeHour] = dayHours.closeTime.split(':').map(Number);
+          const visibleEndMinutes = Math.min((closeHour - openHour) * 60, endMinutesFromBusinessStart);
+          const visibleDurationMinutes = visibleEndMinutes - visibleStartMinutes;
+          const visibleDurationHours = visibleDurationMinutes / 60;
+          const visibleStartHours = visibleStartMinutes / 60;
+          
+          if (visibleDurationHours <= 0) {
+            return null; // outside visible range
+          }
+          
+          // CORRECT PIXEL CALCULATION
+          // Convert hours to 15-minute slots for consistent grid alignment
+          const minutesPerSlot = 15; // Each slot represents 15 minutes
+          const slotsPerHour = 60 / minutesPerSlot; // 4 slots per hour
+          const leftPixels = visibleStartHours * slotsPerHour * SLOT_WIDTH;
+          const widthPixels = visibleDurationHours * slotsPerHour * SLOT_WIDTH;
+          
+          // Debug logging for specific booking
+          if (booking.customerName === 'Mike Johnson' || booking.customerName === 'Test Booking' || booking.customerName?.includes('1 hour') || booking.customerName?.includes('hour')) {
+            console.log(`🔍 ${booking.customerName} TraditionalSchedule Debug:`, {
+              // Raw booking times
+              rawStartTime: booking.startTime,
+              rawEndTime: booking.endTime,
+              rawTimeIn: booking.timeIn,
+              rawTimeOut: booking.timeOut,
+              // Parsed times
+              startTime: startTime.format('YYYY-MM-DD HH:mm:ss'),
+              endTime: endTime.format('YYYY-MM-DD HH:mm:ss'),
+              businessDayStart: businessDayStart.format('YYYY-MM-DD HH:mm:ss'),
+              // Exact minute-based calculations
+              exactDurationMinutes,
+              exactDurationHours,
+              visibleDurationMinutes,
+              visibleDurationHours,
+              visibleStartHours,
+              // Pixel calculations
+              leftPixels,
+              widthPixels,
+              SLOT_WIDTH,
+              // Expected values for 1-hour booking
+              slotsPerHour,
+              expectedWidthFor1Hour: 1 * SLOT_WIDTH * slotsPerHour, // 1 hour = 4 slots
+              actualWidthForThisBooking: visibleDurationHours * SLOT_WIDTH * slotsPerHour,
+              expectedLeftPixels: 'Should be 0 for 6PM booking'
+            });
+          }
+
+          return {
+            ...booking,
+            startHours: visibleStartHours,
+            endHours: visibleStartHours + visibleDurationHours,
+            durationHours: visibleDurationHours,
+            leftPixels,
+            widthPixels,
+          };
+        })
+        .filter(Boolean);
+    });
+    return grouped;
+  }, [rooms, normalizedBookings, selectedDate, getBusinessHoursForDay, SLOT_WIDTH]);
+
+  // Handle date navigation for main schedule
+  const navigateDate = (direction) => {
+    const newDate = moment(selectedDate).add(direction, 'day');
+    onDateChange(newDate.toDate());
+  };
+
+  // Mini calendar month navigation only
+  const navigateMonth = (direction) => {
+    const next = moment(calendarBaseDate).add(direction, 'month').toDate();
+    setCalendarBaseDate(next);
+  };
+
+  // Handle room slot click
+  const handleRoomSlotClick = (room, timeSlot) => {
+    const weekday = selectedDate.getDay();
+    const dayHours = getBusinessHoursForDay(weekday);
+    const [openHour] = dayHours.openTime.split(':').map(Number);
+    const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
+    const startTime = dayStart.clone().add(timeSlot.hour - openHour, 'hours');
+    const endTime = startTime.clone().add(1, 'hour');
+    
+    setSelectedBooking({
+      start: startTime.toDate(),
+      end: endTime.toDate(),
+      resource: {
+        roomId: room._id || room.id,
+        roomName: room.name,
+        roomType: room.category,
+        capacity: room.capacity,
+      },
+    });
+    setIsModalOpen(true);
+  };
+
+  // Handle booking click - show read-only view first
+  const handleBookingClick = (booking) => {
+    setSelectedBooking(booking);
+    setIsViewModalOpen(true);
+  };
+
+  // Handle no show
+  const handleNoShow = async (booking) => {
+    try {
+      await updateBookingMutation.mutateAsync({
+        id: booking._id,
+        data: { status: 'no_show' }
+      });
+      setIsViewModalOpen(false);
+    } catch (error) {
+      console.error('Failed to mark as no show:', error);
+    }
+  };
+
+  // Handle edit from view modal
+  const handleEditBooking = (booking) => {
+    setSelectedBooking({
+      id: booking._id,
+      title: booking.customerName,
+      start: new Date(booking.startTime),
+      end: new Date(booking.endTime),
+      resource: {
+        roomId: booking.room?._id || booking.roomId?._id,
+        roomName: booking.room?.name || booking.roomId?.name,
+        roomType: booking.room?.type || booking.roomId?.type,
+        capacity: booking.room?.capacity || booking.roomId?.capacity,
+        color: booking.room?.color || booking.roomId?.color,
+        phone: booking.phone,
+        source: booking.source,
+        notes: booking.notes,
+        duration: booking.durationMinutes,
+      },
+    });
+    setIsViewModalOpen(false);
+    setIsModalOpen(true);
+  };
+
+  // Keep mini calendar in sync when selected date changes elsewhere
+  React.useEffect(() => {
+    setCalendarBaseDate(selectedDate);
+  }, [selectedDate]);
+
+  // Helper function to find booking conflicts
+  const findBookingConflicts = (roomId, startTime, endTime, excludeBookingId = null) => {
+    return normalizedBookings.filter(b => {
+      if (b._id === excludeBookingId) return false;
+      const bookingRoomId = b.room?._id || b.roomId?._id || b.room?.id || b.roomId?.id || b.roomId;
+      if (bookingRoomId !== roomId) return false;
+      
+      const bStart = moment(b.startTime || b.timeIn);
+      const bEnd = moment(b.endTime || b.timeOut);
+      const newStart = moment(startTime);
+      const newEnd = moment(endTime);
+      
+      // Check for overlap
+      return newStart.isBefore(bEnd) && newEnd.isAfter(bStart);
+    });
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (event) => {
+    const { active } = event;
+    const booking = normalizedBookings.find(b => b._id === active.id);
+    setActiveId(active.id);
+    setDraggedBooking(booking);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    setActiveId(null);
+    setDraggedBooking(null);
+
+    if (!over) return;
+
+    const overId = String(over.id);
+    const booking = normalizedBookings.find(b => b._id === active.id);
+    
+    if (!booking) return;
+
+    if (overId.startsWith('slot-')) {
+      const rest = overId.slice('slot-'.length);
+      const lastDash = rest.lastIndexOf('-');
+      if (lastDash === -1) return;
+      const roomId = parseInt(rest.slice(0, lastDash));
+      const timeSlotIndex = rest.slice(lastDash + 1);
+      // Calculate new time slot for horizontal view
+      const weekday = selectedDate.getDay();
+      const dayHours = getBusinessHoursForDay(weekday);
+      const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
+      
+      // Convert slot index to actual time (each slot is 15 minutes)
+      const slotIndex = parseInt(timeSlotIndex);
+      const slotMinutes = slotIndex * 15; // Each slot is 15 minutes
+      const totalMinutes = (openHour * 60) + openMinute + slotMinutes;
+      const slotHour = Math.floor(totalMinutes / 60);
+      const slotMinute = totalMinutes % 60;
+      
+      const dayStart = moment(selectedDate).startOf('day');
+      const newTimeIn = dayStart.clone().add(slotHour, 'hours').add(slotMinute, 'minutes').toISOString();
+      const duration = moment(booking.timeOut || booking.endTime).diff(moment(booking.timeIn || booking.startTime), 'minutes', true);
+      const newTimeOut = dayStart.clone().add(slotHour, 'hours').add(slotMinute, 'minutes').add(duration, 'minutes').toISOString();
+
+      // Check if dropping on different room or time
+      const currentRoomId = booking.room?._id || booking.roomId?._id || booking.room?.id || booking.roomId?.id || booking.roomId;
+      const currentStartTime = moment(booking.timeIn || booking.startTime);
+      const isSamePosition = currentRoomId === roomId && 
+        currentStartTime.hour() === slotHour && 
+        currentStartTime.minute() === slotMinute;
+
+      if (!isSamePosition) {
+        // Check for conflicts in the target position
+        const conflicts = findBookingConflicts(roomId, newTimeIn, newTimeOut, booking._id);
+        
+        if (conflicts.length === 1) {
+          // Single conflict - perform swap
+          const targetBooking = conflicts[0];
+          console.log('🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
+          moveBookingMutation.mutate({
+            bookingId: booking._id,
+            newRoomId: roomId,
+            newTimeIn,
+            newTimeOut,
+            targetBookingId: targetBooking._id,
+          });
+        } else if (conflicts.length === 0) {
+          // No conflicts - simple move
+          console.log('📍 Moving booking:', booking.customerName, 'to new position');
+          moveBookingMutation.mutate({
+            bookingId: booking._id,
+            newRoomId: roomId,
+            newTimeIn,
+            newTimeOut,
+          });
+        } else {
+          // Multiple conflicts - show error
+          console.warn('⚠️ Cannot drop: Multiple booking conflicts detected');
+          toast.error('Cannot place booking here: Multiple conflicting reservations detected.');
+        }
+      }
+    } else if (overId.startsWith('booking-')) {
+      // Handle direct booking-to-booking swap
+      const targetId = overId.slice('booking-'.length);
+      const targetBooking = normalizedBookings.find(b => b._id === targetId);
+      if (targetBooking && targetBooking._id !== booking._id) {
+        const targetRoomId = targetBooking.room?._id || targetBooking.roomId?._id || targetBooking.room?.id || targetBooking.roomId?.id || targetBooking.roomId;
+        console.log('🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
+        moveBookingMutation.mutate({
+          bookingId: booking._id,
+          newRoomId: targetRoomId,
+          newTimeIn: targetBooking.timeIn || targetBooking.startTime,
+          newTimeOut: targetBooking.timeOut || targetBooking.endTime,
+          targetBookingId: targetBooking._id,
+        });
+      }
+    }
+  };
+
+  // Handle booking resize for horizontal layout
+  const handleBookingResize = (bookingId, resizeData) => {
+    const { left, width, handle } = resizeData;
+    const booking = normalizedBookings.find(b => b._id === bookingId);
+    if (!booking) return;
+
+    // Convert pixels to time for horizontal layout
+    const SLOT_WIDTH = settings?.horizontalLayoutSlots?.slotWidth === 'small' ? 100 : settings?.horizontalLayoutSlots?.slotWidth === 'large' ? 160 : 140;
+    const weekday = selectedDate.getDay();
+    const dayHours = getBusinessHoursForDay(weekday);
+    const [openHour] = dayHours.openTime.split(':').map(Number);
+    const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
+    
+    // Calculate new times based on pixel changes
+    const leftHours = left / SLOT_WIDTH;
+    const widthHours = width / SLOT_WIDTH;
+    
+    let newStartTime, newEndTime;
+    
+    if (handle === 'left') {
+      // Changing start time (left edge)
+      newStartTime = dayStart.clone().add(leftHours, 'hours').toISOString();
+      newEndTime = booking.endTime; // Keep end time same
+    } else {
+      // Changing end time (right edge)
+      newStartTime = booking.startTime; // Keep start time same
+      newEndTime = dayStart.clone().add(leftHours + widthHours, 'hours').toISOString();
+    }
+
+    // Call resize API
+    resizeBookingMutation.mutate({
+      bookingId,
+      newStartTime,
+      newEndTime,
+    });
+  };
+
+  // Handle double click to resize/expand
+  const handleBookingDoubleClick = (booking) => {
+    setSelectedBooking({
+      id: booking._id,
+      title: booking.customerName,
+      start: new Date(booking.startTime),
+      end: new Date(booking.endTime),
+      resource: {
+        roomId: booking.room?._id || booking.roomId?._id,
+        roomName: booking.room?.name || booking.roomId?.name,
+        roomType: booking.room?.type || booking.roomId?.type,
+        capacity: booking.room?.capacity || booking.roomId?.capacity,
+        color: booking.room?.color || booking.roomId?.color,
+        phone: booking.phone,
+        source: booking.source,
+        notes: booking.notes,
+        duration: booking.durationMinutes,
+      },
+    });
+    setIsModalOpen(true);
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return <LoadingSkeleton type="schedule" />;
+  }
+
+  // Show error state
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-red-600 text-2xl">⚠️</span>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to load schedule</h3>
+          <p className="text-gray-600 mb-4">
+            {roomsError ? 'Unable to load rooms' : 'Unable to load bookings'}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        onDragStart={(e) => {
+          try {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('cancel-long-press'));
+            }
+          } catch {}
+          handleDragStart(e);
+        }}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="min-h-screen bg-white flex">
+          {/* Left Sidebar */}
+          <div className={`${sidebarOpen ? 'w-80' : 'w-14'} bg-white border-r border-gray-200 flex flex-col sticky top-0 self-start h-screen`}>
+            {/* Header */}
+            <div className="p-2 border-b border-gray-200">
+          <div className={`flex items-center ${sidebarOpen ? 'justify-between' : 'justify-center'} mb-2`}>
+            <div className={`flex items-center space-x-2 ${sidebarOpen ? '' : 'hidden'}`}>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">♪</span>
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900">Karaoke Calendar</h1>
+            </div>
+            <Button variant="ghost" size="icon" className="h-12 w-12 min-h-[48px]" onClick={() => setSidebarOpen(v => !v)} title={sidebarOpen ? 'Collapse' : 'Expand'}>
+              <Menu className="w-10 h-10" />
+            </Button>
+          </div>
+          
+          {/* Navigation (Dashboard removed) */}
+          <nav className={`space-y-2 ${sidebarOpen ? '' : 'hidden'}`}></nav>
+        </div>
+
+        {/* Mini Calendar */}
+        <div className={`p-6 flex-1 overflow-hidden ${sidebarOpen ? '' : 'hidden'}`}>
+          {/* Today button top-right */}
+          <div className="flex items-center justify-end mb-1">
+            <Button 
+              variant="ghost" 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDateChange(new Date());
+              }}
+            >
+              Today
+            </Button>
+          </div>
+          {/* Centered header with arrows + month */}
+          <div className="flex items-center justify-center mb-3">
+            <div className="flex items-center space-x-1">
+              <button
+                type="button"
+                className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-md transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigateMonth(-1);
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="min-w-[140px] text-center text-lg font-semibold text-gray-900 select-none">
+                {moment(calendarBaseDate).format('MMMM YYYY')}
+              </div>
+              <button
+                type="button"
+                className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-md transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  navigateMonth(1);
+                }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="space-y-1">
+            {/* Day headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            {/* Calendar days */}
+            <div className="grid grid-cols-7 gap-1">
+              {(() => {
+                const startOfMonth = moment(calendarBaseDate).startOf('month');
+                const endOfMonth = moment(calendarBaseDate).endOf('month');
+                const startOfCalendar = startOfMonth.clone().startOf('week');
+                const endOfCalendar = endOfMonth.clone().endOf('week');
+                const days = [];
+                const cur = startOfCalendar.clone();
+                while (cur.isSameOrBefore(endOfCalendar, 'day')) {
+                  days.push(cur.clone());
+                  cur.add(1, 'day');
+                }
+                return days;
+              })().map((day, i) => {
+                const isCurrentMonth = day.isSame(selectedDate, 'month');
+                const isToday = day.isSame(moment(), 'day');
+                const isSelected = day.isSame(selectedDate, 'day');
+                
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const picked = day.toDate();
+                      onDateChange(picked);
+                      setCalendarBaseDate(picked);
+                    }}
+                    className={`
+                      w-8 h-8 rounded-lg text-sm font-medium transition-colors
+                      ${isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}
+                      ${isToday ? 'bg-blue-100 text-blue-600' : ''}
+                      ${isSelected ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}
+                    `}
+                  >
+                    {day.format('D')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Booking Source Legend (under mini calendar) */}
+          {settings.colorByBookingSource && (
+            <div className="mt-4">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Booking Sources</h4>
+              <div className="grid grid-cols-2 gap-y-2">
+                {Object.entries(settings.bookingSourceColors || {}).map(([key, color]) => (
+                  <div key={key} className="flex items-center space-x-2">
+                    <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+                    <span className="text-xs text-gray-700 capitalize">{key}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* User Profile */}
+          <div className="mt-8 flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gray-300 rounded-lg flex items-center justify-center">
+              <span className="text-gray-600 font-medium">N</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">Staff User</p>
+              <p className="text-xs text-gray-500">admin@boomkaraoke.com</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Sticky Actions: Instructions + Settings */}
+        <div className="mt-auto border-t border-gray-200 p-2 space-y-2">
+          {sidebarOpen ? (
+            <>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => setShowInstructions(true)}
+              >
+                <CalendarIcon className="w-4 h-4 mr-3" />
+                Instructions
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={onSettingsClick}
+              >
+                <Settings className="w-4 h-4 mr-3" />
+                Settings
+              </Button>
+            </>
+          ) : (
+            <div className="flex flex-col items-center space-y-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-12 w-12"
+                onClick={() => setShowInstructions(true)}
+                title="Instructions"
+              >
+                <CalendarIcon className="w-6 h-6" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-12 w-12"
+                onClick={onSettingsClick}
+                title="Settings"
+              >
+                <Settings className="w-6 h-6" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Navigation */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(-1)}>
+                <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
+              </Button>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                {moment(selectedDate).format('MMMM D, YYYY')}
+              </h2>
+              <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(1)}>
+                <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
+              </Button>
+            </div>
+            {/* Removed top-right new booking button (replaced by floating action button) */}
+          </div>
+        </div>
+
+        {/* Schedule Grid - Traditional Layout */}
+        <div className="flex-1 relative max-h-[calc(100vh-200px)] overflow-hidden">
+          <div className="flex h-full">
+            {/* Sticky First Column */}
+            <div ref={leftColumnRef} onScroll={syncGridFromLeft} className="bg-gray-50 border-r border-gray-200 flex-shrink-0 z-20 overflow-y-auto w-32 sm:w-40 md:w-48">
+              {/* Header Cell */}
+              <div className="border-b border-gray-200 bg-gray-50 sticky top-0 z-30" style={{ height: '48px' }}></div>
+              
+              {/* Room Info Cells */}
+              {rooms.map(room => (
+                <div key={room._id || room.id} className="border-b border-gray-200 p-3" style={{ height: SLOT_HEIGHT }}>
+                  <div className="flex items-center space-x-2 mb-1 min-w-0">
+                    <div
+                      className="w-3 h-3 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
+                    />
+                    <span className="text-sm font-medium text-gray-900 truncate" title={room.name}>{room.name}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Scrollable Content Area */}
+            <div ref={gridScrollRef} onScroll={syncLeftFromGrid} className="flex-1 overflow-auto relative">
+              <table className="border-separate border-spacing-0" style={{ width: `${timeSlots.length * SLOT_WIDTH}px` }}>
+                {/* Header Row */}
+                <thead>
+                  <tr>
+                    {timeSlots.map((slot, index) => (
+                      <th
+                        key={index}
+                        className="sticky top-0 z-20 bg-gray-50 border-r border-b border-gray-200 text-center shadow-sm"
+                        style={{ height: '48px', width: SLOT_WIDTH, minWidth: SLOT_WIDTH }}
+                      >
+                        <span className="text-sm font-medium text-gray-600">{slot.time}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                
+                {/* Content Rows */}
+                <tbody>
+                  {rooms.map(room => (
+                    <tr key={room._id || room.id} className="border-b border-gray-200">
+                      {/* Time Slot Cells */}
+                      {timeSlots.map((slot, slotIndex) => (
+                        <td 
+                          key={slotIndex} 
+                          className="border-r border-gray-200 relative p-0"
+                          style={{ 
+                            width: SLOT_WIDTH, 
+                            minWidth: SLOT_WIDTH,
+                            height: SLOT_HEIGHT 
+                          }}
+                        >
+                          <DroppableSlot
+                            id={`slot-${room._id || room.id}-${slotIndex}`}
+                            className="w-full h-full hover:bg-blue-50 cursor-pointer"
+                            onClick={() => handleRoomSlotClick(room, slot)}
+                            bookings={normalizedBookings}
+                            draggedBooking={draggedBooking}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Bookings layer - positioned relative to the scrollable container */}
+              <div className="absolute" style={{ top: '48px', left: '0', right: '0', bottom: '0', pointerEvents: 'none' }}>
+        {rooms.flatMap((room, roomIndex) => {
+          const roomId = room._id || room.id;
+          const roomBookings = bookingsByRoom[roomId] || [];
+
+          return roomBookings.map((booking) => (
+            <DraggableBooking
+              key={`${roomId}-${booking._id || booking.id}`}
+              booking={booking}
+              onDoubleClick={handleBookingDoubleClick}
+              onResize={handleBookingResize}
+              style={{
+                position: 'absolute',
+                left: `${booking.leftPixels}px`,
+                width: `${booking.widthPixels}px`,
+                top: `${roomIndex * SLOT_HEIGHT + 1}px`, // Add 1px top margin
+                height: `${SLOT_HEIGHT - 6}px`, // Subtract 6px for margins
+                backgroundColor: settings.colorByBookingSource ? (settings.bookingSourceColors?.[(booking.source || '').toLowerCase()] || settings.bookingSourceColors?.online || '#2563eb') : (room.color || getRoomTypeColor(room.category)),
+                zIndex: 10,
+                pointerEvents: 'auto',
+                borderRadius: '4px', // Add rounded corners for better visual appearance
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBookingClick(booking);
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="font-medium truncate pr-1">{booking.customerName || 'Reservation'}</div>
+                {booking.notes ? (
+                  <span className="ml-1 text-[10px] bg-white/90 text-gray-800 px-1.5 py-0.5 rounded">Note</span>
+                ) : null}
+              </div>
+              <div className="opacity-90 truncate text-[11px]">
+                {moment(booking.startTime).format('h:mm A')} - {moment(booking.endTime).format('h:mm A')}
+              </div>
+              {booking.notes && (
+                <div className="mt-1 text-[10px] text-white truncate" title={booking.notes}>
+                  {booking.notes}
+                </div>
+              )}
+            </DraggableBooking>
+          ));
+        })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Drag overlay */}
+      <DragOverlay>
+        {activeId && draggedBooking ? (
+          <div className="rounded-lg p-2 shadow-lg border text-white text-xs bg-blue-600">
+            <div className="font-medium truncate">{draggedBooking.customerName || 'Reservation'}</div>
+            <div className="opacity-90 truncate text-[11px]">
+              {moment(draggedBooking.startTime).format('h:mm A')} - {moment(draggedBooking.endTime).format('h:mm A')}
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+
+    {/* Floating action button: New Booking */}
+    <button
+      type="button"
+      onClick={() => {
+        const start = moment(selectedDate).startOf('hour');
+        const end = start.clone().add(1, 'hour');
+        setSelectedBooking({
+          start: start.toDate(),
+          end: end.toDate(),
+          resource: { roomId: (rooms && rooms[0] && rooms[0]._id) || undefined },
+        });
+        setIsModalOpen(true);
+      }}
+      className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 z-50 flex items-center justify-center"
+      aria-label="New booking"
+    >
+      <Plus className="w-8 h-8" />
+    </button>
+
+    <ReservationViewModal
+      isOpen={isViewModalOpen}
+      onClose={() => {
+        setIsViewModalOpen(false);
+        setSelectedBooking(null);
+      }}
+      booking={selectedBooking}
+      onEdit={handleEditBooking}
+      onNoShow={handleNoShow}
+      onDelete={(booking) => {
+        // Handle delete if needed
+        console.log('Delete booking:', booking);
+      }}
+    />
+
+    <BookingModal
+      isOpen={isModalOpen}
+      onClose={() => {
+        setIsModalOpen(false);
+        setSelectedBooking(null);
+      }}
+      booking={selectedBooking}
+      rooms={rooms}
+      onSuccess={() => {
+        setIsModalOpen(false);
+        setSelectedBooking(null);
+      }}
+    />
+
+    <InstructionsModal
+      isOpen={showInstructions}
+      onClose={() => setShowInstructions(false)}
+    />
+    </>
+  );
+};
+
+export default TraditionalSchedule;
