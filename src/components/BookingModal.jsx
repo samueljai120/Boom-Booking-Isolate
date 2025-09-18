@@ -107,10 +107,10 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           customerName: newData.customerName,
           phone: newData.phone,
           source: newData.source,
-          timeIn: newData.timeIn,
-          timeOut: newData.timeOut,
-          startTime: newData.timeIn,
-          endTime: newData.timeOut,
+          timeIn: newData.startTime,
+          timeOut: newData.endTime,
+          startTime: newData.startTime,
+          endTime: newData.endTime,
           notes: newData.notes,
           room: roomObj || { _id: newData.roomId || newData.room },
           status: 'confirmed',
@@ -257,6 +257,12 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     // Validate business hours before submission
     const startDate = new Date(data.startTime);
     const endDate = new Date(data.endTime);
+    
+    // Validate that end time is after start time
+    if (endDate <= startDate) {
+      toast.error('End time must be after start time.');
+      return;
+    }
     
     if (!isWithinBusinessHours(startDate, data.startTime, data.endTime)) {
       toast.error('Booking time is outside business hours. Please choose a time within business hours.');
@@ -631,6 +637,17 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                               if (dayHours.isClosed) {
                                 return 'Business is closed on this date';
                               }
+                              
+                              // Check if end time is after start time
+                              const startTime = watch('startTime');
+                              if (startTime && value) {
+                                const startDate = new Date(startTime);
+                                const endDate = new Date(value);
+                                if (endDate <= startDate) {
+                                  return 'End time must be after start time';
+                                }
+                              }
+                              
                               return true;
                             }
                           })}

@@ -4,6 +4,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import { Input } from './ui/Input';
 import CustomSelect from './ui/CustomSelect';
 import RoomManagement from './RoomManagement';
 import BookingManagement from './BookingManagement';
@@ -32,7 +33,8 @@ import {
   ChevronDown,
   Info,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -80,6 +82,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
       label: 'Form Fields', 
       icon: SettingsIcon, 
       description: 'Customize booking form fields',
+      category: 'forms'
+    },
+    { 
+      id: 'confirmation', 
+      label: 'Confirmation Templates', 
+      icon: FileText, 
+      description: 'Customize booking confirmation messages',
       category: 'forms'
     },
     { 
@@ -377,6 +386,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
               {activeTab === 'rooms' && <RoomManagement />}
               {activeTab === 'bookings' && <BookingManagement />}
               {activeTab === 'form' && <BookingFormSettings />}
+              {activeTab === 'confirmation' && <ConfirmationTemplateSettings />}
               {activeTab === 'display' && <DisplaySettings />}
               {activeTab === 'system' && <SystemSettings />}
             </CardContent>
@@ -1306,6 +1316,254 @@ const SystemSettings = () => {
               <li>• Notifications help you stay updated on booking changes</li>
               <li>• Performance settings optimize the application for your needs</li>
               <li>• Regular backups ensure you don't lose your configuration</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Confirmation Template Settings Component
+const ConfirmationTemplateSettings = () => {
+  const { settings, updateConfirmationTemplate, updateConfirmationCustomFields } = useSettings();
+  const [template, setTemplate] = useState(settings.confirmationTemplate?.template || '');
+  const [customFields, setCustomFields] = useState(settings.confirmationTemplate?.customFields || []);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Available field placeholders
+  const availableFields = [
+    { key: 'customerName', label: 'Customer Name', type: 'text' },
+    { key: 'phone', label: 'Phone Number', type: 'text' },
+    { key: 'email', label: 'Email', type: 'text' },
+    { key: 'date', label: 'Date', type: 'text' },
+    { key: 'time', label: 'Time', type: 'text' },
+    { key: 'duration', label: 'Duration', type: 'text' },
+    { key: 'roomName', label: 'Room Name', type: 'text' },
+    { key: 'roomCapacity', label: 'Room Capacity', type: 'text' },
+    { key: 'status', label: 'Status', type: 'text' },
+    { key: 'source', label: 'Source', type: 'text' },
+    { key: 'confirmationCode', label: 'Confirmation Code', type: 'text' },
+    { key: 'totalPrice', label: 'Total Price', type: 'text' },
+    { key: 'notes', label: 'Notes', type: 'text' },
+    { key: 'specialRequests', label: 'Special Requests', type: 'text' },
+    { key: 'businessName', label: 'Business Name', type: 'text' },
+    { key: 'businessPhone', label: 'Business Phone', type: 'text' },
+    { key: 'businessEmail', label: 'Business Email', type: 'text' },
+    { key: 'businessAddress', label: 'Business Address', type: 'text' },
+    { key: 'businessWebsite', label: 'Business Website', type: 'text' },
+    { key: 'confirmationMessage', label: 'Confirmation Message', type: 'text' },
+    { key: 'generatedDate', label: 'Generated Date', type: 'text' },
+  ];
+
+  // Initialize template from settings
+  useEffect(() => {
+    setTemplate(settings.confirmationTemplate?.template || '');
+    setCustomFields(settings.confirmationTemplate?.customFields || []);
+  }, [settings.confirmationTemplate]);
+
+  // Track changes
+  useEffect(() => {
+    const hasChanges = 
+      template !== (settings.confirmationTemplate?.template || '') ||
+      JSON.stringify(customFields) !== JSON.stringify(settings.confirmationTemplate?.customFields || []);
+    setHasUnsavedChanges(hasChanges);
+  }, [template, customFields, settings.confirmationTemplate]);
+
+  // Save template
+  const handleSaveTemplate = () => {
+    updateConfirmationTemplate(template);
+    updateConfirmationCustomFields(customFields);
+    toast.success('Confirmation template saved successfully!');
+    setHasUnsavedChanges(false);
+  };
+
+  // Reset to default template
+  const handleResetTemplate = () => {
+    if (window.confirm('Are you sure you want to reset to the default template? This will overwrite your current template.')) {
+      const defaultTemplate = '🎤 BOOKING CONFIRMATION\n\n' +
+        'Customer: {{customerName}}\n' +
+        'Phone: {{phone}}\n' +
+        'Email: {{email}}\n' +
+        'Date: {{date}}\n' +
+        'Time: {{time}}\n' +
+        'Duration: {{duration}}\n' +
+        'Room: {{roomName}} ({{roomCapacity}} people)\n' +
+        'Status: {{status}}\n' +
+        'Source: {{source}}\n' +
+        'Confirmation Code: {{confirmationCode}}\n' +
+        'Total Price: ${{totalPrice}}\n\n' +
+        '{{#if notes}}\n' +
+        'Notes: {{notes}}\n' +
+        '{{/if}}\n\n' +
+        '{{#if specialRequests}}\n' +
+        'Special Requests: {{specialRequests}}\n' +
+        '{{/if}}\n\n' +
+        '{{confirmationMessage}}\n\n' +
+        'For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.\n\n' +
+        '---\n' +
+        '{{businessName}}\n' +
+        '{{businessAddress}}\n' +
+        '{{businessWebsite}}\n' +
+        'Generated on {{generatedDate}}';
+      
+      setTemplate(defaultTemplate);
+      setCustomFields([]);
+      toast.success('Template reset to default');
+    }
+  };
+
+  // Add custom field
+  const handleAddCustomField = () => {
+    const newField = {
+      id: Date.now(),
+      key: `custom_${Date.now()}`,
+      label: 'Custom Field',
+      type: 'text',
+      value: ''
+    };
+    setCustomFields([...customFields, newField]);
+  };
+
+  // Update custom field
+  const handleUpdateCustomField = (id, field, value) => {
+    setCustomFields(prev => 
+      prev.map(f => f.id === id ? { ...f, [field]: value } : f)
+    );
+  };
+
+  // Remove custom field
+  const handleRemoveCustomField = (id) => {
+    setCustomFields(prev => prev.filter(f => f.id !== id));
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <FileText className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Confirmation Template</h3>
+        </div>
+        <p className="text-sm text-gray-600">
+          Customize the confirmation message template that customers receive. Use placeholders like {'{{customerName}}'} to insert booking data.
+        </p>
+      </div>
+
+      {/* Available Fields */}
+      <div className="space-y-4">
+        <h4 className="text-md font-medium text-gray-800">Available Fields (click to insert)</h4>
+        <div className="flex flex-wrap gap-2">
+          {availableFields.map(field => (
+            <Button
+              key={field.key}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newTemplate = template + `{{${field.key}}}`;
+                setTemplate(newTemplate);
+              }}
+              className="text-xs"
+            >
+              {field.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Custom Fields */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-md font-medium text-gray-800">Custom Fields</h4>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddCustomField}
+            className="flex items-center space-x-1"
+          >
+            <FileText className="w-3 h-3" />
+            <span>Add Field</span>
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {customFields.map(field => (
+            <div key={field.id} className="flex items-center space-x-2">
+              <Input
+                placeholder="Field label"
+                value={field.label}
+                onChange={(e) => handleUpdateCustomField(field.id, 'label', e.target.value)}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Field value"
+                value={field.value}
+                onChange={(e) => handleUpdateCustomField(field.id, 'value', e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleRemoveCustomField(field.id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Template Editor */}
+      <div className="space-y-4">
+        <h4 className="text-md font-medium text-gray-800">Template</h4>
+        <textarea
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          className="w-full h-64 p-3 border border-gray-300 rounded-lg font-mono text-sm"
+          placeholder="Enter your confirmation template here..."
+        />
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-between items-center pt-4 border-t">
+        <Button
+          variant="outline"
+          onClick={handleResetTemplate}
+          className="flex items-center space-x-2"
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Reset to Default</span>
+        </Button>
+        
+        <div className="flex items-center space-x-3">
+          {hasUnsavedChanges && (
+            <span className="text-sm text-orange-600">You have unsaved changes</span>
+          )}
+          <Button
+            onClick={handleSaveTemplate}
+            disabled={!hasUnsavedChanges}
+            className="flex items-center space-x-2"
+          >
+            <Save className="w-4 h-4" />
+            <span>Save Template</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Help Information */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-2">
+          <div className="w-4 h-4 text-blue-600 mt-0.5">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h5 className="text-sm font-medium text-blue-800">Template Tips</h5>
+            <ul className="text-xs text-blue-700 mt-1 space-y-1">
+              <li>• Use double curly braces for placeholders: {'{{customerName}}'}</li>
+              <li>• Use conditional blocks: {'{{#if notes}}Notes: {{notes}}{{/if}}'}</li>
+              <li>• Custom fields will be available as {'{{customFieldKey}}'}</li>
+              <li>• Changes are saved automatically when you click Save</li>
             </ul>
           </div>
         </div>

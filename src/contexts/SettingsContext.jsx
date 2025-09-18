@@ -72,6 +72,35 @@ export const SettingsProvider = ({ children }) => {
             notes: true,
             specialRequests: true,
           },
+          // Confirmation template settings
+          confirmationTemplate: {
+            template: '🎤 BOOKING CONFIRMATION\n\n' +
+              'Customer: {{customerName}}\n' +
+              'Phone: {{phone}}\n' +
+              'Email: {{email}}\n' +
+              'Date: {{date}}\n' +
+              'Time: {{time}}\n' +
+              'Duration: {{duration}}\n' +
+              'Room: {{roomName}} ({{roomCapacity}} people)\n' +
+              'Status: {{status}}\n' +
+              'Source: {{source}}\n' +
+              'Confirmation Code: {{confirmationCode}}\n' +
+              'Total Price: ${{totalPrice}}\n\n' +
+              '{{#if notes}}\n' +
+              'Notes: {{notes}}\n' +
+              '{{/if}}\n\n' +
+              '{{#if specialRequests}}\n' +
+              'Special Requests: {{specialRequests}}\n' +
+              '{{/if}}\n\n' +
+              '{{confirmationMessage}}\n\n' +
+              'For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.\n\n' +
+              '---\n' +
+              '{{businessName}}\n' +
+              '{{businessAddress}}\n' +
+              '{{businessWebsite}}\n' +
+              'Generated on {{generatedDate}}',
+            customFields: []
+          },
           ...parsed
         };
       }
@@ -124,6 +153,35 @@ export const SettingsProvider = ({ children }) => {
         totalPrice: true,
         notes: true,
         specialRequests: true,
+      },
+      // Confirmation template settings
+      confirmationTemplate: {
+        template: '🎤 BOOKING CONFIRMATION\n\n' +
+          'Customer: {{customerName}}\n' +
+          'Phone: {{phone}}\n' +
+          'Email: {{email}}\n' +
+          'Date: {{date}}\n' +
+          'Time: {{time}}\n' +
+          'Duration: {{duration}}\n' +
+          'Room: {{roomName}} ({{roomCapacity}} people)\n' +
+          'Status: {{status}}\n' +
+          'Source: {{source}}\n' +
+          'Confirmation Code: {{confirmationCode}}\n' +
+          'Total Price: ${{totalPrice}}\n\n' +
+          '{{#if notes}}\n' +
+          'Notes: {{notes}}\n' +
+          '{{/if}}\n\n' +
+          '{{#if specialRequests}}\n' +
+          'Special Requests: {{specialRequests}}\n' +
+          '{{/if}}\n\n' +
+          '{{confirmationMessage}}\n\n' +
+          'For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.\n\n' +
+          '---\n' +
+          '{{businessName}}\n' +
+          '{{businessAddress}}\n' +
+          '{{businessWebsite}}\n' +
+          'Generated on {{generatedDate}}',
+        customFields: []
       },
     };
   };
@@ -192,6 +250,26 @@ export const SettingsProvider = ({ children }) => {
     }));
   };
 
+  const updateConfirmationTemplate = (template) => {
+    setSettings(prev => ({
+      ...prev,
+      confirmationTemplate: {
+        ...prev.confirmationTemplate,
+        template
+      }
+    }));
+  };
+
+  const updateConfirmationCustomFields = (customFields) => {
+    setSettings(prev => ({
+      ...prev,
+      confirmationTemplate: {
+        ...prev.confirmationTemplate,
+        customFields
+      }
+    }));
+  };
+
   const resetSettings = () => {
     const defaultSettings = {
       layoutOrientation: 'rooms-y-time-x',
@@ -231,6 +309,35 @@ export const SettingsProvider = ({ children }) => {
         notes: true,
         specialRequests: true,
       },
+      // Confirmation template settings
+      confirmationTemplate: {
+        template: '🎤 BOOKING CONFIRMATION\n\n' +
+          'Customer: {{customerName}}\n' +
+          'Phone: {{phone}}\n' +
+          'Email: {{email}}\n' +
+          'Date: {{date}}\n' +
+          'Time: {{time}}\n' +
+          'Duration: {{duration}}\n' +
+          'Room: {{roomName}} ({{roomCapacity}} people)\n' +
+          'Status: {{status}}\n' +
+          'Source: {{source}}\n' +
+          'Confirmation Code: {{confirmationCode}}\n' +
+          'Total Price: ${{totalPrice}}\n\n' +
+          '{{#if notes}}\n' +
+          'Notes: {{notes}}\n' +
+          '{{/if}}\n\n' +
+          '{{#if specialRequests}}\n' +
+          'Special Requests: {{specialRequests}}\n' +
+          '{{/if}}\n\n' +
+          '{{confirmationMessage}}\n\n' +
+          'For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.\n\n' +
+          '---\n' +
+          '{{businessName}}\n' +
+          '{{businessAddress}}\n' +
+          '{{businessWebsite}}\n' +
+          'Generated on {{generatedDate}}',
+        customFields: []
+      },
     };
     setSettings(defaultSettings);
   };
@@ -242,6 +349,8 @@ export const SettingsProvider = ({ children }) => {
     updateBookingFormField,
     updateLayoutSlotSetting,
     updateBookingSourceColor,
+    updateConfirmationTemplate,
+    updateConfirmationCustomFields,
     resetSettings,
   };
 

@@ -447,6 +447,18 @@ const AppleCalendarDashboard = () => {
 
   const currentTimeData = getCurrentTimePosition();
 
+  // Calculate which room column the current timeline is in
+  const getCurrentTimelineRoomIndex = () => {
+    if (!currentTimeData) return null;
+    
+    // In Apple Calendar layout, the timeline extends horizontally across all rooms
+    // We'll highlight all rooms since the timeline affects the entire schedule
+    // For future enhancements, this could be calculated based on specific room positions
+    return null; // Highlight all rooms when timeline is active
+  };
+
+  const currentTimelineRoomIndex = getCurrentTimelineRoomIndex();
+
   // Compute responsive widths
   const TIME_COL_WIDTH = windowWidth < 640 ? 56 : windowWidth < 1024 ? 64 : 80; // px
   const ROOM_COL_WIDTH = windowWidth < 640 ? 140 : windowWidth < 1024 ? 180 : 200; // px
@@ -1015,8 +1027,30 @@ const AppleCalendarDashboard = () => {
       grouped[room._id || room.id] = roomBookings
         .map(booking => {
           const timezone = settings.timezone || 'America/New_York';
+          
+          // Validate booking has required time data
+          if (!booking.startTime && !booking.timeIn) {
+            console.warn(`⚠️ Booking missing start time for ${booking.customerName || 'Unknown'}:`, booking);
+            return null;
+          }
+          if (!booking.endTime && !booking.timeOut) {
+            console.warn(`⚠️ Booking missing end time for ${booking.customerName || 'Unknown'}:`, booking);
+            return null;
+          }
+          
           const start = moment(booking.startTime || booking.timeIn).tz(timezone);
           const end = moment(booking.endTime || booking.timeOut).tz(timezone);
+          
+          // Validate moment parsing
+          if (!start.isValid()) {
+            console.warn(`⚠️ Invalid start time for ${booking.customerName || 'Unknown'}:`, booking.startTime || booking.timeIn);
+            return null;
+          }
+          if (!end.isValid()) {
+            console.warn(`⚠️ Invalid end time for ${booking.customerName || 'Unknown'}:`, booking.endTime || booking.timeOut);
+            return null;
+          }
+          
           const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours').tz(timezone);
           
           // Calculate position in minutes from open time
@@ -1033,7 +1067,14 @@ const AppleCalendarDashboard = () => {
           
           // Only filter out if duration is negative (invalid booking)
           if (clampedDuration <= 0) {
-            console.warn(`⚠️ Invalid booking duration for ${booking.customerName}: ${clampedDuration} minutes`);
+            console.warn(`⚠️ Invalid booking duration for ${booking.customerName || 'Unknown'}: ${clampedDuration} minutes`, {
+              startTime: booking.startTime || booking.timeIn,
+              endTime: booking.endTime || booking.timeOut,
+              startMinutes,
+              endMinutes,
+              durationMinutes,
+              booking
+            });
             return null;
           }
           
@@ -1657,26 +1698,28 @@ const AppleCalendarDashboard = () => {
               {/* Sticky Header Row */}
               <div className="flex border-b border-gray-200 bg-gray-50 flex-shrink-0 z-20">
                 <div className="h-16 border-r border-gray-200 bg-gray-50" style={{ width: TIME_COL_WIDTH }}></div>
-                {rooms.map(room => (
-                  <div
-                    key={room._id || room.id}
-                    className="flex-1 h-16 border-r border-gray-200 px-3 md:px-4 flex items-center last:border-r-0"
-                    style={{ minWidth: `${ROOM_COL_WIDTH}px` }}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
-                      />
-                      <div>
-                        <h3 className="font-medium text-gray-900">{room.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
-                        </p>
+                {rooms.map((room, roomIndex) => {
+                  return (
+                    <div
+                      key={room._id || room.id}
+                      className="flex-1 h-16 border-r border-gray-200 px-3 md:px-4 flex items-center last:border-r-0"
+                      style={{ minWidth: `${ROOM_COL_WIDTH}px` }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
+                        />
+                        <div>
+                          <h3 className="font-medium text-gray-900">{room.name}</h3>
+                          <p className="text-sm text-gray-500">
+                            {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* Scrollable Content Area */}

@@ -569,6 +569,7 @@ const BookingManagement = () => {
           }}
           saving={isEditing ? updateBookingMutation.isPending : createBookingMutation.isPending}
           rooms={rooms}
+          isWithinBusinessHours={isWithinBusinessHours}
         />
       )}
     </div>
@@ -576,7 +577,7 @@ const BookingManagement = () => {
 };
 
 // Booking Form Component
-const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = false }) => {
+const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = false, isWithinBusinessHours }) => {
   const { settings } = useSettings();
   const [formData, setFormData] = useState({
     customerName: booking?.customerName || '',

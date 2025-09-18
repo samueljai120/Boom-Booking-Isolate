@@ -581,6 +581,23 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
 
   const currentTimeData = getCurrentTimePosition();
 
+  // Calculate which room column the current timeline is in
+  const getCurrentTimelineRoomIndex = () => {
+    if (!currentTimeData) return null;
+    
+    // In a traditional schedule layout, the timeline moves across time slots
+    // and all rooms share the same time grid. The timeline is always visible
+    // across all rooms, so we highlight the first room (index 0) to indicate
+    // that the timeline is active in the schedule.
+    // 
+    // For future layouts with separate room columns, this calculation could be
+    // enhanced to determine which specific room column the timeline is over
+    // based on the timeline's horizontal position.
+    return 0; // Traditional schedule: timeline affects all rooms, highlight first room
+  };
+
+  const currentTimelineRoomIndex = getCurrentTimelineRoomIndex();
+
   // Refs for layout (scrolling disabled)
   const leftColumnRef = React.useRef(null);
   const gridScrollRef = React.useRef(null);
@@ -1956,24 +1973,30 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         {/* Schedule Grid - Traditional Layout */}
         <div className="flex-1 relative max-h-[calc(100vh-250px)] overflow-hidden">
           <div className="flex h-full">
-            {/* Sticky First Column */}
+            {/* Sticky First Column - Name Label Column (No Red Light Effect) */}
             <div ref={leftColumnRef} className="border-r border-gray-200 flex-shrink-0 z-20 overflow-hidden w-32 sm:w-40 md:w-48">
               {/* Room Info Cells Container - Background Color */}
               <div className="bg-gray-50">
-                {rooms.map(room => (
-                  <div key={room._id || room.id} className="border-b border-gray-200 p-3" style={{ height: SLOT_HEIGHT }}>
-                    <div className="flex items-center space-x-2 mb-1 min-w-0">
-                      <div
-                        className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
-                      />
-                      <span className="text-sm font-medium text-gray-900 truncate" title={room.name}>{room.name}</span>
+                {rooms.map((room, roomIndex) => {
+                  return (
+                    <div 
+                      key={room._id || room.id} 
+                      className="border-b border-gray-200 p-3" 
+                      style={{ height: SLOT_HEIGHT }}
+                    >
+                      <div className="flex items-center space-x-2 mb-1 min-w-0">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
+                        />
+                        <span className="text-sm font-medium truncate text-gray-900" title={room.name}>{room.name}</span>
+                      </div>
+                      <div className="text-xs truncate text-gray-500">
+                        {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -2012,7 +2035,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
               <table className="border-separate border-spacing-0" style={{ width: `${timeSlots.length * SLOT_WIDTH}px`, marginLeft: '0px' }}>
                 {/* Content Rows */}
                 <tbody>
-                  {rooms.map(room => (
+                  {rooms.map((room, roomIndex) => (
                     <tr key={room._id || room.id} className="border-b border-gray-200">
                       {/* Time Slot Cells */}
                       {timeSlots.map((slot, slotIndex) => (

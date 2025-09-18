@@ -23,6 +23,7 @@ import {
 import moment from 'moment';
 import toast from 'react-hot-toast';
 import { useBusinessInfo } from '../contexts/BusinessInfoContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 const BookingConfirmation = ({ booking, onClose, isOpen, onTemplateUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -31,44 +32,41 @@ const BookingConfirmation = ({ booking, onClose, isOpen, onTemplateUpdate }) => 
   const [copied, setCopied] = useState(false);
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const { businessInfo } = useBusinessInfo();
+  const { settings, updateConfirmationTemplate, updateConfirmationCustomFields } = useSettings();
 
   // Default template with placeholders
-  const getDefaultTemplate = () => `🎤 BOOKING CONFIRMATION
-
-Customer: {{customerName}}
-Phone: {{phone}}
-Email: {{email}}
-Date: {{date}}
-Time: {{time}}
-Duration: {{duration}}
-Room: {{roomName}} ({{roomCapacity}} people)
-Status: {{status}}
-Source: {{source}}
-Confirmation Code: {{confirmationCode}}
-Total Price: ${{totalPrice}}
-
-{{#if notes}}
-Notes: {{notes}}
-{{/if}}
-
-{{#if specialRequests}}
-Special Requests: {{specialRequests}}
-{{/if}}
-
-{{confirmationMessage}}
-
-For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.
-
----
-{{businessName}}
-{{businessAddress}}
-{{businessWebsite}}
-Generated on {{generatedDate}}`;
+  const getDefaultTemplate = () => {
+    return '🎤 BOOKING CONFIRMATION\n\n' +
+      'Customer: {{customerName}}\n' +
+      'Phone: {{phone}}\n' +
+      'Email: {{email}}\n' +
+      'Date: {{date}}\n' +
+      'Time: {{time}}\n' +
+      'Duration: {{duration}}\n' +
+      'Room: {{roomName}} ({{roomCapacity}} people)\n' +
+      'Status: {{status}}\n' +
+      'Source: {{source}}\n' +
+      'Confirmation Code: {{confirmationCode}}\n' +
+      'Total Price: ${{totalPrice}}\n\n' +
+      '{{#if notes}}\n' +
+      'Notes: {{notes}}\n' +
+      '{{/if}}\n\n' +
+      '{{#if specialRequests}}\n' +
+      'Special Requests: {{specialRequests}}\n' +
+      '{{/if}}\n\n' +
+      '{{confirmationMessage}}\n\n' +
+      'For questions or changes, call us at {{businessPhone}} or email {{businessEmail}}.\n\n' +
+      '---\n' +
+      '{{businessName}}\n' +
+      '{{businessAddress}}\n' +
+      '{{businessWebsite}}\n' +
+      'Generated on {{generatedDate}}';
+  };
 
   // Initialize template from settings or use default
   useEffect(() => {
     if (isOpen && booking) {
-      const savedTemplate = localStorage.getItem('bookingConfirmationTemplate');
+      const savedTemplate = settings.confirmationTemplate?.template;
       if (savedTemplate) {
         setTemplate(savedTemplate);
       } else {
@@ -76,12 +74,10 @@ Generated on {{generatedDate}}`;
       }
       
       // Load custom fields
-      const savedFields = localStorage.getItem('bookingConfirmationFields');
-      if (savedFields) {
-        setCustomFields(JSON.parse(savedFields));
-      }
+      const savedFields = settings.confirmationTemplate?.customFields || [];
+      setCustomFields(savedFields);
     }
-  }, [isOpen, booking]);
+  }, [isOpen, booking, settings.confirmationTemplate]);
 
   // Available field placeholders
   const availableFields = [
@@ -151,7 +147,7 @@ Generated on {{generatedDate}}`;
       roomCapacity: booking.room?.capacity || booking.roomId?.capacity || 'N/A',
       status: booking.status || 'confirmed',
       source: booking.source || 'walk_in',
-      confirmationCode: booking.confirmationCode || booking._id?.slice(-8).toUpperCase() || 'N/A',
+      confirmationCode: booking.confirmationCode || (booking._id ? String(booking._id).slice(-8).toUpperCase() : 'N/A'),
       totalPrice: booking.totalPrice || booking.basePrice || '0.00',
       notes: booking.notes || '',
       specialRequests: booking.specialRequests || '',
@@ -184,7 +180,8 @@ Generated on {{generatedDate}}`;
 
   // Save template
   const handleSaveTemplate = () => {
-    localStorage.setItem('bookingConfirmationTemplate', template);
+    updateConfirmationTemplate(template);
+    updateConfirmationCustomFields(customFields);
     toast.success('Template saved successfully!');
     setShowTemplateEditor(false);
     if (onTemplateUpdate) {
@@ -197,7 +194,8 @@ Generated on {{generatedDate}}`;
     if (window.confirm('Are you sure you want to reset to the default template? This will overwrite your current template.')) {
       const defaultTemplate = getDefaultTemplate();
       setTemplate(defaultTemplate);
-      localStorage.setItem('bookingConfirmationTemplate', defaultTemplate);
+      updateConfirmationTemplate(defaultTemplate);
+      updateConfirmationCustomFields([]);
       toast.success('Template reset to default');
     }
   };
@@ -228,7 +226,7 @@ Generated on {{generatedDate}}`;
 
   // Save custom fields
   const handleSaveCustomFields = () => {
-    localStorage.setItem('bookingConfirmationFields', JSON.stringify(customFields));
+    updateConfirmationCustomFields(customFields);
     toast.success('Custom fields saved!');
   };
 
