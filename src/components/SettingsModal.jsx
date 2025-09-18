@@ -29,6 +29,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
   // Always call hooks in the same order
   const { settings, updateSetting, toggleLayoutOrientation, resetSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('layout');
+  const [isDraggingSlider, setIsDraggingSlider] = useState(false);
 
   // Close on Escape key (attach only when open)
   useEffect(() => {
@@ -39,6 +40,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
+
+  // Reset dragging state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsDraggingSlider(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,11 +61,19 @@ const SettingsModal = ({ isOpen, onClose }) => {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className={`fixed inset-0 flex items-center justify-center z-50 p-4 transition-all duration-300 ${
+        isDraggingSlider 
+          ? 'bg-black bg-opacity-20' 
+          : 'bg-black bg-opacity-50'
+      }`}
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <Card 
-        className="w-full max-w-6xl max-h-[90vh] relative"
+        className={`w-full max-w-6xl max-h-[90vh] relative transition-all duration-300 ${
+          isDraggingSlider 
+            ? 'bg-white bg-opacity-20 backdrop-blur-sm border-opacity-30' 
+            : 'bg-white'
+        }`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Exit Button - Top Right Corner */}
@@ -65,20 +81,30 @@ const SettingsModal = ({ isOpen, onClose }) => {
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="absolute top-4 right-4 h-12 w-12 z-10 bg-white hover:bg-gray-100 border border-gray-200 shadow-lg"
+          className={`absolute top-4 right-4 h-12 w-12 z-10 border border-gray-200 shadow-lg transition-all duration-300 ${
+            isDraggingSlider 
+              ? 'bg-white bg-opacity-30 hover:bg-gray-100 hover:bg-opacity-50' 
+              : 'bg-white hover:bg-gray-100'
+          }`}
         >
           <X className="h-8 w-8 font-bold text-gray-700" />
         </Button>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 transition-all duration-300 ${
+          isDraggingSlider ? 'opacity-30' : 'opacity-100'
+        }`}>
           <CardTitle className="flex items-center space-x-2">
             <SettingsIcon className="w-5 h-5" />
             <span>Settings</span>
           </CardTitle>
         </CardHeader>
 
-        <div className="flex h-[70vh]">
+        <div className={`flex h-[70vh] transition-all duration-300 ${
+          isDraggingSlider ? 'opacity-30' : 'opacity-100'
+        }`}>
           {/* Sidebar */}
-          <div className="w-64 bg-gray-50 border-r border-gray-200 p-4">
+          <div className={`w-64 border-r border-gray-200 p-4 transition-all duration-300 ${
+            isDraggingSlider ? 'bg-gray-50 bg-opacity-30' : 'bg-gray-50'
+          }`}>
             <nav className="space-y-2">
               {tabs.map(tab => {
                 const Icon = tab.icon;
@@ -101,9 +127,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
-            <CardContent className="p-6">
-              {activeTab === 'layout' && <LayoutSettings />}
+          <div className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            isDraggingSlider ? 'opacity-30' : 'opacity-100'
+          }`}>
+            <CardContent className={`p-6 transition-all duration-300 ${
+              isDraggingSlider ? 'bg-white bg-opacity-20' : 'bg-white'
+            }`}>
+              {activeTab === 'layout' && <LayoutSettings currentLayout={settings.layoutOrientation} setIsDraggingSlider={setIsDraggingSlider} />}
               {activeTab === 'business-hours' && <BusinessHoursSettings />}
               {activeTab === 'rooms' && <RoomManagement />}
               {activeTab === 'bookings' && <BookingManagement />}
@@ -118,9 +148,134 @@ const SettingsModal = ({ isOpen, onClose }) => {
 };
 
 // Layout Settings Component
-const LayoutSettings = () => {
+const LayoutSettings = ({ currentLayout, setIsDraggingSlider }) => {
   const { settings, updateSetting, toggleLayoutOrientation, updateLayoutSlotSetting, resetSettings } = useSettings();
   const notifyApplied = () => toast.success('Settings applied', { id: 'settings-applied', duration: 900 });
+
+  // Calculate exact slot dimensions matching the actual schedule grid logic
+  const getActualSlotDimensions = () => {
+    // Use the exact same logic as TraditionalSchedule.jsx
+    const widthMap = {
+      'tiny': 20,
+      'small': 40,
+      'medium': 60,
+      'large': 80,
+      'huge': 100
+    };
+    const heightMap = {
+      'tiny': 50,
+      'small': 70,
+      'medium': 90,
+      'large': 130,
+      'huge': 160
+    };
+    
+  // Use custom width if available, otherwise fall back to preset width
+  const customWidth = settings?.horizontalLayoutSlots?.customWidth;
+  const baseSlotWidth = customWidth || 60;
+  
+  // Use custom height if available, otherwise fall back to mapped height
+  const customHeight = settings?.horizontalLayoutSlots?.customHeight;
+  const baseSlotHeight = customHeight || heightMap[settings?.horizontalLayoutSlots?.slotHeight] || 90;
+  
+  // When using custom width, don't apply scale factor - use the custom value directly
+  const widthScaleFactor = customWidth ? 1.0 : (settings?.horizontalLayoutSlots?.widthScaleFactor || 0.4);
+  // When using custom height, don't apply scale factor - use the custom value directly
+  const heightScaleFactor = customHeight ? 1.0 : (settings?.horizontalLayoutSlots?.heightScaleFactor || 1.0);
+    
+    // Calculate responsive slot width (exact copy from TraditionalSchedule)
+    const getResponsiveSlotWidth = () => {
+      const minWidth = Math.max(1, baseSlotWidth * widthScaleFactor);
+      
+      // Calculate available width for time slots
+      const availableWidth = (typeof window !== 'undefined' ? window.innerWidth : 1200) - 200; // Account for room column and padding
+      const timeInterval = settings.timeInterval || 15;
+      
+      // Use actual business hours calculation (same as TraditionalSchedule)
+      // Default to 12 hours if business hours not available
+      const businessHours = settings.businessHours?.openTime && settings.businessHours?.closeTime ? 
+        (() => {
+          const [openHour, openMinute] = settings.businessHours.openTime.split(':').map(Number);
+          const [closeHour, closeMinute] = settings.businessHours.closeTime.split(':').map(Number);
+          
+          // Handle late night hours (close time is next day)
+          const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
+          
+          if (isLateNight) {
+            // Late night: from open time to close time next day
+            return (24 - openHour) + closeHour + ((60 - openMinute + closeMinute) / 60);
+          } else {
+            // Normal hours: from open time to close time same day
+            return closeHour - openHour + ((closeMinute - openMinute) / 60);
+          }
+        })() : 12; // Fallback to 12 hours
+      
+      const timeSlotsCount = Math.ceil((businessHours * 60) / timeInterval);
+      
+      if (timeSlotsCount === 0) {
+        return minWidth;
+      }
+      
+      // Calculate optimal width based on available space
+      const optimalWidth = availableWidth / timeSlotsCount;
+      
+      // For tiny/small settings, allow more compression
+      // Also consider custom width - use much less compression for custom values
+      const compressionThreshold = customWidth ? 
+        0.95 : // Use 95% of custom width (much less compression)
+        (settings.horizontalLayoutSlots?.slotWidth === 'tiny' ? 0.6 : 
+         settings.horizontalLayoutSlots?.slotWidth === 'small' ? 0.7 : 0.8);
+      
+      // Use the larger of: user preference or calculated optimal width (with compression)
+      const finalWidth = Math.max(
+        minWidth, 
+        Math.round(optimalWidth * compressionThreshold)
+      );
+      
+      return finalWidth;
+    };
+
+    // Calculate responsive slot height (exact copy from TraditionalSchedule)
+    const getResponsiveSlotHeight = () => {
+      // If custom height is set, use it directly (respect user's choice)
+      if (customHeight) {
+        return Math.max(1, customHeight);
+      }
+      
+      const minHeight = Math.max(1, baseSlotHeight * heightScaleFactor);
+      
+      // Calculate available height for room rows
+      const availableHeight = (typeof window !== 'undefined' ? window.innerHeight : 800) - 200; // Account for headers and padding
+      const roomsCount = 4; // Simulate 4 rooms for preview
+      
+      if (roomsCount === 0) {
+        return minHeight;
+      }
+      
+      // Calculate optimal height based on available space
+      const optimalHeight = availableHeight / roomsCount;
+      
+      // For smaller heights, allow more compression
+      const compressionThreshold = baseSlotHeight <= 50 ? 0.6 : 
+                                  baseSlotHeight <= 80 ? 0.7 : 0.8;
+      
+      // Use the larger of: user preference or calculated optimal height (with compression)
+      const finalHeight = Math.max(
+        minHeight, 
+        Math.round(optimalHeight * compressionThreshold)
+      );
+      
+      return finalHeight;
+    };
+
+    return {
+      width: getResponsiveSlotWidth(),
+      height: getResponsiveSlotHeight()
+    };
+  };
+
+  // Get actual dimensions for preview
+  const actualDimensions = getActualSlotDimensions();
 
   return (
     <div className="space-y-8">
@@ -238,147 +393,286 @@ const LayoutSettings = () => {
           </label>
         </div>
 
-        {/* Layout-Specific Slot Settings */}
+        {/* Layout-Specific Slot Settings - Only show for current layout */}
         <div className="mt-4">
-          <label className="text-sm font-medium text-gray-700 mb-2 block">Slot Sizes by Layout</label>
+          <label className="text-sm font-medium text-gray-700 mb-2 block">Slot Sizes for Current Layout</label>
           
-          {/* Vertical Layout (rooms-x-time-y) */}
-          <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-800 mb-3">Vertical Layout (Rooms × Time)</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Slot Width</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { updateLayoutSlotSetting('vertical', 'slotWidth', opt.value); notifyApplied(); }}
-                      className={`px-2 py-1 border rounded text-xs ${settings.verticalLayoutSlots?.slotWidth === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
-                      type="button"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Vertical Layout (rooms-x-time-y) - Only show if current layout is vertical */}
+          {currentLayout === 'rooms-x-time-y' && (
+            <div className="p-4 border border-gray-200 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-800 mb-3">Vertical Layout (Rooms × Time)</h4>
+              <p className="text-xs text-gray-600 mb-4">Control the size of time slots in the vertical schedule view. Height affects how much vertical space each time slot takes up.</p>
               
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Slot Height</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { updateLayoutSlotSetting('vertical', 'slotHeight', opt.value); notifyApplied(); }}
-                      className={`px-2 py-1 border rounded text-xs ${settings.verticalLayoutSlots?.slotHeight === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
-                      type="button"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-3 block">Time Slot Height</label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[
+                      { value: 'tiny', label: 'Tiny', description: '20px', color: 'bg-gray-100' },
+                      { value: 'small', label: 'Small', description: '40px', color: 'bg-gray-200' },
+                      { value: 'medium', label: 'Medium', description: '60px', color: 'bg-gray-300' },
+                      { value: 'large', label: 'Large', description: '80px', color: 'bg-gray-400' },
+                      { value: 'huge', label: 'Huge', description: '100px', color: 'bg-gray-500' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { updateLayoutSlotSetting('vertical', 'slotHeight', opt.value); notifyApplied(); }}
+                        className={`p-3 border-2 rounded-lg text-center transition-all ${
+                          settings.verticalLayoutSlots?.slotHeight === opt.value 
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
+                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                        type="button"
+                      >
+                        <div className={`w-full h-4 ${opt.color} rounded mb-2`}></div>
+                        <div className="text-xs font-medium text-gray-700">{opt.label}</div>
+                        <div className="text-xs text-gray-500">{opt.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* Current Setting Display */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h5 className="text-sm font-medium text-gray-800">Current Setting</h5>
+                      <p className="text-xs text-gray-600">
+                        {settings.verticalLayoutSlots?.slotHeight === 'tiny' && 'Tiny (48px base)'}
+                        {settings.verticalLayoutSlots?.slotHeight === 'small' && 'Small (72px base)'}
+                        {settings.verticalLayoutSlots?.slotHeight === 'medium' && 'Medium (96px base)'}
+                        {settings.verticalLayoutSlots?.slotHeight === 'large' && 'Large (112px base)'}
+                        {settings.verticalLayoutSlots?.slotHeight === 'huge' && 'Huge (128px base)'}
+                        {!settings.verticalLayoutSlots?.slotHeight && 'Medium (96px base)'}
+                        <span className="text-gray-400 ml-1">• Auto-adjusts to screen</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">Auto-adjusts to screen size</div>
+                      <div className="text-xs text-gray-400">Changes apply immediately</div>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-4 h-4 text-blue-600 mt-0.5">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="text-sm font-medium text-blue-800">Slot Height Tips</h5>
+                      <ul className="text-xs text-blue-700 mt-1 space-y-1">
+                        <li>• <strong>Tiny/Small:</strong> More time slots visible, compact view</li>
+                        <li>• <strong>Medium:</strong> Balanced view, good for most use cases</li>
+                        <li>• <strong>Large/Huge:</strong> Easier to read, better for touch interfaces</li>
+                        <li>• Height automatically adjusts based on available screen space</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Horizontal Layout (rooms-y-time-x) */}
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h4 className="text-sm font-medium text-gray-800 mb-3">Horizontal Layout (Time × Rooms)</h4>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Slot Width</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { updateLayoutSlotSetting('horizontal', 'slotWidth', opt.value); notifyApplied(); }}
-                      className={`px-2 py-1 border rounded text-xs ${settings.horizontalLayoutSlots?.slotWidth === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
-                      type="button"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Horizontal Layout (rooms-y-time-x) - Only show if current layout is horizontal */}
+          {currentLayout === 'rooms-y-time-x' && (
+            <div className="p-4 border border-gray-200 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-800 mb-3">Horizontal Layout (Time × Rooms)</h4>
+              <p className="text-xs text-gray-600 mb-4">Control the size of time slots in the horizontal schedule view. Width affects how much horizontal space each time slot takes up.</p>
               
-              <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Slot Height</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
-                  ].map(opt => (
-                    <button
-                      key={opt.value}
-                      onClick={() => { updateLayoutSlotSetting('horizontal', 'slotHeight', opt.value); notifyApplied(); }}
-                      className={`px-2 py-1 border rounded text-xs ${settings.horizontalLayoutSlots?.slotHeight === opt.value ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:bg-gray-50'}`}
-                      type="button"
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-3 block">Time Slot Width</label>
+                  <div className="space-y-4">
+                    
+                    {/* Custom Width Slider */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Custom Width: {settings.horizontalLayoutSlots?.customWidth || 140}px → Actual: {actualDimensions.width}px</span>
+                        <div className="flex space-x-2">
+                          <button
+                            onMouseDown={() => setIsDraggingSlider(true)}
+                            onMouseUp={() => setIsDraggingSlider(false)}
+                            onTouchStart={() => setIsDraggingSlider(true)}
+                            onTouchEnd={() => setIsDraggingSlider(false)}
+                            onClick={() => {
+                              const newWidth = Math.max(1, (settings.horizontalLayoutSlots?.customWidth || 140) - 10);
+                              updateLayoutSlotSetting('horizontal', 'customWidth', newWidth);
+                              notifyApplied();
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
+                            type="button"
+                          >
+                            -10px
+                          </button>
+                          <button
+                            onMouseDown={() => setIsDraggingSlider(true)}
+                            onMouseUp={() => setIsDraggingSlider(false)}
+                            onTouchStart={() => setIsDraggingSlider(true)}
+                            onTouchEnd={() => setIsDraggingSlider(false)}
+                            onClick={() => {
+                              const newWidth = Math.min(200, (settings.horizontalLayoutSlots?.customWidth || 140) + 10);
+                              updateLayoutSlotSetting('horizontal', 'customWidth', newWidth);
+                              notifyApplied();
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
+                            type="button"
+                          >
+                            +10px
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="1"
+                          max="200"
+                          value={settings.horizontalLayoutSlots?.customWidth || 140}
+                          onMouseDown={() => setIsDraggingSlider(true)}
+                          onMouseUp={() => setIsDraggingSlider(false)}
+                          onTouchStart={() => setIsDraggingSlider(true)}
+                          onTouchEnd={() => setIsDraggingSlider(false)}
+                          onChange={(e) => {
+                            updateLayoutSlotSetting('horizontal', 'customWidth', parseInt(e.target.value));
+                            notifyApplied();
+                          }}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                          style={{
+                            background: `linear-gradient(to right, #10b981 0%, #10b981 ${((settings.horizontalLayoutSlots?.customWidth || 140) - 1) / 199 * 100}%, #e5e7eb ${((settings.horizontalLayoutSlots?.customWidth || 140) - 1) / 199 * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
+                        {/* Live value indicator on slider */}
+                        <div 
+                          className="absolute top-0 transform -translate-x-1/2 pointer-events-none"
+                          style={{
+                            left: `${((settings.horizontalLayoutSlots?.customWidth || 140) - 1) / 199 * 100}%`,
+                            top: '-8px'
+                          }}
+                        >
+                          <div className="bg-green-600 text-white text-xs px-2 py-1 rounded shadow-sm whitespace-nowrap">
+                            {actualDimensions.width}px
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>10px</span>
+                        <span>200px</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-3 block">Time Slot Height</label>
+                  <div className="space-y-4">
+                    {/* Height Slider */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600">Height: {settings.horizontalLayoutSlots?.customHeight || 90}px → Actual: {actualDimensions.height}px</span>
+                        <div className="flex space-x-2">
+                          <button
+                            onMouseDown={() => setIsDraggingSlider(true)}
+                            onMouseUp={() => setIsDraggingSlider(false)}
+                            onTouchStart={() => setIsDraggingSlider(true)}
+                            onTouchEnd={() => setIsDraggingSlider(false)}
+                            onClick={() => {
+                              const newHeight = Math.max(1, (settings.horizontalLayoutSlots?.customHeight || 90) - 10);
+                              updateLayoutSlotSetting('horizontal', 'customHeight', newHeight);
+                              notifyApplied();
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
+                            type="button"
+                          >
+                            -10px
+                          </button>
+                          <button
+                            onMouseDown={() => setIsDraggingSlider(true)}
+                            onMouseUp={() => setIsDraggingSlider(false)}
+                            onTouchStart={() => setIsDraggingSlider(true)}
+                            onTouchEnd={() => setIsDraggingSlider(false)}
+                            onClick={() => {
+                              const newHeight = Math.min(200, (settings.horizontalLayoutSlots?.customHeight || 90) + 10);
+                              updateLayoutSlotSetting('horizontal', 'customHeight', newHeight);
+                              notifyApplied();
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border"
+                            type="button"
+                          >
+                            +10px
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="1"
+                          max="200"
+                          value={settings.horizontalLayoutSlots?.customHeight || 90}
+                          onMouseDown={() => setIsDraggingSlider(true)}
+                          onMouseUp={() => setIsDraggingSlider(false)}
+                          onTouchStart={() => setIsDraggingSlider(true)}
+                          onTouchEnd={() => setIsDraggingSlider(false)}
+                          onChange={(e) => {
+                            updateLayoutSlotSetting('horizontal', 'customHeight', parseInt(e.target.value));
+                            notifyApplied();
+                          }}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                          style={{
+                            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((settings.horizontalLayoutSlots?.customHeight || 90) - 1) / 199 * 100}%, #e5e7eb ${((settings.horizontalLayoutSlots?.customHeight || 90) - 1) / 199 * 100}%, #e5e7eb 100%)`
+                          }}
+                        />
+                        {/* Live value indicator on slider */}
+                        <div 
+                          className="absolute top-0 transform -translate-x-1/2 pointer-events-none"
+                          style={{
+                            left: `${((settings.horizontalLayoutSlots?.customHeight || 90) - 1) / 199 * 100}%`,
+                            top: '-8px'
+                          }}
+                        >
+                          <div className="bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-sm whitespace-nowrap">
+                            {actualDimensions.height}px
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>20px</span>
+                        <span>200px</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500">Auto-adjusts to screen size</div>
+                      <div className="text-xs text-gray-400">Changes apply immediately</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <div className="w-4 h-4 text-blue-600 mt-0.5">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 className="text-sm font-medium text-blue-800">Horizontal Layout Tips</h5>
+                      <ul className="text-xs text-blue-700 mt-1 space-y-1">
+                        <li>• <strong>Width:</strong> Controls how much horizontal space each time slot takes</li>
+                        <li>• <strong>Height:</strong> Controls the vertical space for each room row</li>
+                        <li>• <strong>Tiny/Small:</strong> More time slots visible, compact view</li>
+                        <li>• <strong>Medium:</strong> Balanced view, good for most use cases</li>
+                        <li>• <strong>Large/Huge:</strong> Easier to read, better for touch interfaces</li>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
+          )}
         </div>
-      </div>
-
-      {/* Timezone */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <Globe className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-semibold">Timezone</h3>
-        </div>
-        <div className="space-y-2">
-          <CustomSelect
-            value={settings.timezone || 'America/New_York'}
-            onChange={(value) => { updateSetting('timezone', value); notifyApplied(); }}
-            options={[
-              { value: 'America/New_York', label: 'Eastern Time (ET)' },
-              { value: 'America/Chicago', label: 'Central Time (CT)' },
-              { value: 'America/Denver', label: 'Mountain Time (MT)' },
-              { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-              { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
-              { value: 'Pacific/Honolulu', label: 'Hawaii Time (HST)' },
-              { value: 'UTC', label: 'UTC' },
-              { value: 'Europe/London', label: 'London (GMT)' },
-              { value: 'Europe/Paris', label: 'Paris (CET)' },
-              { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-              { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-              { value: 'Australia/Sydney', label: 'Sydney (AEST)' }
-            ]}
-            placeholder="Select timezone"
-          />
-          <p className="text-xs text-gray-500 mt-2">All times will be displayed and calculated in the selected timezone.</p>
-        </div>
-      </div>
-
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-        <Button 
-          variant="outline" 
-          onClick={() => { resetSettings(); notifyApplied(); }}
-          className="flex items-center space-x-2"
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span>Reset to Defaults</span>
-        </Button>
       </div>
     </div>
   );

@@ -777,12 +777,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   
   // Calculate responsive slot dimensions
   const getResponsiveSlotWidth = () => {
-    // If custom width is set, use it directly (respect user's choice)
-    if (customWidth) {
-      return Math.max(1, customWidth);
-    }
-    
-    const minWidth = Math.max(1, baseSlotWidth * widthScaleFactor);
+    const minWidth = Math.max(10, baseSlotWidth * widthScaleFactor);
     
     // Calculate available width for time slots
     const availableWidth = (typeof window !== 'undefined' ? window.innerWidth : 1200) - 200; // Account for room column and padding
@@ -796,8 +791,11 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const optimalWidth = availableWidth / timeSlotsCount;
     
     // For tiny/small settings, allow more compression
-    const compressionThreshold = settings.horizontalLayoutSlots?.slotWidth === 'tiny' ? 0.6 : 
-                                 settings.horizontalLayoutSlots?.slotWidth === 'small' ? 0.7 : 0.8;
+    // Also consider custom width - smaller custom widths get more compression
+    const compressionThreshold = customWidth ? 
+      0.95 : // Use 95% of custom width (much less compression)
+      (settings.horizontalLayoutSlots?.slotWidth === 'tiny' ? 0.6 : 
+       settings.horizontalLayoutSlots?.slotWidth === 'small' ? 0.7 : 0.8);
     
     const finalWidth = Math.max(
       minWidth, 
@@ -807,12 +805,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     return finalWidth;
   };
   const getResponsiveSlotHeight = () => {
-    // If custom height is set, use it directly (respect user's choice)
-    if (customHeight) {
-      return Math.max(1, customHeight);
-    }
-    
-    const minHeight = Math.max(1, baseSlotHeight * heightScaleFactor);
+    // Use custom height if available, otherwise fall back to mapped height
+    const customHeight = settings?.horizontalLayoutSlots?.customHeight;
+    const minHeight = Math.max(10, baseSlotHeight * heightScaleFactor);
     
     // Calculate available height for room rows
     const availableHeight = (typeof window !== 'undefined' ? window.innerHeight : 800) - 200; // Account for headers and padding
@@ -1201,7 +1196,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     // Use custom width if available, otherwise fall back to preset width
     // Use custom width if available, otherwise fall back to preset width
     const widthScaleFactor = settings?.horizontalLayoutSlots?.widthScaleFactor || 0.4;
-    const SLOT_WIDTH = Math.max(1, baseSlotWidth * widthScaleFactor);
+    const SLOT_WIDTH = Math.max(10, baseSlotWidth * widthScaleFactor);
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     const [openHour] = dayHours.openTime.split(':').map(Number);

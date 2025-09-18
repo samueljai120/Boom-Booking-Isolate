@@ -449,8 +449,16 @@ const AppleCalendarDashboard = () => {
 
   // Calculate responsive slot height based on viewport and settings
   const getResponsiveSlotHeight = () => {
-    const baseHeight = settings.verticalLayoutSlots?.slotHeight === 'small' ? 72 : settings.verticalLayoutSlots?.slotHeight === 'large' ? 112 : 96;
-    const minHeight = Math.max(48, baseHeight);
+    // Enhanced slot height mapping with more options
+    const heightMap = {
+      'tiny': 48,
+      'small': 72,
+      'medium': 96,
+      'large': 112,
+      'huge': 128
+    };
+    const baseHeight = heightMap[settings.verticalLayoutSlots?.slotHeight] || 96;
+    const minHeight = Math.max(32, baseHeight);
     
     // Calculate available height for time slots (excluding header, room info, and padding)
     const headerHeight = 64; // Top navigation height
@@ -464,9 +472,18 @@ const AppleCalendarDashboard = () => {
       return minHeight;
     }
     
-    // Ensure we don't go below minimum height
-    const calculatedHeight = Math.max(minHeight, availableHeight / timeSlotsCount);
-    const finalHeight = Math.round(calculatedHeight);
+    // Calculate optimal height based on available space
+    const optimalHeight = availableHeight / timeSlotsCount;
+    
+    // For tiny/small settings, allow more compression
+    const compressionThreshold = settings.verticalLayoutSlots?.slotHeight === 'tiny' ? 0.7 : 
+                                settings.verticalLayoutSlots?.slotHeight === 'small' ? 0.8 : 0.9;
+    
+    // Use the larger of: user preference or calculated optimal height (with compression)
+    const finalHeight = Math.max(
+      minHeight, 
+      Math.round(optimalHeight * compressionThreshold)
+    );
     
     // Safety check for valid height
     if (isNaN(finalHeight) || finalHeight <= 0) {
@@ -882,7 +899,8 @@ const AppleCalendarDashboard = () => {
     // Check if this is late night hours (close time is next day)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
     
-    // Generate time slots every 15 minutes within business hours
+    // Generate time slots using configurable interval within business hours
+    const timeInterval = settings.timeInterval || 15; // Default to 15 minutes if not set
     let currentMinutes = openHour * 60 + openMinute;
     const closeMinutes = closeHour * 60 + closeMinute;
     const maxSlots = 48 * 60; // Allow up to 48 hours for late night businesses (in minutes)
@@ -925,11 +943,11 @@ const AppleCalendarDashboard = () => {
         isNextDay: currentMinutes >= 24 * 60
       });
       
-      currentMinutes += 15; // Generate slots every 15 minutes
+      currentMinutes += timeInterval; // Generate slots using configurable interval
     }
     
     return slots;
-  }, [getBusinessHoursForDay, settings.timezone, selectedDate, businessHours]);
+  }, [getBusinessHoursForDay, settings.timezone, settings.timeInterval, selectedDate, businessHours]);
 
 
   // Calculate slot height once and use consistently
@@ -1012,20 +1030,26 @@ const AppleCalendarDashboard = () => {
             return null;
           }
           
-          // Calculate exact positioning based on actual time, not rounded to 15-minute slots
-          // Convert minutes to pixels directly using the slot height per minute ratio
-          const pixelsPerMinute = SLOT_HEIGHT / 15; // Each 15-minute slot is SLOT_HEIGHT pixels
-          const topPixels = (clampedStartMinutes / 15) * SLOT_HEIGHT;
-          const heightPixels = (clampedDuration / 15) * SLOT_HEIGHT;
+          // Calculate exact positioning based on actual time, aligned to time interval slots
+          const timeInterval = settings.timeInterval || 15; // Use configurable time interval
+          
+          // Find which slot the booking starts in
+          const startSlotIndex = Math.floor(clampedStartMinutes / timeInterval);
+          const endSlotIndex = Math.ceil((clampedStartMinutes + clampedDuration) / timeInterval);
+          const durationInSlots = endSlotIndex - startSlotIndex;
+          
+          // Position based on slot boundaries
+          const topPixels = startSlotIndex * SLOT_HEIGHT;
+          const heightPixels = durationInSlots * SLOT_HEIGHT;
           
           // For debugging, also calculate the slot-based approach
-          const startSlotIndex = Math.round(clampedStartMinutes / 15);
-          const durationSlots = Math.round(clampedDuration / 15);
+          const debugStartSlotIndex = Math.round(clampedStartMinutes / timeInterval);
+          const debugDurationSlots = Math.round(clampedDuration / timeInterval);
           
           // Positioning calculation
           
           // Force minimum dimensions to ensure visibility, but only for very small durations
-          const minHeight = 20; // Minimum 20px height
+          const minHeight = 1; // Minimum 1px height
           const finalHeightPixels = Math.max(heightPixels, minHeight);
           
           // Safety check for valid dimensions
@@ -1221,9 +1245,10 @@ const AppleCalendarDashboard = () => {
       const dayHours = getBusinessHoursForDay(weekday);
       const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
       
-      // Convert slot index to actual time (each slot is 15 minutes)
+      // Convert slot index to actual time (each slot is configurable minutes)
+      const timeInterval = settings.timeInterval || 15; // Use configurable time interval
       const slotIndex = parseInt(timeSlotIndex);
-      const slotMinutes = slotIndex * 15; // Each slot is 15 minutes
+      const slotMinutes = slotIndex * timeInterval; // Each slot is configurable minutes
       const totalMinutes = (openHour * 60) + openMinute + slotMinutes;
       const slotHour = Math.floor(totalMinutes / 60);
       const slotMinute = totalMinutes % 60;
@@ -1651,15 +1676,34 @@ const AppleCalendarDashboard = () => {
               <div className="flex flex-1 overflow-hidden">
                 {/* Sticky Time Column */}
                 <div ref={timeColumnRef} onScroll={syncGridFromTime} className="bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto" style={{ width: TIME_COL_WIDTH }}>
-                  {timeSlots.map((slot, slotIndex) => (
-                    <div 
-                      key={slotIndex}
-                      className={`border-b border-gray-200 text-right pr-1 md:pr-2 pt-1 flex items-start justify-end ${slot.isNextDay ? 'bg-gray-50/30' : ''}`}
-                      style={{ height: `${SLOT_HEIGHT}px` }}
-                    >
-                      <span className="text-xs text-gray-500 font-medium">{slot.time}</span>
-                    </div>
-                  ))}
+                  {timeSlots.map((slot, slotIndex) => {
+                    // Check if this is the current time slot
+                    const isCurrentTimeSlot = currentTimeData && (() => {
+                      const timeInterval = settings.timeInterval || 15;
+                      const currentSlotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
+                      return slotIndex === currentSlotIndex;
+                    })();
+                    
+                    return (
+                      <div 
+                        key={slotIndex}
+                        className={`border-b border-gray-200 text-right pr-1 md:pr-2 pt-1 flex items-start justify-end ${
+                          slot.isNextDay ? 'bg-gray-50/30' : ''
+                        } ${
+                          isCurrentTimeSlot ? 'bg-red-100 border-red-300' : ''
+                        }`}
+                        style={{ height: `${SLOT_HEIGHT}px` }}
+                      >
+                        <span className={`text-xs font-medium ${
+                          isCurrentTimeSlot 
+                            ? 'text-red-700 font-bold' 
+                            : 'text-gray-500'
+                        }`}>
+                          {isCurrentTimeSlot ? '● ' : ''}{slot.time}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Scrollable Slots */}
@@ -1692,7 +1736,8 @@ const AppleCalendarDashboard = () => {
 
             {/* Current time indicator - positioned outside bookings layer for proper overflow */}
             {currentTimeData && (() => {
-              const slotIndex = Math.round(currentTimeData.minutesFromStart / 15);
+              const timeInterval = settings.timeInterval || 15; // Use configurable time interval
+              const slotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
               const topPixels = slotIndex * SLOT_HEIGHT;
               // Position label so 50% extends above the timeline header
               const labelTop = 64 + topPixels - 24; // 64px is the header height, -12px for 50% overflow
@@ -1701,9 +1746,12 @@ const AppleCalendarDashboard = () => {
                   className="absolute z-20 pointer-events-none"
                   style={{ top: `${labelTop}px`, left: `${TIME_COL_WIDTH}px`, right: '0' }}
                 >
-                  {/* Time label - positioned with 50% overflow above timeline */}
-                  <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-r-md shadow-lg font-medium inline-block">
-                    {currentTimeData.time}
+                  {/* Enhanced time label with better visibility */}
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-sm px-3 py-2 rounded-r-lg shadow-xl font-bold inline-block border-2 border-white animate-pulse">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+                      <span>NOW: {currentTimeData.time}</span>
+                    </div>
                   </div>
                 </div>
               );
@@ -1713,15 +1761,23 @@ const AppleCalendarDashboard = () => {
             <div className="absolute" style={{ top: '64px', left: `${TIME_COL_WIDTH}px`, right: '0', bottom: '0', pointerEvents: 'none' }}>
               {/* Current time line - extends horizontally through the schedule */}
               {currentTimeData && (() => {
-                const slotIndex = Math.round(currentTimeData.minutesFromStart / 15);
+                const timeInterval = settings.timeInterval || 15; // Use configurable time interval
+                const slotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
                 const topPixels = slotIndex * SLOT_HEIGHT;
                 return (
                   <div
                     className="absolute left-0 right-0 z-20 pointer-events-none"
                     style={{ top: `${topPixels}px` }}
                   >
-                    {/* Red line extending horizontally through all rooms */}
-                    <div className="h-0.5 w-full bg-red-500 shadow-sm"></div>
+                    {/* Enhanced red line with glow effect */}
+                    <div className="relative">
+                      {/* Main line */}
+                      <div className="h-1 w-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg"></div>
+                      {/* Glow effect */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-red-400 opacity-50 blur-sm"></div>
+                      {/* Animated pulse line */}
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-red-300 opacity-30 animate-pulse"></div>
+                    </div>
                   </div>
                 );
               })()}
