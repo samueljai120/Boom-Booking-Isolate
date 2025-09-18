@@ -70,13 +70,13 @@ const InstructionsModal = ({ isOpen, onClose }) => {
             <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center space-x-4 mb-3">
                 <Monitor className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Two Layout Options</span>
+                <span className="text-sm font-medium text-blue-800">Two Layout Orientations</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white p-3 rounded border">
                   <div className="flex items-center space-x-2 mb-2">
                     <Calendar className="w-4 h-4 text-green-600" />
-                    <span className="text-xs font-medium text-gray-700">Apple Calendar View</span>
+                    <span className="text-xs font-medium text-gray-700">Horizontal Layout</span>
                   </div>
                   <div className="h-20 bg-gradient-to-r from-green-100 to-green-200 rounded flex items-center justify-center">
                     <div className="text-xs text-green-700 text-center">
@@ -88,7 +88,7 @@ const InstructionsModal = ({ isOpen, onClose }) => {
                 <div className="bg-white p-3 rounded border">
                   <div className="flex items-center space-x-2 mb-2">
                     <Users className="w-4 h-4 text-purple-600" />
-                    <span className="text-xs font-medium text-gray-700">Traditional Schedule</span>
+                    <span className="text-xs font-medium text-gray-700">Vertical Layout</span>
                   </div>
                   <div className="h-20 bg-gradient-to-r from-purple-100 to-purple-200 rounded flex items-center justify-center">
                     <div className="text-xs text-purple-700 text-center">
@@ -102,7 +102,7 @@ const InstructionsModal = ({ isOpen, onClose }) => {
 
             <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
               <li><strong>Demo Mode:</strong> This app runs in demo mode with pre-loaded sample data. No login required!</li>
-              <li><strong>Two Layouts:</strong> Switch between Apple Calendar (horizontal) and Traditional Schedule (vertical) views</li>
+              <li><strong>Two Layouts:</strong> Switch between Horizontal (Time × Rooms) and Vertical (Rooms × Time) layouts</li>
               <li><strong>Real-time Clock:</strong> Digital clock shows current time and updates automatically</li>
               <li><strong>Responsive Design:</strong> Works on desktop, tablet, and mobile devices</li>
             </ul>
@@ -372,7 +372,7 @@ const InstructionsModal = ({ isOpen, onClose }) => {
               <li><strong>Business Hours:</strong> Set operating hours for each day of the week via Settings → Business Hours</li>
               <li><strong>Time Zone:</strong> Configure your business timezone for accurate time display</li>
               <li><strong>Time Format:</strong> Choose between 12-hour and 24-hour time display</li>
-              <li><strong>Layout Options:</strong> Switch between Vertical (Rooms × Time) and Horizontal (Time × Rooms) layouts</li>
+              <li><strong>Layout Orientations:</strong> Switch between Vertical (Rooms × Time) and Horizontal (Time × Rooms) layouts</li>
               <li><strong>Slot Sizing:</strong> Adjust time slot width and height for better visibility</li>
             </ul>
           </section>

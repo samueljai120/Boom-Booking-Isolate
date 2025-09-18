@@ -70,13 +70,13 @@ const InteractiveTutorial = () => {
       content: (
         <div className="space-y-4">
           <p className="text-gray-600">
-            The app has two main layout options. Let's explore the current view:
+            The app has two main layout orientations. Let's explore the current view:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-green-50 p-4 rounded-lg border border-green-200">
               <div className="flex items-center space-x-2 mb-2">
                 <Calendar className="w-5 h-5 text-green-600" />
-                <span className="font-medium text-green-800">Apple Calendar View</span>
+                <span className="font-medium text-green-800">Horizontal Layout</span>
               </div>
               <p className="text-sm text-green-700">
                 Time slots run horizontally, rooms vertically. Great for seeing time progression.
@@ -85,7 +85,7 @@ const InteractiveTutorial = () => {
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <div className="flex items-center space-x-2 mb-2">
                 <Users className="w-5 h-5 text-purple-600" />
-                <span className="font-medium text-purple-800">Traditional Schedule</span>
+                <span className="font-medium text-purple-800">Vertical Layout</span>
               </div>
               <p className="text-sm text-purple-700">
                 Rooms run horizontally, time slots vertically. Classic scheduling view.
@@ -376,9 +376,9 @@ const InteractiveTutorial = () => {
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
               <div className="flex items-center space-x-2 mb-2">
                 <Settings className="w-4 h-4 text-purple-600" />
-                <span className="font-medium text-purple-800">Layout Options</span>
+                <span className="font-medium text-purple-800">Layout Orientations</span>
               </div>
-              <p className="text-sm text-purple-700">Switch between Apple Calendar and Traditional views</p>
+              <p className="text-sm text-purple-700">Switch between Horizontal and Vertical layouts</p>
             </div>
             <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
               <div className="flex items-center space-x-2 mb-2">

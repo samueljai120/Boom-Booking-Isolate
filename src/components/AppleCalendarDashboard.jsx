@@ -1431,7 +1431,7 @@ const AppleCalendarDashboard = () => {
     <>
       {/* Debug Indicator removed for production */}
       
-      {/* Traditional Schedule Layout */}
+      {/* Vertical Layout */}
       {settings.layoutOrientation === 'rooms-y-time-x' && (
         <TraditionalSchedule
           selectedDate={selectedDate}
@@ -1440,7 +1440,7 @@ const AppleCalendarDashboard = () => {
         />
       )}
       
-      {/* Apple Calendar Layout */}
+      {/* Horizontal Layout */}
       {settings.layoutOrientation === 'rooms-x-time-y' && (
     <div className="min-h-screen bg-white flex">
       {/* Left Sidebar */}

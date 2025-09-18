@@ -62,8 +62,8 @@ A reusable button component that:
 - Tips for using the tutorial
 
 ### Step 2: Layout Overview
-- Explanation of the two layout options
-- Visual comparison of Apple Calendar vs Traditional Schedule
+- Explanation of the two layout orientations
+- Visual comparison of Horizontal vs Vertical layouts
 - Benefits of each layout type
 
 ### Step 3: Sidebar Navigation
@@ -108,7 +108,7 @@ A reusable button component that:
 - **Action**: Try clicking a booking
 
 ### Step 11: Settings & Customization
-- Layout options and preferences
+- Layout orientations and preferences
 - Color coding configuration
 - Business hours and timezone settings
 
