@@ -134,7 +134,6 @@ export const SettingsProvider = ({ children }) => {
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    console.log('💾 Saving settings to localStorage:', settings);
     localStorage.setItem('karaoke-settings', JSON.stringify(settings));
   }, [settings]);
 

@@ -14,7 +14,6 @@ export const useWebSocket = () => {
 export const WebSocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  const enableWsLogging = import.meta.env.VITE_DEBUG_WS === 'true';
 
   useEffect(() => {
     // Check if we're in development mode with mock backend
@@ -24,7 +23,6 @@ export const WebSocketProvider = ({ children }) => {
     
     // Skip WebSocket connection in development with mock backend
     if (isDevelopment && isMockBackend) {
-      if (enableWsLogging) console.debug('WebSocket disabled in development mode with mock backend');
       setConnected(false);
       return;
     }
@@ -36,17 +34,14 @@ export const WebSocketProvider = ({ children }) => {
     });
 
     newSocket.on('connect', () => {
-      if (enableWsLogging) console.debug('WebSocket connected');
       setConnected(true);
     });
 
     newSocket.on('disconnect', () => {
-      if (enableWsLogging) console.debug('WebSocket disconnected');
       setConnected(false);
     });
 
     newSocket.on('connect_error', (error) => {
-      if (enableWsLogging) console.debug('WebSocket connection error:', error);
       setConnected(false);
     });
 

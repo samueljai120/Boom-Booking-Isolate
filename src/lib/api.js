@@ -35,7 +35,6 @@ export const bookingsAPI = {
   delete: (id) => mockAPI.deleteBooking(id),
   cancel: (id) => mockAPI.updateBooking(id, { status: 'cancelled' }),
   move: async (data) => {
-    console.log('🚀 API move called with data:', data);
     
     // Update the source booking
     const sourceResult = await mockAPI.updateBooking(data.bookingId, { 
@@ -48,7 +47,6 @@ export const bookingsAPI = {
     
     // If there's a target booking (swap), update it too
     if (data.targetBookingId && data.targetNewTimeIn && data.targetNewTimeOut) {
-      console.log('🔄 API updating target booking for swap:', data.targetBookingId);
       const targetResult = await mockAPI.updateBooking(data.targetBookingId, {
         roomId: data.targetRoomId || data.newRoomId,
         startTime: data.targetNewTimeIn,

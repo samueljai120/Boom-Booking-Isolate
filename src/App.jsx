@@ -6,7 +6,10 @@ import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { SettingsProvider } from './contexts/SettingsContext';
 import { BusinessHoursProvider } from './contexts/BusinessHoursContext';
+import { BusinessInfoProvider } from './contexts/BusinessInfoContext';
+import { TutorialProvider } from './contexts/TutorialContext';
 import AppleCalendarDashboard from './components/AppleCalendarDashboard';
+import InteractiveTutorial from './components/InteractiveTutorial';
 import './index.css';
 
 // Error Boundary Component
@@ -70,8 +73,6 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  console.log('🚀 AppContent component loaded! - Bypassing login for demo');
-  
   // Bypass authentication for demo purposes
   // Set mock user data directly
   React.useEffect(() => {
@@ -85,8 +86,12 @@ const AppContent = () => {
     }));
   }, []);
 
-  console.log('🔍 Showing AppleCalendarDashboard directly (no login required)');
-  return <AppleCalendarDashboard />;
+  return (
+    <TutorialProvider>
+      <AppleCalendarDashboard />
+      <InteractiveTutorial />
+    </TutorialProvider>
+  );
 };
 
 function App() {
@@ -97,33 +102,35 @@ function App() {
           <WebSocketProvider>
             <SettingsProvider>
               <BusinessHoursProvider>
-                <div className="App">
-                  <AppContent />
-                <Toaster
-                  position="top-right"
-                  toastOptions={{
-                    duration: 4000,
-                    style: {
-                      background: '#363636',
-                      color: '#fff',
-                    },
-                    success: {
-                      duration: 3000,
-                      iconTheme: {
-                        primary: '#34C759',
-                        secondary: '#fff',
-                      },
-                    },
-                    error: {
-                      duration: 5000,
-                      iconTheme: {
-                        primary: '#FF3B30',
-                        secondary: '#fff',
-                      },
-                    },
-                  }}
-                />
-                </div>
+                <BusinessInfoProvider>
+                  <div className="App">
+                    <AppContent />
+                    <Toaster
+                      position="top-right"
+                      toastOptions={{
+                        duration: 4000,
+                        style: {
+                          background: '#363636',
+                          color: '#fff',
+                        },
+                        success: {
+                          duration: 3000,
+                          iconTheme: {
+                            primary: '#34C759',
+                            secondary: '#fff',
+                          },
+                        },
+                        error: {
+                          duration: 5000,
+                          iconTheme: {
+                            primary: '#FF3B30',
+                            secondary: '#fff',
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </BusinessInfoProvider>
               </BusinessHoursProvider>
               {/* React Query Devtools hidden for demo */}
             </SettingsProvider>

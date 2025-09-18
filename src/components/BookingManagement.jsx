@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingsAPI, roomsAPI } from '../lib/api';
 import { useSettings } from '../contexts/SettingsContext';
+import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -44,6 +45,7 @@ const BookingManagement = () => {
   const [filterDate, setFilterDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const queryClient = useQueryClient();
+  const { isWithinBusinessHours, getBusinessHoursForDay } = useBusinessHours();
 
   // Fetch bookings
   const { data: bookingsData, isLoading } = useQuery({
@@ -608,6 +610,13 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     // Calculate duration and total price
     const startTime = new Date(formData.timeIn);
     const endTime = new Date(formData.timeOut);
+    
+    // Validate business hours
+    if (!isWithinBusinessHours(startTime, formData.timeIn, formData.timeOut)) {
+      toast.error('Booking time is outside business hours. Please choose a time within business hours.');
+      return;
+    }
+    
     const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
     const selectedRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === formData.room) : null);
     const hourlyRate = selectedRoom?.hourlyRate || 25;

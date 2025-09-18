@@ -130,6 +130,58 @@ export const mockData = {
       confirmationCode: 'BK003',
       createdAt: new Date(),
       updatedAt: new Date()
+    },
+    {
+      _id: 4,
+      id: 4,
+      roomId: 1,
+      room: 1,
+      customerName: 'Sarah Wilson',
+      email: 'sarah@example.com',
+      phone: '+1555987654',
+      startTime: new Date(2025, 8, 16, 17, 0, 0), // September 16, 2025 at 5 PM
+      endTime: new Date(2025, 8, 16, 19, 0, 0), // September 16, 2025 at 7 PM
+      timeIn: new Date(2025, 8, 16, 17, 0, 0),
+      timeOut: new Date(2025, 8, 16, 19, 0, 0),
+      status: 'confirmed',
+      source: 'online',
+      priority: 'normal',
+      partySize: 3,
+      basePrice: 40.00,
+      additionalFees: 0,
+      discount: 0,
+      totalPrice: 40.00,
+      notes: 'Anniversary celebration',
+      specialRequests: 'Romantic setup',
+      confirmationCode: 'BK004',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
+    {
+      _id: 5,
+      id: 5,
+      roomId: 2,
+      room: 2,
+      customerName: 'Test Booking',
+      email: 'test@example.com',
+      phone: '+1555111111',
+      startTime: new Date(2025, 8, 18, 18, 0, 0), // September 18, 2025 at 6 PM
+      endTime: new Date(2025, 8, 18, 19, 0, 0), // September 18, 2025 at 7 PM
+      timeIn: new Date(2025, 8, 18, 18, 0, 0),
+      timeOut: new Date(2025, 8, 18, 19, 0, 0),
+      status: 'confirmed',
+      source: 'phone',
+      priority: 'normal',
+      partySize: 2,
+      basePrice: 30.00,
+      additionalFees: 0,
+      discount: 0,
+      totalPrice: 30.00,
+      notes: 'Test reservation for debugging',
+      specialRequests: 'None',
+      confirmationCode: 'BK005',
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
   ],
 
@@ -257,8 +309,6 @@ export const mockAPI = {
   getBookings: (params = {}) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.log('📥 Mock API: getBookings called with params:', params);
-        console.log('📥 Mock API: Raw bookings data:', mockData.bookings);
         let filteredBookings = [...mockData.bookings];
         
         // Join room data with bookings
@@ -322,7 +372,6 @@ export const mockAPI = {
           );
         }
         
-        console.log('📥 Mock API: Final filtered bookings:', filteredBookings);
         resolve({ 
           data: { 
             bookings: filteredBookings,
@@ -354,15 +403,10 @@ export const mockAPI = {
   updateBooking: (id, data) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.log('🔄 Mock API: Updating booking', id, 'with data:', data);
-        console.log('🔄 Mock API: Available booking IDs:', mockData.bookings.map(b => ({ id: b.id, _id: b._id, customerName: b.customerName })));
         const index = mockData.bookings.findIndex(b => b.id === id || b._id === id);
-        console.log('🔄 Mock API: Found booking at index:', index);
         if (index !== -1) {
           const oldBooking = mockData.bookings[index];
           mockData.bookings[index] = { ...mockData.bookings[index], ...data, updatedAt: new Date() };
-          console.log('🔄 Mock API: Updated booking from:', oldBooking, 'to:', mockData.bookings[index]);
-          console.log('🔄 Mock API: All bookings after update:', mockData.bookings);
           resolve({ data: { booking: mockData.bookings[index] } });
         } else {
           console.error('❌ Mock API: Booking not found for id:', id);

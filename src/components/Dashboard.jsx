@@ -3,6 +3,7 @@ import moment from 'moment';
 import Header from './Header';
 import DatePicker from './DatePicker';
 import Scheduler from './Scheduler';
+import DigitalClock from './DigitalClock';
 import { useWebSocket } from '../contexts/WebSocketContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
@@ -12,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { roomsAPI, bookingsAPI } from '../lib/api';
 
 const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 17)); // September 17, 2025
   const [showSettings, setShowSettings] = useState(false);
   const { connected } = useWebSocket();
   const queryClient = useQueryClient();
@@ -34,7 +35,6 @@ const Dashboard = () => {
   // Set up real-time updates
   useEffect(() => {
     const unsubscribe = useWebSocket().subscribeToBookingChanges((data) => {
-      console.log('Booking changed:', data);
       // Invalidate relevant queries to refetch data
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['availability'] });
@@ -55,7 +55,23 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Header onSettingsClick={handleSettingsClick} />
       
-      <div className="flex h-[calc(100vh-80px)]">
+      {/* Top Navigation with Digital Clock */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+          </div>
+          <DigitalClock 
+            showSeconds={true} 
+            showDate={true} 
+            showDay={true}
+            size="md"
+            className="shadow-xl border-2 border-blue-200 bg-blue-50"
+          />
+        </div>
+      </div>
+      
+      <div className="flex h-[calc(100vh-140px)]">
         {/* Left Sidebar - Date Picker */}
         <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
           <DatePicker

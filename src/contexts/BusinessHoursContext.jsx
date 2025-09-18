@@ -45,9 +45,7 @@ export const BusinessHoursProvider = ({ children }) => {
   const updateBusinessHours = async (newBusinessHours) => {
     try {
       setError(null);
-      console.log('Updating business hours:', newBusinessHours);
       const response = await businessHoursAPI.update({ businessHours: newBusinessHours });
-      console.log('Business hours update response:', response);
       if (response.data.success) {
         setBusinessHours(response.data.businessHours);
         toast.success('Business hours updated successfully');

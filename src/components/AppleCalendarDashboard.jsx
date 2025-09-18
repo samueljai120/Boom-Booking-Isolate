@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import BookingModal from './BookingModal';
 import ReservationViewModal from './ReservationViewModal';
 import SettingsModal from './SettingsModal';
@@ -358,6 +359,16 @@ const AppleCalendarDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { settings } = useSettings();
   const { businessHours, getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusinessHours } = useBusinessHours();
+  const { showTutorialButton, startTutorial, restartTutorial, tutorialCompleted, tutorialSkipped, isInitialized } = useTutorial();
+
+  // Handle tutorial button click
+  const handleTutorialClick = () => {
+    if (tutorialCompleted || tutorialSkipped) {
+      restartTutorial();
+    } else {
+      startTutorial();
+    }
+  };
 
   // Responsive viewport tracking for adaptive sizing
   const [windowWidth, setWindowWidth] = React.useState(
@@ -589,7 +600,6 @@ const AppleCalendarDashboard = () => {
   const { data: bookingsData, isFetching: bookingsFetching, isLoading: bookingsLoading, error: bookingsError } = useQuery({
     queryKey: ['bookings'],
     queryFn: () => {
-      console.log('🔄 Fetching bookings from API...');
       return bookingsAPI.getAll();
     },
     staleTime: 10 * 60 * 1000, // 10 minutes to avoid jitter during interactions
@@ -615,10 +625,7 @@ const AppleCalendarDashboard = () => {
   // Track bookings data changes for debugging (development only)
   React.useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('📊 Bookings data changed:', {
-        bookingsLength: bookings?.length,
-        timestamp: new Date().toISOString()
-      });
+      // Bookings data updated
     }
   }, [bookings]);
   
@@ -1677,11 +1684,20 @@ const AppleCalendarDashboard = () => {
                 {/* Sticky Time Column */}
                 <div ref={timeColumnRef} onScroll={syncGridFromTime} className="bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto" style={{ width: TIME_COL_WIDTH }}>
                   {timeSlots.map((slot, slotIndex) => {
-                    // Check if this is the current time slot
+                    // Check if this is the current time slot - use 30-minute threshold logic
                     const isCurrentTimeSlot = currentTimeData && (() => {
                       const timeInterval = settings.timeInterval || 15;
-                      const currentSlotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
-                      return slotIndex === currentSlotIndex;
+                      // Calculate the exact position of the red line
+                      const exactSlotPosition = currentTimeData.minutesFromStart / timeInterval;
+                      
+                      // Get the current minute within the hour to determine threshold behavior
+                      const currentMinute = moment().minute();
+                      
+                      // If we're past 30 minutes of the hour, highlight the next hour's slot
+                      // Otherwise, highlight the current hour's slot
+                      const targetSlotIndex = currentMinute >= 30 ? Math.ceil(exactSlotPosition) : Math.floor(exactSlotPosition);
+                      
+                      return slotIndex === targetSlotIndex;
                     })();
                     
                     return (
@@ -1874,6 +1890,19 @@ const AppleCalendarDashboard = () => {
           <Plus className="w-8 h-8" />
         </button>
 
+        {/* Floating Tutorial Button - only show for first-time users */}
+        {isInitialized && showTutorialButton && (
+          <button
+            type="button"
+            onClick={handleTutorialClick}
+            className="fixed bottom-6 left-6 h-14 w-14 rounded-full bg-purple-600 text-white shadow-xl hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 z-50 flex items-center justify-center animate-pulse"
+            aria-label={tutorialCompleted || tutorialSkipped ? "Restart tutorial" : "Start tutorial"}
+            title={tutorialCompleted || tutorialSkipped ? "Restart interactive tutorial" : "Start interactive tutorial"}
+          >
+            <HelpCircle className="w-6 h-6" />
+          </button>
+        )}
+
         {/* Reservation View Modal */}
         <ReservationViewModal
           isOpen={isViewModalOpen}
@@ -1886,7 +1915,6 @@ const AppleCalendarDashboard = () => {
           onNoShow={handleNoShow}
           onDelete={(booking) => {
             // Handle delete if needed
-            console.log('Delete booking:', booking);
           }}
         />
 

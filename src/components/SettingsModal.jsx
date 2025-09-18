@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import moment from 'moment';
 import { useSettings } from '../contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
@@ -21,7 +21,18 @@ import {
   Home,
   Users,
   BookOpen,
-  Globe
+  Globe,
+  Search,
+  Download,
+  Upload,
+  Eye,
+  Save,
+  RefreshCw,
+  ChevronRight,
+  ChevronDown,
+  Info,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -30,6 +41,90 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const { settings, updateSetting, toggleLayoutOrientation, resetSettings } = useSettings();
   const [activeTab, setActiveTab] = useState('layout');
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
+
+  const tabs = [
+    { 
+      id: 'layout', 
+      label: 'Layout & Appearance', 
+      icon: Layout, 
+      description: 'Schedule layout, time slots, and visual settings',
+      category: 'appearance'
+    },
+    { 
+      id: 'business-hours', 
+      label: 'Business Hours', 
+      icon: Clock, 
+      description: 'Operating hours and time restrictions',
+      category: 'business'
+    },
+    { 
+      id: 'rooms', 
+      label: 'Room Management', 
+      icon: Home, 
+      description: 'Room types, capacity, and pricing',
+      category: 'business'
+    },
+    { 
+      id: 'bookings', 
+      label: 'Booking Management', 
+      icon: BookOpen, 
+      description: 'Booking rules, validation, and workflow',
+      category: 'business'
+    },
+    { 
+      id: 'form', 
+      label: 'Form Fields', 
+      icon: SettingsIcon, 
+      description: 'Customize booking form fields',
+      category: 'forms'
+    },
+    { 
+      id: 'display', 
+      label: 'Display & Colors', 
+      icon: Palette, 
+      description: 'Colors, themes, and visual preferences',
+      category: 'appearance'
+    },
+    { 
+      id: 'system', 
+      label: 'System Settings', 
+      icon: Globe, 
+      description: 'Timezone, notifications, and integrations',
+      category: 'system'
+    }
+  ];
+
+  // Filter tabs based on search query
+  const filteredTabs = useMemo(() => {
+    if (!searchQuery) return tabs;
+    return tabs.filter(tab => 
+      tab.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tab.description.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery]);
+
+  // Group tabs by category
+  const groupedTabs = useMemo(() => {
+    const groups = {};
+    filteredTabs.forEach(tab => {
+      if (!groups[tab.category]) {
+        groups[tab.category] = [];
+      }
+      groups[tab.category].push(tab);
+    });
+    return groups;
+  }, [filteredTabs]);
+
+  const categoryLabels = {
+    appearance: 'Appearance',
+    business: 'Business',
+    forms: 'Forms',
+    system: 'System'
+  };
 
   // Close on Escape key (attach only when open)
   useEffect(() => {
@@ -49,15 +144,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   if (!isOpen) return null;
-
-  const tabs = [
-    { id: 'layout', label: 'Layout', icon: Layout },
-    { id: 'business-hours', label: 'Business Hours', icon: Clock },
-    { id: 'rooms', label: 'Rooms', icon: Home },
-    { id: 'bookings', label: 'Bookings', icon: BookOpen },
-    { id: 'form', label: 'Form Fields', icon: SettingsIcon },
-    { id: 'display', label: 'Display', icon: Palette },
-  ];
 
   return (
     <div 
@@ -92,38 +178,169 @@ const SettingsModal = ({ isOpen, onClose }) => {
         <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-4 transition-all duration-300 ${
           isDraggingSlider ? 'opacity-30' : 'opacity-100'
         }`}>
-          <CardTitle className="flex items-center space-x-2">
-            <SettingsIcon className="w-5 h-5" />
-            <span>Settings</span>
-          </CardTitle>
+          <div className="flex items-center space-x-4">
+            <CardTitle className="flex items-center space-x-2">
+              <SettingsIcon className="w-5 h-5" />
+              <span>Settings</span>
+            </CardTitle>
+            {hasUnsavedChanges && (
+              <Badge variant="outline" className="text-orange-600 border-orange-200">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Unsaved Changes
+              </Badge>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+              className="flex items-center space-x-1"
+            >
+              <Eye className="w-4 h-4" />
+              <span>{showPreview ? 'Hide' : 'Show'} Preview</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const settingsJson = JSON.stringify(settings, null, 2);
+                const blob = new Blob([settingsJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'karaoke-settings.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('Settings exported successfully');
+              }}
+              className="flex items-center space-x-1"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = (e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                      try {
+                        const importedSettings = JSON.parse(e.target.result);
+                        // Apply imported settings
+                        Object.keys(importedSettings).forEach(key => {
+                          updateSetting(key, importedSettings[key]);
+                        });
+                        toast.success('Settings imported successfully');
+                      } catch (error) {
+                        toast.error('Invalid settings file');
+                      }
+                    };
+                    reader.readAsText(file);
+                  }
+                };
+                input.click();
+              }}
+              className="flex items-center space-x-1"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Import</span>
+            </Button>
+          </div>
         </CardHeader>
 
         <div className={`flex h-[70vh] transition-all duration-300 ${
           isDraggingSlider ? 'opacity-30' : 'opacity-100'
         }`}>
           {/* Sidebar */}
-          <div className={`w-64 border-r border-gray-200 p-4 transition-all duration-300 ${
+          <div className={`w-80 border-r border-gray-200 flex flex-col transition-all duration-300 ${
             isDraggingSlider ? 'bg-gray-50 bg-opacity-30' : 'bg-gray-50'
           }`}>
-            <nav className="space-y-2">
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                return (
+            {/* Search - Fixed at top */}
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search settings..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {searchQuery && (
                   <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{tab.label}</span>
+                    <X className="w-4 h-4" />
                   </button>
-                );
-              })}
-            </nav>
+                )}
+              </div>
+            </div>
+
+            {/* Navigation - Scrollable */}
+            <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
+              <nav className="p-4 space-y-4">
+                {Object.entries(groupedTabs).map(([category, categoryTabs]) => (
+                  <div key={category} className="space-y-2">
+                    <button
+                      onClick={() => setExpandedSections(prev => ({
+                        ...prev,
+                        [category]: !prev[category]
+                      }))}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <span>{categoryLabels[category]}</span>
+                      {expandedSections[category] ? 
+                        <ChevronDown className="w-4 h-4" /> : 
+                        <ChevronRight className="w-4 h-4" />
+                      }
+                    </button>
+                    
+                    {expandedSections[category] && (
+                      <div className="ml-4 space-y-1">
+                        {categoryTabs.map(tab => {
+                          const Icon = tab.icon;
+                          return (
+                            <button
+                              key={tab.id}
+                              onClick={() => setActiveTab(tab.id)}
+                              className={`w-full flex items-start space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                                activeTab === tab.id
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <Icon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium">{tab.label}</div>
+                                <div className="text-xs text-gray-500 mt-0.5">{tab.description}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {searchQuery && filteredTabs.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p>No settings found for "{searchQuery}"</p>
+                  </div>
+                )}
+              </nav>
+            </div>
           </div>
 
           {/* Content */}
@@ -133,12 +350,35 @@ const SettingsModal = ({ isOpen, onClose }) => {
             <CardContent className={`p-6 transition-all duration-300 ${
               isDraggingSlider ? 'bg-white bg-opacity-20' : 'bg-white'
             }`}>
+              {/* Preview Panel */}
+              {showPreview && (
+                <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-800">Live Preview</h4>
+                    <Badge variant="outline" className="text-green-600 border-green-200">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Live
+                    </Badge>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <p>Preview how your settings will look in the actual schedule view.</p>
+                    <div className="mt-2 flex items-center space-x-4 text-xs">
+                      <span>Layout: {settings.layoutOrientation === 'rooms-x-time-y' ? 'Vertical' : 'Horizontal'}</span>
+                      <span>Time Format: {settings.timeFormat === '12h' ? '12-hour' : '24-hour'}</span>
+                      <span>Theme: {settings.colorByRoomType ? 'Room Type Colors' : 'Default'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings Content */}
               {activeTab === 'layout' && <LayoutSettings currentLayout={settings.layoutOrientation} setIsDraggingSlider={setIsDraggingSlider} />}
               {activeTab === 'business-hours' && <BusinessHoursSettings />}
               {activeTab === 'rooms' && <RoomManagement />}
               {activeTab === 'bookings' && <BookingManagement />}
               {activeTab === 'form' && <BookingFormSettings />}
               {activeTab === 'display' && <DisplaySettings />}
+              {activeTab === 'system' && <SystemSettings />}
             </CardContent>
           </div>
         </div>
@@ -861,6 +1101,212 @@ const BookingFormSettings = () => {
               Required fields cannot be hidden as they are essential for booking creation. 
               Changes will be applied immediately to all booking forms in the application.
             </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// System Settings Component
+const SystemSettings = () => {
+  const { settings, updateSetting } = useSettings();
+  const notifyApplied = () => toast.success('Settings applied', { id: 'settings-applied', duration: 900 });
+
+  return (
+    <div className="space-y-8">
+      {/* Timezone Settings */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Globe className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Timezone & Localization</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Timezone</label>
+            <CustomSelect
+              value={settings.timezone || 'America/New_York'}
+              onChange={(value) => { updateSetting('timezone', value); notifyApplied(); }}
+              options={[
+                { value: 'America/New_York', label: 'Eastern Time (ET)' },
+                { value: 'America/Chicago', label: 'Central Time (CT)' },
+                { value: 'America/Denver', label: 'Mountain Time (MT)' },
+                { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+                { value: 'Europe/London', label: 'London (GMT)' },
+                { value: 'Europe/Paris', label: 'Paris (CET)' },
+                { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+                { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+              ]}
+              placeholder="Select timezone"
+            />
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Date Format</label>
+            <CustomSelect
+              value={settings.dateFormat || 'MM/DD/YYYY'}
+              onChange={(value) => { updateSetting('dateFormat', value); notifyApplied(); }}
+              options={[
+                { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY (US)' },
+                { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY (EU)' },
+                { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD (ISO)' },
+              ]}
+              placeholder="Select date format"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Notification Settings */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <AlertCircle className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Notifications</h3>
+        </div>
+        
+        <div className="space-y-3">
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Email Notifications</div>
+              <div className="text-sm text-gray-600">Send email alerts for booking changes</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.emailNotifications || false}
+              onChange={(e) => { updateSetting('emailNotifications', e.target.checked); notifyApplied(); }}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+          </label>
+          
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Sound Alerts</div>
+              <div className="text-sm text-gray-600">Play sounds for booking events</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.soundAlerts || false}
+              onChange={(e) => { updateSetting('soundAlerts', e.target.checked); notifyApplied(); }}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+          </label>
+          
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Desktop Notifications</div>
+              <div className="text-sm text-gray-600">Show browser notifications</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.desktopNotifications || false}
+              onChange={(e) => { updateSetting('desktopNotifications', e.target.checked); notifyApplied(); }}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Performance Settings */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Monitor className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Performance</h3>
+        </div>
+        
+        <div className="space-y-3">
+          <label className="flex items-center justify-between">
+            <div>
+              <div className="font-medium">Auto-refresh Schedule</div>
+              <div className="text-sm text-gray-600">Automatically refresh booking data</div>
+            </div>
+            <input
+              type="checkbox"
+              checked={settings.autoRefresh || false}
+              onChange={(e) => { updateSetting('autoRefresh', e.target.checked); notifyApplied(); }}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+          </label>
+          
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Refresh Interval (seconds)</label>
+            <input
+              type="number"
+              min="30"
+              max="300"
+              value={settings.refreshInterval || 60}
+              onChange={(e) => { updateSetting('refreshInterval', parseInt(e.target.value)); notifyApplied(); }}
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Data Management */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Save className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Data Management</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <h4 className="font-medium text-gray-800 mb-2">Backup Settings</h4>
+            <p className="text-sm text-gray-600 mb-3">Export your current settings for backup</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const settingsJson = JSON.stringify(settings, null, 2);
+                const blob = new Blob([settingsJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `karaoke-settings-backup-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('Settings backed up successfully');
+              }}
+              className="w-full"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Backup Now
+            </Button>
+          </div>
+          
+          <div className="p-4 border border-gray-200 rounded-lg">
+            <h4 className="font-medium text-gray-800 mb-2">Reset Settings</h4>
+            <p className="text-sm text-gray-600 mb-3">Restore all settings to defaults</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to reset all settings to defaults? This action cannot be undone.')) {
+                  resetSettings();
+                  toast.success('Settings reset to defaults');
+                }
+              }}
+              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reset All
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Information Panel */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-2">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <p className="font-medium mb-1">System Settings Information:</p>
+            <ul className="space-y-1 text-blue-700">
+              <li>• Timezone affects all time displays and business hours</li>
+              <li>• Notifications help you stay updated on booking changes</li>
+              <li>• Performance settings optimize the application for your needs</li>
+              <li>• Regular backups ensure you don't lose your configuration</li>
+            </ul>
           </div>
         </div>
       </div>

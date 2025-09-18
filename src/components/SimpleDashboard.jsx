@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import moment from 'moment';
 import Header from './Header';
+import DigitalClock from './DigitalClock';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -9,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { roomsAPI, bookingsAPI } from '../lib/api';
 
 const SimpleDashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 17)); // September 17, 2025
   const [showSettings, setShowSettings] = useState(false);
 
   // Fetch rooms
@@ -46,12 +47,23 @@ const SimpleDashboard = () => {
       
       <div className="p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Boom Karaoke Booking System
-          </h1>
-          <p className="text-gray-600">
-            {moment(selectedDate).format('dddd, MMMM D, YYYY')}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Boom Karaoke Booking System
+              </h1>
+              <p className="text-gray-600">
+                {moment(selectedDate).format('dddd, MMMM D, YYYY')}
+              </p>
+            </div>
+            <DigitalClock 
+              showSeconds={true} 
+              showDate={true} 
+              showDay={true}
+              size="lg"
+              className="shadow-xl border-2 border-blue-200 bg-blue-50"
+            />
+          </div>
         </div>
 
         {/* Status Cards */}

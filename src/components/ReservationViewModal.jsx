@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import moment from 'moment';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { X, Calendar, Clock, Users, Phone, Mail, User, Edit, Trash2 } from 'lucide-react';
+import { X, Calendar, Clock, Users, Phone, Mail, User, Edit, Trash2, Copy, FileText } from 'lucide-react';
+import BookingConfirmation from './BookingConfirmation';
 
 const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNoShow }) => {
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  
   if (!isOpen || !booking) return null;
 
   const getStatusColor = (status) => {
@@ -185,6 +188,14 @@ const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNo
             >
               Close
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmation(true)}
+              className="flex items-center space-x-2"
+            >
+              <Copy className="h-4 w-4" />
+              <span>Copy Confirmation</span>
+            </Button>
             {onDelete && (
               <Button
                 variant="outline"
@@ -220,6 +231,13 @@ const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNo
           </div>
         </CardContent>
       </Card>
+
+      {/* Booking Confirmation Modal */}
+      <BookingConfirmation
+        isOpen={showConfirmation}
+        onClose={() => setShowConfirmation(false)}
+        booking={booking}
+      />
     </div>
   );
 };

@@ -70,8 +70,6 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  console.log('🚀 AppContent component loaded! - Bypassing login for demo');
-  
   // Bypass authentication for demo purposes
   // Set mock user data directly
   React.useEffect(() => {
@@ -85,7 +83,6 @@ const AppContent = () => {
     }));
   }, []);
 
-  console.log('🔍 Showing AppleCalendarDashboard directly (no login required)');
   return <AppleCalendarDashboard />;
 };
 

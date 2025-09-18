@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import { useTutorial } from '../contexts/TutorialContext';
 import moment from 'moment-timezone';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { roomsAPI, bookingsAPI } from '../lib/api';
 import { Card, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
+import DigitalClock from './DigitalClock';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -14,11 +16,13 @@ import {
   Settings, 
   Menu,
   Plus,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  HelpCircle
 } from 'lucide-react';
 import BookingModal from './BookingModal';
 import InstructionsModal from './InstructionsModal';
 import ReservationViewModal from './ReservationViewModal';
+import BookingConfirmation from './BookingConfirmation';
 import LoadingSkeleton from './LoadingSkeleton';
 import toast from 'react-hot-toast';
 import {
@@ -35,13 +39,17 @@ import {
 } from '@dnd-kit/core';
 
 // Enhanced draggable booking component with resize functionality (horizontal layout)
-const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle, onClick, onResize }) => {
+const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle, onClick, onResize, settings, selectedDate, getBusinessHoursForDay, SLOT_WIDTH }) => {
   const [isResizing, setIsResizing] = useState(false);
   const [isQuickEdit, setIsQuickEdit] = useState(false);
   const [resizeHandle, setResizeHandle] = useState(null); // 'left' or 'right'
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [wasDragged, setWasDragged] = useState(false);
+  const [wasResized, setWasResized] = useState(false);
+  const [localStyle, setLocalStyle] = useState(null); // For real-time resize feedback
+  const [resizeInterval] = useState(30); // Fixed at 30 minutes
   const rootRef = React.useRef(null);
+  const resizeTimeoutRef = React.useRef(null);
   
   const {
     attributes,
@@ -77,7 +85,7 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
     cursor: 'ew-resize',
   } : {};
 
-  const combinedStyle = { ...customStyle, ...dragStyle, ...hoverStyle, ...resizeStyle };
+  const combinedStyle = { ...customStyle, ...localStyle, ...dragStyle, ...hoverStyle, ...resizeStyle };
 
   // Suppress accidental click after drag end
   React.useEffect(() => {
@@ -107,6 +115,10 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
     window.addEventListener('cancel-long-press', cancel);
     return () => {
       window.removeEventListener('cancel-long-press', cancel);
+      // Cleanup resize timeout on unmount
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
     };
   }, [longPressTimer]);
 
@@ -124,39 +136,122 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
     }
   };
 
-  // Handle resize drag for horizontal layout
+  // Handle resize drag for horizontal layout - set exact time where drag stops
   const handleResizeMouseDown = (e, handle) => {
     e.stopPropagation();
-    if (!isResizing) {
-      setIsResizing(true);
-    }
+    e.preventDefault();
+    
+    
+    setIsResizing(true);
     setResizeHandle(handle);
+    
     const startX = e.clientX;
-    const startWidth = customStyle?.width || 60;
-    const startLeft = customStyle?.left || 0;
-
+    
+    // Parse pixel values from strings to numbers
+    const parsePixelValue = (value) => {
+      if (typeof value === 'string') {
+        return parseFloat(value.replace('px', '')) || 0;
+      }
+      return value || 0;
+    };
+    
+    const startWidth = parsePixelValue(customStyle?.width) || 60;
+    const startLeft = parsePixelValue(customStyle?.left) || 0;
+    
+    // Use the SLOT_WIDTH passed from parent component (calculated with responsive logic)
+    // This ensures consistency between positioning and resize calculations
+    
+    // Get business hours for time calculations
+    const weekday = selectedDate.getDay();
+    const dayHours = getBusinessHoursForDay(weekday);
+    const [openHour] = dayHours.openTime.split(':').map(Number);
+    const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
+    
+    
     const handleMouseMove = (moveEvent) => {
       const deltaX = moveEvent.clientX - startX;
       
+      // Calculate new visual position based on exact mouse position
+      let newLeft = startLeft;
+      let newWidth = startWidth;
+      
       if (handle === 'left') {
-        // Resize from left (change start time)
-        const newLeft = startLeft + deltaX;
-        const newWidth = startWidth - deltaX;
-        if (newWidth > 40) { // Minimum width
-          onResize?.(booking._id, { left: newLeft, width: newWidth, handle: 'left' });
-        }
+        // Left handle: move left edge and adjust width
+        newLeft = startLeft + deltaX;
+        newWidth = startWidth - deltaX;
       } else if (handle === 'right') {
-        // Resize from right (change end time)
-        const newWidth = startWidth + deltaX;
-        if (newWidth > 40) { // Minimum width
-          onResize?.(booking._id, { left: startLeft, width: newWidth, handle: 'right' });
-        }
+        // Right handle: keep left, adjust width
+        newWidth = startWidth + deltaX;
       }
+      
+      // Validate values to prevent NaN and maintain minimum size
+      if (isNaN(newLeft) || isNaN(newWidth) || newWidth <= 20 || newLeft < 0) {
+        return;
+      }
+      
+      // Apply visual feedback immediately (NO API CALL during drag)
+      setLocalStyle({ 
+        left: Math.max(0, newLeft), 
+        width: Math.max(20, newWidth) 
+      });
     };
 
-    const handleMouseUpResize = () => {
+    const handleMouseUpResize = (upEvent) => {
+      // Calculate the exact time where the drag ended using the current mouse position
+      const deltaX = upEvent.clientX - startX;
+      
+      let finalLeft = startLeft;
+      let finalWidth = startWidth;
+      
+      if (handle === 'left') {
+        // Left handle: move left edge and adjust width
+        finalLeft = startLeft + deltaX;
+        finalWidth = startWidth - deltaX;
+      } else if (handle === 'right') {
+        // Right handle: keep left, adjust width
+        finalWidth = startWidth + deltaX;
+      }
+      
+      // Use local style if available (real-time feedback), otherwise use calculated values
+      const actualFinalLeft = localStyle?.left !== undefined ? localStyle.left : Math.max(0, finalLeft);
+      const actualFinalWidth = localStyle?.width !== undefined ? localStyle.width : Math.max(20, finalWidth);
+      
+      console.log('🚀 Final resize calculation:', { 
+        handle, 
+        actualFinalLeft, 
+        actualFinalWidth,
+        SLOT_WIDTH,
+        deltaX,
+        startLeft,
+        startWidth,
+        localStyle,
+        upEventClientX: upEvent.clientX,
+        startX
+      });
+      
+      // Convert final position to exact time
+      onResize?.(booking._id, { 
+        handle: handle,
+        finalLeft: actualFinalLeft,
+        finalWidth: actualFinalWidth,
+        SLOT_WIDTH: SLOT_WIDTH,
+        dayStart: dayStart.toISOString(),
+        isExactPosition: true
+      });
+      
       setResizeHandle(null);
       setIsResizing(false);
+      setLocalStyle(null); // Clear local style when resize ends
+      setWasResized(true); // Mark that a resize operation just completed
+      
+      // Reset wasResized after a longer delay to prevent accidental clicks
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      resizeTimeoutRef.current = setTimeout(() => {
+        setWasResized(false);
+      }, 300); // Increased delay to 300ms
+      
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUpResize);
     };
@@ -200,12 +295,38 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
     return () => document.removeEventListener('mousedown', onDocMouseDown, true);
   }, [isQuickEdit]);
 
+  // Exit quick edit when drag operation completes
+  React.useEffect(() => {
+    const handleExitEditMode = () => {
+      setIsQuickEdit(false);
+    };
+    
+    window.addEventListener('exit-edit-mode', handleExitEditMode);
+    return () => window.removeEventListener('exit-edit-mode', handleExitEditMode);
+  }, []);
+
   const handleRootClick = (e) => {
-    if (isResizing || isDragging || wasDragged || isQuickEdit) {
+    // Block clicks during active operations
+    if (isResizing || isDragging || isQuickEdit) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
+    
+    // Block clicks after drag operations
+    if (wasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
+    // Block clicks immediately after resize operations to prevent accidental triggers
+    if (wasResized) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    
     onClick?.(e);
   };
 
@@ -223,8 +344,12 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
       onDoubleClick={() => onDoubleClick(booking)}
       onClick={handleRootClick}
       className={`absolute top-1 bottom-1 rounded-lg p-2 shadow-sm border text-white text-xs transition-all duration-200 group ${
-        isResizing ? 'cursor-ew-resize ring-2 ring-blue-300' : isQuickEdit ? 'cursor-move ring-2 ring-blue-300 animate-pulse' : 'cursor-grab active:cursor-grabbing'
-      } ${isOver && !isResizing ? 'ring-2 ring-orange-300' : ''} ${isDragging ? 'rotate-1 scale-105' : ''}`}
+        isResizing 
+          ? 'cursor-ew-resize ring-2 ring-blue-400 shadow-lg scale-105' 
+          : isQuickEdit 
+            ? 'cursor-move ring-2 ring-blue-400 shadow-lg animate-pulse scale-105' 
+            : 'cursor-grab active:cursor-grabbing'
+      } ${isOver && !isResizing ? 'ring-2 ring-orange-400 shadow-lg' : ''} ${isDragging ? 'rotate-1 scale-110 shadow-xl' : ''}`}
       title={
         isResizing 
           ? 'Resize mode - drag edges to resize, press Escape to exit' 
@@ -257,22 +382,58 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
           ✎
         </button>
       )}
-      {/* Left resize handle - always available */}
+      {/* Left resize handle - enhanced visibility in edit mode */}
       <div
-        className="absolute -left-1 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-blue-500/50 z-10"
+        className={`absolute -left-1 top-0 bottom-0 w-3 cursor-ew-resize z-10 transition-all duration-200 ${
+          isQuickEdit || isResizing 
+            ? 'bg-blue-500/80 hover:bg-blue-500 shadow-lg' 
+            : 'bg-transparent hover:bg-blue-500/50'
+        }`}
         onMouseDown={(e) => handleResizeMouseDown(e, 'left')}
-      />
+        title="Drag to adjust start time"
+      >
+        {isQuickEdit && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-1 h-4 bg-white rounded-full opacity-80"></div>
+          </div>
+        )}
+      </div>
 
-      {/* Right resize handle - always available */}
+      {/* Right resize handle - enhanced visibility in edit mode */}
       <div
-        className="absolute -right-1 top-0 bottom-0 w-2 cursor-ew-resize bg-transparent hover:bg-blue-500/50 z-10"
+        className={`absolute -right-1 top-0 bottom-0 w-3 cursor-ew-resize z-10 transition-all duration-200 ${
+          isQuickEdit || isResizing 
+            ? 'bg-blue-500/80 hover:bg-blue-500 shadow-lg' 
+            : 'bg-transparent hover:bg-blue-500/50'
+        }`}
         onMouseDown={(e) => handleResizeMouseDown(e, 'right')}
-      />
+        title="Drag to adjust end time"
+      >
+        {isQuickEdit && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-1 h-4 bg-white rounded-full opacity-80"></div>
+          </div>
+        )}
+      </div>
 
       {/* Resize mode indicator */}
       {isResizing && (
-        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-          Resize Mode - ESC to exit
+        <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap border border-blue-400">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="font-semibold">Resize Mode</span>
+            <span className="text-blue-200">• 30min intervals • ESC to exit</span>
+          </div>
+        </div>
+      )}
+
+      {/* Edit mode indicator */}
+      {isQuickEdit && !isResizing && (
+        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap shadow-lg">
+          <div className="flex items-center space-x-1">
+            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+            <span>Edit Mode - Drag edges to resize</span>
+          </div>
         </div>
       )}
 
@@ -319,25 +480,37 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   // Mini calendar month base (independent from selected date)
   const [calendarBaseDate, setCalendarBaseDate] = useState(selectedDate);
   const { settings } = useSettings();
   const { getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusinessHours } = useBusinessHours();
+  const { showTutorialButton, startTutorial, restartTutorial, tutorialCompleted, tutorialSkipped, isInitialized } = useTutorial();
+  
+  // Handle tutorial button click
+  const handleTutorialClick = () => {
+    if (tutorialCompleted || tutorialSkipped) {
+      restartTutorial();
+    } else {
+      startTutorial();
+    }
+  };
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [draggedBooking, setDraggedBooking] = useState(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const queryClient = useQueryClient();
 
-  // Current time tracking
+  // Current time tracking with high frequency updates for smooth movement
   const [currentTime, setCurrentTime] = React.useState(new Date());
   React.useEffect(() => {
     const updateTime = () => setCurrentTime(new Date());
-    const interval = setInterval(updateTime, 60000); // Update every minute
+    const interval = setInterval(updateTime, 1000); // Update every second for smooth clock-like movement
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate current time position on schedule
+  // Calculate current time position on schedule with enhanced accuracy for smooth movement
   const getCurrentTimePosition = () => {
     const timezone = settings.timezone || 'America/New_York';
     const now = moment().tz(timezone);
@@ -358,59 +531,59 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
     const [closeHour, closeMinute] = dayHours.closeTime.split(':').map(Number);
     
-    // Check if current time is within business hours
+    // Check if current time is within visible hours (1 hour before open + business hours + 1 hour after close)
     const currentHour = now.hour();
     const currentMinute = now.minute();
+    const currentSecond = now.second();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute + (currentSecond / 60); // Include seconds for smooth movement
+    const openTimeInMinutes = openHour * 60 + openMinute;
+    const closeTimeInMinutes = closeHour * 60 + closeMinute;
+    
+    // Calculate visible range: 1 hour before open to 1 hour after close
+    const visibleStartMinutes = openTimeInMinutes - 60; // 1 hour before open
+    const visibleEndMinutes = closeTimeInMinutes + 60; // 1 hour after close
+    
+    // Handle late night hours (crosses midnight)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
     
-    let isWithinBusinessHours = false;
+    let isWithinVisibleHours = false;
     if (isLateNight) {
-      // Late night: from openHour to closeHour next day
-      isWithinBusinessHours = currentHour >= openHour || currentHour < closeHour;
+      // Late night: from openHour to closeHour next day + 1 extra hour
+      isWithinVisibleHours = currentTimeInMinutes >= visibleStartMinutes || 
+                            currentTimeInMinutes < (closeTimeInMinutes + 60) % (24 * 60);
     } else {
-      // Normal hours: from openHour to closeHour same day
-      isWithinBusinessHours = (currentHour > openHour || (currentHour === openHour && currentMinute >= openMinute)) && 
-                              (currentHour < closeHour || (currentHour === closeHour && currentMinute < closeMinute));
+      // Normal hours: from 1 hour before open to 1 hour after close same day
+      isWithinVisibleHours = currentTimeInMinutes >= visibleStartMinutes && 
+                            currentTimeInMinutes <= visibleEndMinutes;
     }
     
-    if (!isWithinBusinessHours) {
-      return null; // Don't show line if outside business hours
+    if (!isWithinVisibleHours) {
+      return null; // Don't show line if outside visible hours
     }
     
-    // Calculate position in minutes from start of business day
+    // Calculate position in minutes from start of visible range (1 hour before business open)
     const dayStart = selectedDateMoment.clone().startOf('day').add(openHour, 'hours').add(openMinute, 'minutes');
-    const minutesFromStart = now.diff(dayStart, 'minutes');
+    const visibleStart = dayStart.clone().subtract(1, 'hour'); // 1 hour before business open
+    const minutesFromVisibleStart = now.diff(visibleStart, 'minutes', true);
+    
+    // Ensure the position is within the visible range
+    const maxVisibleMinutes = (closeTimeInMinutes - openTimeInMinutes) + 120; // Business hours + 2 hours buffer
+    const clampedMinutes = Math.max(0, Math.min(minutesFromVisibleStart, maxVisibleMinutes));
     
     return {
-      minutesFromStart,
+      minutesFromStart: clampedMinutes,
       time: now.format('h:mm A'),
-      isVisible: true
+      isVisible: true,
+      exactTime: now.format('HH:mm:ss'),
+      timezone: timezone
     };
   };
 
   const currentTimeData = getCurrentTimePosition();
 
-  // Scroll synchronization refs (first column <-> grid)
+  // Refs for layout (scrolling disabled)
   const leftColumnRef = React.useRef(null);
   const gridScrollRef = React.useRef(null);
-
-  const syncLeftFromGrid = React.useCallback(() => {
-    try {
-      if (!leftColumnRef.current || !gridScrollRef.current) return;
-      if (leftColumnRef.current.scrollTop !== gridScrollRef.current.scrollTop) {
-        leftColumnRef.current.scrollTop = gridScrollRef.current.scrollTop;
-      }
-    } catch {}
-  }, []);
-
-  const syncGridFromLeft = React.useCallback(() => {
-    try {
-      if (!leftColumnRef.current || !gridScrollRef.current) return;
-      if (gridScrollRef.current.scrollTop !== leftColumnRef.current.scrollTop) {
-        gridScrollRef.current.scrollTop = leftColumnRef.current.scrollTop;
-      }
-    } catch {}
-  }, []);
 
   // Configure drag sensors with better activation
   const sensors = useSensors(
@@ -469,19 +642,22 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       const previous = queryClient.getQueryData(['bookings']);
       try {
         const oldBookings = previous?.data?.bookings || [];
-        const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId } = variables || {};
+        const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId, targetRoomId, targetNewTimeIn, targetNewTimeOut } = variables || {};
         const sourceIdx = oldBookings.findIndex(b => b._id === bookingId);
         const targetIdx = targetBookingId ? oldBookings.findIndex(b => b._id === targetBookingId) : -1;
         if (sourceIdx === -1) return { previous };
         const source = oldBookings[sourceIdx];
         const target = targetIdx !== -1 ? oldBookings[targetIdx] : null;
-        const newRoom = rooms.find(r => r._id === newRoomId) || source.room || source.roomId;
+        const newRoom = rooms.find(r => r._id === newRoomId || r.id === newRoomId) || source.room || source.roomId;
+        const targetRoom = targetRoomId ? rooms.find(r => r._id === targetRoomId || r.id === targetRoomId) : (source.room || source.roomId);
+        
         let updated = [...oldBookings];
         if (target && targetBookingId) {
+          // Swap: use the provided target times and rooms
           const sourceNew = {
             ...source,
             room: newRoom,
-            roomId: newRoom,
+            roomId: newRoom || newRoomId, // Use room object if available, otherwise use ID
             timeIn: newTimeIn,
             timeOut: newTimeOut,
             startTime: newTimeIn,
@@ -489,12 +665,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           };
           const targetNew = {
             ...target,
-            room: source.room || source.roomId,
-            roomId: source.room || source.roomId,
-            timeIn: source.timeIn || source.startTime,
-            timeOut: source.timeOut || source.endTime,
-            startTime: source.timeIn || source.startTime,
-            endTime: source.timeOut || source.endTime,
+            room: targetRoom,
+            roomId: targetRoom || targetRoomId, // Use room object if available, otherwise use ID
+            timeIn: targetNewTimeIn,
+            timeOut: targetNewTimeOut,
+            startTime: targetNewTimeIn,
+            endTime: targetNewTimeOut,
           };
           updated[sourceIdx] = sourceNew;
           updated[targetIdx] = targetNew;
@@ -502,7 +678,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           updated[sourceIdx] = {
             ...source,
             room: newRoom,
-            roomId: newRoom,
+            roomId: newRoom || newRoomId, // Use room object if available, otherwise use ID
             timeIn: newTimeIn,
             timeOut: newTimeOut,
             startTime: newTimeIn,
@@ -542,8 +718,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       console.log('✅ TraditionalSchedule: Move mutation successful:', data);
       console.log('🔄 TraditionalSchedule: About to invalidate queries - current bookings data:', queryClient.getQueryData(['bookings']));
       toast.success(variables?.targetBookingId ? 'Booking swapped' : 'Booking moved');
-      // Note: Query invalidation removed for mock API testing
-      // queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      // Invalidate queries to ensure data consistency with server
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
     onSettled: () => {
       // Additional cleanup if needed
@@ -554,15 +730,19 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const updateBookingMutation = useMutation({
     mutationFn: ({ id, data }) => bookingsAPI.update(id, data),
     onSuccess: () => {
-      // Note: Query invalidation removed for mock API testing
-      // queryClient.invalidateQueries(['bookings']);
+      // Invalidate queries to ensure data consistency with server
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
   });
 
   // Mutation for resizing bookings with optimistic update
   const resizeBookingMutation = useMutation({
-    mutationFn: bookingsAPI.resize,
+    mutationFn: (data) => {
+      console.log('🔄 Resize mutation called with data:', data);
+      return bookingsAPI.resize(data);
+    },
     onMutate: async (variables) => {
+      console.log('🔄 Resize mutation onMutate called with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
@@ -592,6 +772,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       return { previous };
     },
     onError: (_err, _vars, context) => {
+      console.error('❌ Resize mutation failed:', _err);
       if (context?.previous) {
         queryClient.setQueryData(['bookings'], context.previous);
       }
@@ -600,10 +781,14 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         toast.error(message);
       } catch {}
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      console.log('✅ Resize mutation succeeded:', { data, variables });
       toast.success('Booking resized');
     },
-    onSettled: () => {},
+    onSettled: () => {
+      // Invalidate and refetch bookings to ensure UI is in sync
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
   });
   const normalizedBookings = useMemo(() => {
     const mapped = bookings.map(b => ({
@@ -629,16 +814,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     });
   }, [bookings, selectedDate]);
 
-  // Removed debug logging to fix white screen issue
 
   // Only show big skeleton initially; while refetching, keep previous data
   const initialRoomsLoaded = !!roomsData?.data;
   const isLoading = roomsLoading && !initialRoomsLoaded;
   const hasError = roomsError || bookingsError;
   
-  // Debug loading state (commented out for cleaner console)
-  // console.log('🔍 TraditionalSchedule Debug:', { roomsData, roomsLoading, initialRoomsLoaded, isLoading, hasError });
-  // console.log('🔍 Bookings Debug:', { bookingsData, bookings, normalizedBookings, bookingsLoading, bookingsError });
 
   // Get room type color
   const getRoomTypeColor = (type) => {
@@ -684,65 +865,77 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       timezone
     );
     
-    // Generate time slots using configurable interval within business hours
+    // Generate time slots using configurable interval: 1 hour before open + business hours + 1 hour after close
     const timeInterval = settings.timeInterval || 15; // Default to 15 minutes if not set
-    let currentHour = openHour;
-    let currentMinute = openMinute;
-    let totalMinutes = 0;
+    let currentMinutes = (openHour * 60 + openMinute) - 60; // Start 1 hour before business open
+    const closeMinutes = closeHour * 60 + closeMinute;
+    const maxVisibleMinutes = closeMinutes + 60; // Close time + 1 extra hour
     const maxSlots = 200; // Prevent infinite loops (200 slots = 50 hours max)
     
-    while (totalMinutes < maxSlots * timeInterval) {
-      const slotTime = dateInTz.clone().add(currentHour, 'hours').add(currentMinute, 'minutes');
-      const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+    while (slots.length < maxSlots && currentMinutes < maxVisibleMinutes) {
+      // Calculate the actual hour and minute for display
+      const displayHour = Math.floor(currentMinutes / 60) % 24;
+      const displayMinute = currentMinutes % 60;
+      const timeString = `${displayHour.toString().padStart(2, '0')}:${displayMinute.toString().padStart(2, '0')}`;
       
-      // For late night hours, check if we've reached the close time
-      if (isLateNight) {
-        const currentTotalMinutes = currentHour * 60 + currentMinute;
-        const closeTotalMinutes = closeHour * 60 + closeMinute;
-        
-        // If we've passed midnight and reached close time, stop
-        if (currentTotalMinutes >= 24 * 60 && currentTotalMinutes >= closeTotalMinutes + 24 * 60) {
-          break;
-        }
-        // If we're still before midnight and haven't reached close time, continue
-        if (currentTotalMinutes < 24 * 60 && currentTotalMinutes < closeTotalMinutes) {
-          // Continue
-        } else if (currentTotalMinutes >= 24 * 60) {
-          // We've passed midnight, check if we've reached the close time
-          if (currentTotalMinutes >= closeTotalMinutes + 24 * 60) {
-            break;
-          }
-        }
-      } else {
-        // Normal hours - stop when we reach close time
-        if (currentHour > closeHour || (currentHour === closeHour && currentMinute >= closeMinute)) {
-          break;
-        }
-      }
+      // Create slot time for the current slot
+      const slotTime = dateInTz.clone().add(Math.floor(currentMinutes / 60), 'hours').add(displayMinute, 'minutes');
       
       slots.push({
         time: slotTime.format('h:mm A'),
-        hour: currentHour,
-        minute: currentMinute,
-        minutes: currentHour * 60 + currentMinute,
+        hour: Math.floor(currentMinutes / 60),
+        minute: displayMinute,
+        minutes: currentMinutes,
         slotTime,
         timeString,
-        isNextDay: currentHour >= 24 || (isLateNight && currentHour < openHour)
+        isNextDay: currentMinutes >= 24 * 60
       });
       
-      currentMinute += timeInterval;
-      if (currentMinute >= 60) {
-        currentMinute = 0;
-        currentHour += 1;
-      }
-      
-      // Handle hour overflow for late night hours
-      if (currentHour >= 24) {
-        currentHour = currentHour % 24;
-      }
-      
-      totalMinutes += timeInterval;
+      currentMinutes += timeInterval; // Generate slots using configurable interval
     }
+    
+    // Ensure we have exactly the close time and one hour after (if not already included)
+    const closeSlotTime = dateInTz.clone().add(closeHour, 'hours').add(closeMinute, 'minutes');
+    const oneHourAfterClose = closeSlotTime.clone().add(1, 'hour');
+    
+    // Add close time if not already included
+    const hasCloseTime = slots.some(slot => 
+      slot.hour === closeHour && slot.minute === closeMinute
+    );
+    
+    if (!hasCloseTime) {
+      slots.push({
+        time: closeSlotTime.format('h:mm A'),
+        hour: closeHour,
+        minute: closeMinute,
+        minutes: closeHour * 60 + closeMinute,
+        slotTime: closeSlotTime,
+        timeString: `${closeHour.toString().padStart(2, '0')}:${closeMinute.toString().padStart(2, '0')}`,
+        isNextDay: closeHour < openHour || (closeHour === openHour && closeMinute < openMinute)
+      });
+    }
+    
+    // Add exactly one hour after close time if not already included
+    const oneHourAfterCloseHour = oneHourAfterClose.hour();
+    const oneHourAfterCloseMinute = oneHourAfterClose.minute();
+    
+    const hasOneHourAfter = slots.some(slot => 
+      slot.hour === oneHourAfterCloseHour && slot.minute === oneHourAfterCloseMinute
+    );
+    
+    if (!hasOneHourAfter) {
+      slots.push({
+        time: oneHourAfterClose.format('h:mm A'),
+        hour: oneHourAfterCloseHour,
+        minute: oneHourAfterCloseMinute,
+        minutes: oneHourAfterCloseHour * 60 + oneHourAfterCloseMinute,
+        slotTime: oneHourAfterClose,
+        timeString: `${oneHourAfterCloseHour.toString().padStart(2, '0')}:${oneHourAfterCloseMinute.toString().padStart(2, '0')}`,
+        isNextDay: oneHourAfterCloseHour < openHour || (oneHourAfterCloseHour === openHour && oneHourAfterCloseMinute < openMinute)
+      });
+    }
+    
+    // Time slots generated
     
     return slots;
   }, [getBusinessHoursForDay, settings.timezone, settings.timeInterval, selectedDate]);
@@ -841,18 +1034,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const SLOT_WIDTH = getResponsiveSlotWidth();
   const SLOT_HEIGHT = getResponsiveSlotHeight();
   
-  // Debug logging for slot dimensions calculation
-  console.log('🔧 TraditionalSchedule slot dimensions calculated:', {
-    SLOT_WIDTH,
-    SLOT_HEIGHT,
-    baseSlotWidth,
-    baseSlotHeight,
-    widthScaleFactor,
-    heightScaleFactor,
-    timeSlotsCount: timeSlots.length,
-    roomsCount: rooms.length,
-    note: 'Enhanced responsive slot sizing with compression thresholds'
-  });
+  // Slot dimensions calculated
 
   // Group bookings by room and calculate positions
   const bookingsByRoom = useMemo(() => {
@@ -917,10 +1099,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           // Use configurable time interval for slot calculations
           const timeInterval = settings.timeInterval || 15;
           
-          // Clamp to visible business hours
-          const visibleStartMinutes = Math.max(0, startMinutesFromBusinessStart);
+          // Clamp to visible hours: 1 hour before open + business hours + 1 hour after close
+          const visibleStartMinutes = Math.max(-60, startMinutesFromBusinessStart); // -60 = 1 hour before open
           const [closeHour] = dayHours.closeTime.split(':').map(Number);
-          const visibleEndMinutes = Math.min((closeHour - openHour) * 60, endMinutesFromBusinessStart);
+          // Include one extra hour after close time
+          const maxVisibleMinutes = ((closeHour - openHour) * 60) + 60; // +60 minutes = 1 extra hour
+          const visibleEndMinutes = Math.min(maxVisibleMinutes, endMinutesFromBusinessStart);
           const visibleDurationMinutes = visibleEndMinutes - visibleStartMinutes;
           const visibleDurationHours = visibleDurationMinutes / 60;
           const visibleStartHours = visibleStartMinutes / 60;
@@ -934,44 +1118,23 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           const minutesPerSlot = timeInterval; // Each slot represents configurable minutes
           const slotsPerHour = 60 / minutesPerSlot; // Calculate slots per hour based on interval
           
-          // Find which slot the booking starts in
-          const startSlotIndex = Math.floor(visibleStartMinutes / timeInterval);
-          const endSlotIndex = Math.ceil((visibleStartMinutes + visibleDurationMinutes) / timeInterval);
-          const durationInSlots = endSlotIndex - startSlotIndex;
+          // Find which slot the booking starts in - use precise alignment
+          // Adjust for the 1-hour offset before business open
+          const adjustedStartMinutes = visibleStartMinutes + 60; // Add 60 minutes to account for 1 hour before open
+          const startSlotIndex = Math.floor(adjustedStartMinutes / timeInterval);
           
-          // Position based on slot boundaries
-          const leftPixels = startSlotIndex * SLOT_WIDTH;
-          const widthPixels = durationInSlots * SLOT_WIDTH;
+          // Calculate end slot with precise boundary detection
+          const exactEndMinutes = adjustedStartMinutes + visibleDurationMinutes;
+          const endSlotIndex = Math.floor(exactEndMinutes / timeInterval);
           
-          // Debug logging for specific booking
-          if (booking.customerName === 'Mike Johnson' || booking.customerName === 'Test Booking' || booking.customerName?.includes('1 hour') || booking.customerName?.includes('hour')) {
-            console.log(`🔍 ${booking.customerName} TraditionalSchedule Debug:`, {
-              // Raw booking times
-              rawStartTime: booking.startTime,
-              rawEndTime: booking.endTime,
-              rawTimeIn: booking.timeIn,
-              rawTimeOut: booking.timeOut,
-              // Parsed times
-              startTime: startTime.format('YYYY-MM-DD HH:mm:ss'),
-              endTime: endTime.format('YYYY-MM-DD HH:mm:ss'),
-              businessDayStart: businessDayStart.format('YYYY-MM-DD HH:mm:ss'),
-              // Exact minute-based calculations
-              exactDurationMinutes,
-              exactDurationHours,
-              visibleDurationMinutes,
-              visibleDurationHours,
-              visibleStartHours,
-              // Pixel calculations
-              leftPixels,
-              widthPixels,
-              SLOT_WIDTH,
-              // Expected values for 1-hour booking
-              slotsPerHour,
-              expectedWidthFor1Hour: 1 * SLOT_WIDTH * slotsPerHour, // 1 hour = 4 slots
-              actualWidthForThisBooking: visibleDurationHours * SLOT_WIDTH * slotsPerHour,
-              expectedLeftPixels: 'Should be 0 for 6PM booking'
-            });
-          }
+          // Ensure minimum 1 slot duration and handle exact boundaries
+          const durationInSlots = Math.max(1, endSlotIndex - startSlotIndex);
+          
+          // Position based on slot boundaries with pixel-perfect alignment
+          const leftPixels = Math.round(startSlotIndex * SLOT_WIDTH);
+          const widthPixels = Math.round(durationInSlots * SLOT_WIDTH);
+          
+          // Booking positioning calculated
 
           return {
             ...booking,
@@ -1003,10 +1166,23 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const handleRoomSlotClick = (room, timeSlot) => {
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
+    
+    // Check if business is closed
+    if (dayHours.isClosed) {
+      toast.error('Business is closed on this date. Please choose a different date.');
+      return;
+    }
+    
     const [openHour] = dayHours.openTime.split(':').map(Number);
     const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
     const startTime = dayStart.clone().add(timeSlot.hour - openHour, 'hours');
     const endTime = startTime.clone().add(1, 'hour');
+    
+    // Validate that the selected time is within business hours
+    if (!isWithinBusinessHours(selectedDate, startTime.toDate(), endTime.toDate())) {
+      toast.error('Selected time is outside business hours. Please choose a different time.');
+      return;
+    }
     
     setSelectedBooking({
       start: startTime.toDate(),
@@ -1025,6 +1201,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const handleBookingClick = (booking) => {
     setSelectedBooking(booking);
     setIsViewModalOpen(true);
+  };
+
+  // Handle confirmation modal close
+  const handleConfirmationClose = () => {
+    setShowConfirmation(false);
+    setSelectedBooking(null);
   };
 
   // Handle no show
@@ -1098,7 +1280,11 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     setActiveId(null);
     setDraggedBooking(null);
 
-    if (!over) return;
+    if (!over) {
+      // Exit edit mode when drag is cancelled (dropped outside valid area)
+      window.dispatchEvent(new CustomEvent('exit-edit-mode'));
+      return;
+    }
 
     const overId = String(over.id);
     const booking = normalizedBookings.find(b => b._id === active.id);
@@ -1144,13 +1330,37 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           // Single conflict - perform swap
           const targetBooking = conflicts[0];
           console.log('🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
+          
+          // Calculate the target booking's new time (swap the start times)
+          const targetDuration = moment(targetBooking.timeOut || targetBooking.endTime).diff(moment(targetBooking.timeIn || targetBooking.startTime), 'minutes', true);
+          const sourceDuration = moment(booking.timeOut || booking.endTime).diff(moment(booking.timeIn || booking.startTime), 'minutes', true);
+          
+          // For swap: 
+          // - Source gets the dropped slot time (already calculated as newTimeIn/newTimeOut)
+          // - Target gets the source's original time slot (same day, same time as source's original)
+          const sourceOriginalTime = moment(booking.timeIn || booking.startTime);
+          const targetNewTimeIn = dayStart.clone()
+            .add(sourceOriginalTime.hour(), 'hours')
+            .add(sourceOriginalTime.minute(), 'minutes')
+            .toISOString();
+          const targetNewTimeOut = moment(targetNewTimeIn).add(targetDuration, 'minutes').toISOString();
+          
+          // Get target room ID (source's original room)
+          const targetRoomId = booking.room?._id || booking.roomId?._id || booking.roomId;
+          
           moveBookingMutation.mutate({
             bookingId: booking._id,
             newRoomId: roomId,
             newTimeIn,
             newTimeOut,
             targetBookingId: targetBooking._id,
+            targetRoomId: targetRoomId,
+            targetNewTimeIn,
+            targetNewTimeOut
           });
+          
+          // Exit edit mode after successful swap
+          window.dispatchEvent(new CustomEvent('exit-edit-mode'));
         } else if (conflicts.length === 0) {
           // No conflicts - simple move
           console.log('📍 Moving booking:', booking.customerName, 'to new position');
@@ -1160,6 +1370,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
             newTimeIn,
             newTimeOut,
           });
+          
+          // Exit edit mode after successful move
+          window.dispatchEvent(new CustomEvent('exit-edit-mode'));
         } else {
           // Multiple conflicts - show error
           console.warn('⚠️ Cannot drop: Multiple booking conflicts detected');
@@ -1172,6 +1385,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       const targetBooking = normalizedBookings.find(b => b._id === targetId);
       if (targetBooking && targetBooking._id !== booking._id) {
         const targetRoomId = targetBooking.room?._id || targetBooking.roomId?._id || targetBooking.room?.id || targetBooking.roomId?.id || targetBooking.roomId;
+        const sourceRoomId = booking.room?._id || booking.roomId?._id || booking.room?.id || booking.roomId?.id || booking.roomId;
+        
         console.log('🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
         moveBookingMutation.mutate({
           bookingId: booking._id,
@@ -1179,27 +1394,164 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           newTimeIn: targetBooking.timeIn || targetBooking.startTime,
           newTimeOut: targetBooking.timeOut || targetBooking.endTime,
           targetBookingId: targetBooking._id,
+          targetRoomId: sourceRoomId,
+          targetNewTimeIn: booking.timeIn || booking.startTime,
+          targetNewTimeOut: booking.timeOut || booking.endTime,
         });
+        
+        // Exit edit mode after successful direct swap
+        window.dispatchEvent(new CustomEvent('exit-edit-mode'));
       }
     }
   };
 
-  // Handle booking resize for horizontal layout
+  // Handle booking resize for horizontal layout - exact position where drag stops
   const handleBookingResize = (bookingId, resizeData) => {
-    const { left, width, handle } = resizeData;
+    const { left, width, handle, intervalMinutes, intervalDirection, finalLeft, finalWidth, SLOT_WIDTH: slotWidth, dayStart: dayStartTime, isExactPosition } = resizeData;
     const booking = normalizedBookings.find(b => b._id === bookingId);
     if (!booking) return;
 
-    // Convert pixels to time for horizontal layout
-    // Use the same responsive calculation as the main component
+    // If we have exact position data, use that for precise time calculations
+    if (isExactPosition && finalLeft !== undefined && finalWidth !== undefined) {
+      const dayStartMoment = moment(dayStartTime);
+      
+      let newStartTime, newEndTime;
+      
+      // Get the actual time interval from settings
+      const timeInterval = settings.timeInterval || 15;
+      
+      console.log('🔧 Time calculation inputs:', {
+        finalLeft,
+        finalWidth,
+        slotWidth,
+        timeInterval,
+        dayStartMoment: dayStartMoment.format('YYYY-MM-DD HH:mm:ss'),
+        handle
+      });
+      
+      if (handle === 'left') {
+        // Left handle: set new start time based on final position
+        // Convert pixels to time slots, accounting for 1-hour offset before business hours
+        const slotIndex = Math.round(finalLeft / slotWidth);
+        const newStartMinutes = slotIndex * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        
+        // Ensure the new start time is not after the current end time
+        const currentEndTime = moment(booking.endTime || booking.timeOut);
+        const proposedStartTime = dayStartMoment.clone().add(newStartMinutes, 'minutes');
+        
+        if (proposedStartTime.isAfter(currentEndTime)) {
+          // If proposed start is after end time, adjust to be 1 hour before end time
+          newStartTime = currentEndTime.clone().subtract(1, 'hour').toISOString();
+        } else {
+          newStartTime = proposedStartTime.toISOString();
+        }
+        newEndTime = booking.endTime || booking.timeOut; // Keep end time same
+        
+        console.log('🔧 Left handle calculation:', {
+          slotIndex,
+          newStartMinutes,
+          proposedStartTime: proposedStartTime.format('YYYY-MM-DD HH:mm:ss'),
+          newStartTime,
+          currentEndTime: currentEndTime.format('YYYY-MM-DD HH:mm:ss'),
+          originalStartTime: booking.startTime || booking.timeIn,
+          originalEndTime: booking.endTime || booking.timeOut
+        });
+      } else {
+        // Right handle: set new end time based on final position
+        newStartTime = booking.startTime || booking.timeIn; // Keep start time same
+        // Convert pixels to time slots, accounting for 1-hour offset before business hours
+        const endSlotIndex = Math.round((finalLeft + finalWidth) / slotWidth);
+        const newEndMinutes = endSlotIndex * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        
+        // Ensure the new end time is not before the current start time
+        const currentStartTime = moment(booking.startTime || booking.timeIn);
+        const proposedEndTime = dayStartMoment.clone().add(newEndMinutes, 'minutes');
+        
+        if (proposedEndTime.isBefore(currentStartTime)) {
+          // If proposed end is before start time, adjust to be 1 hour after start time
+          newEndTime = currentStartTime.clone().add(1, 'hour').toISOString();
+        } else {
+          newEndTime = proposedEndTime.toISOString();
+        }
+        
+        console.log('🔧 Right handle calculation:', {
+          endSlotIndex,
+          newEndMinutes,
+          proposedEndTime: proposedEndTime.format('YYYY-MM-DD HH:mm:ss'),
+          newEndTime,
+          currentStartTime: currentStartTime.format('YYYY-MM-DD HH:mm:ss'),
+          originalStartTime: booking.startTime || booking.timeIn,
+          originalEndTime: booking.endTime || booking.timeOut
+        });
+      }
+
+      console.log('🚀 Calling exact position resize API with:', {
+        bookingId,
+        newStartTime,
+        newEndTime,
+        finalLeft,
+        finalWidth,
+        slotWidth,
+        handle,
+        timeInterval,
+        originalStartTime: booking.startTime || booking.timeIn,
+        originalEndTime: booking.endTime || booking.timeOut
+      });
+
+      // Call resize API
+      resizeBookingMutation.mutate({
+        bookingId,
+        newStartTime,
+        newEndTime,
+      });
+      return;
+    }
+
+    // Legacy interval-based fallback
+    if (intervalMinutes && intervalDirection !== undefined) {
+      const currentStart = moment(booking.startTime || booking.timeIn);
+      const currentEnd = moment(booking.endTime || booking.timeOut);
+      const intervalDuration = moment.duration(intervalMinutes, 'minutes');
+      
+      let newStartTime, newEndTime;
+      
+      if (handle === 'left') {
+        // Changing start time (left edge) - intervalDirection positive moves start time later, negative moves it earlier
+        newStartTime = currentStart.clone().add(intervalDirection * intervalDuration).toISOString();
+        newEndTime = currentEnd.toISOString(); // Keep end time same
+      } else {
+        // Changing end time (right edge) - intervalDirection positive extends duration, negative shortens it
+        newStartTime = currentStart.toISOString(); // Keep start time same
+        newEndTime = currentEnd.clone().add(intervalDirection * intervalDuration).toISOString();
+      }
+
+      console.log('🚀 Calling interval-based resize API with:', {
+        bookingId,
+        newStartTime,
+        newEndTime,
+        intervalMinutes,
+        intervalDirection,
+        handle
+      });
+
+      // Call resize API
+      resizeBookingMutation.mutate({
+        bookingId,
+        newStartTime,
+        newEndTime,
+      });
+      return;
+    }
+
+    // Fallback to pixel-based calculation for backward compatibility
     const widthMap = {
       'tiny': 20,
       'small': 40,
       'medium': 60,
       'large': 80,
     };
-    // Use custom width if available, otherwise fall back to preset width
-    // Use custom width if available, otherwise fall back to preset width
+    const customWidth = settings?.horizontalLayoutSlots?.customWidth;
+    const baseSlotWidth = customWidth || widthMap[settings?.horizontalLayoutSlots?.slotWidth] || 60;
     const widthScaleFactor = settings?.horizontalLayoutSlots?.widthScaleFactor || 0.4;
     const SLOT_WIDTH = Math.max(1, baseSlotWidth * widthScaleFactor);
     const weekday = selectedDate.getDay();
@@ -1508,107 +1860,156 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
                 <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
               </Button>
             </div>
-            {/* Removed top-right new booking button (replaced by floating action button) */}
+            <DigitalClock 
+              showSeconds={true} 
+              showDate={false} 
+              showDay={true}
+              size="md"
+              className="shadow-xl border-2 border-blue-200 bg-blue-50"
+            />
           </div>
         </div>
 
-        {/* Schedule Grid - Traditional Layout */}
-        <div className="flex-1 relative max-h-[calc(100vh-200px)] overflow-hidden">
-          <div className="flex h-full">
-            {/* Sticky First Column */}
-            <div ref={leftColumnRef} onScroll={syncGridFromLeft} className="bg-gray-50 border-r border-gray-200 flex-shrink-0 z-20 overflow-y-auto w-32 sm:w-40 md:w-48">
-              {/* Header Cell */}
-              <div className="border-b border-gray-200 bg-gray-50 sticky top-0 z-30" style={{ height: '48px' }}></div>
-              
-              {/* Room Info Cells */}
-              {rooms.map(room => (
-                <div key={room._id || room.id} className="border-b border-gray-200 p-3" style={{ height: SLOT_HEIGHT }}>
-                  <div className="flex items-center space-x-2 mb-1 min-w-0">
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
-                    />
-                    <span className="text-sm font-medium text-gray-900 truncate" title={room.name}>{room.name}</span>
-                  </div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Scrollable Content Area */}
-            <div ref={gridScrollRef} onScroll={syncLeftFromGrid} className="flex-1 overflow-auto relative">
-              {/* Current time vertical line */}
-              {currentTimeData && (() => {
-                const timeInterval = settings.timeInterval || 15;
-                const slotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
-                const leftPixels = slotIndex * SLOT_WIDTH;
-                return (
-                  <div
-                    className="absolute top-0 bottom-0 z-20 pointer-events-none"
-                    style={{ left: `${leftPixels}px`, width: '2px' }}
-                  >
-                    {/* Enhanced vertical line with glow effect */}
-                    <div className="relative h-full">
-                      {/* Main line */}
-                      <div className="w-full h-full bg-gradient-to-b from-red-500 to-red-600 shadow-lg"></div>
-                      {/* Glow effect */}
-                      <div className="absolute top-0 left-0 w-full h-full bg-red-400 opacity-50 blur-sm"></div>
-                      {/* Animated pulse line */}
-                      <div className="absolute top-0 left-0 w-full h-full bg-red-300 opacity-30 animate-pulse"></div>
-                    </div>
-                    
-                    {/* Time label positioned above the line */}
-                    <div
-                      className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-30"
-                    >
-                      <div className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs px-2 py-1 rounded-lg shadow-xl font-bold border-2 border-white animate-pulse">
-                        <div className="flex items-center space-x-1">
-                          <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div>
-                          <span>NOW: {currentTimeData.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-              
-              <table className="border-separate border-spacing-0" style={{ width: `${timeSlots.length * SLOT_WIDTH}px` }}>
-                {/* Header Row */}
+        {/* Timeline Header - At the Top */}
+        <div className="relative z-80">
+          <div className="flex">
+            {/* Empty space for room column alignment */}
+            <div className="w-32 sm:w-40 md:w-48 flex-shrink-0"></div>
+            
+            {/* Timeline Header */}
+            <div className="flex-1 relative">
+              <table className="border-separate border-spacing-0 w-full" style={{ width: `${timeSlots.length * SLOT_WIDTH}px` }}>
                 <thead>
                   <tr>
                     {timeSlots.map((slot, index) => {
-                      // Check if this is the current time slot
+                      // Check if this is the current time slot - use 30-minute threshold logic
                       const isCurrentTimeSlot = currentTimeData && (() => {
                         const timeInterval = settings.timeInterval || 15;
-                        const currentSlotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
-                        return index === currentSlotIndex;
+                        // Calculate the exact position of the red line
+                        const exactSlotPosition = currentTimeData.minutesFromStart / timeInterval;
+                        
+                        // Get the current minute within the hour to determine threshold behavior
+                        const currentMinute = moment().minute();
+                        
+                        // If we're past 30 minutes of the hour, highlight the next hour's slot
+                        // Otherwise, highlight the current hour's slot
+                        const targetSlotIndex = currentMinute >= 30 ? Math.ceil(exactSlotPosition) : Math.floor(exactSlotPosition);
+                        
+                        return index === targetSlotIndex;
                       })();
                       
                       return (
                         <th
                           key={index}
-                          className={`sticky top-0 z-20 border-r border-b border-gray-200 text-center shadow-sm ${
+                          className={`sticky top-0 z-80 border-r border-b text-center shadow-sm relative transition-all duration-300 ${
                             isCurrentTimeSlot 
-                              ? 'bg-red-100 border-red-300' 
-                              : 'bg-gray-50'
+                              ? 'bg-gradient-to-b from-red-100 to-red-200 border-red-400 shadow-lg' 
+                              : 'bg-gray-50 border-gray-200'
                           }`}
                           style={{ height: '48px', width: SLOT_WIDTH, minWidth: SLOT_WIDTH }}
                         >
-                          <span className={`text-sm font-medium ${
-                            isCurrentTimeSlot 
-                              ? 'text-red-700 font-bold' 
-                              : 'text-gray-600'
-                          }`}>
-                            {isCurrentTimeSlot ? '● ' : ''}{slot.time}
-                          </span>
+                          {/* Enhanced time label with current time highlighting */}
+                          {index > 0 && (
+                            <div 
+                              className="absolute -left-1/2 top-0 bottom-0 flex items-center justify-center z-90"
+                              style={{ width: `${SLOT_WIDTH}px` }}
+                            >
+                              <span className={`text-xs font-medium px-2 py-1 rounded-lg transition-all duration-300 ${
+                                isCurrentTimeSlot 
+                                  ? 'bg-red-600 text-white shadow-lg border-2 border-red-400 animate-pulse' 
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}>
+                                {slot.time}
+                              </span>
+                            </div>
+                          )}
+                          {/* Show time for first column - same positioning as others */}
+                          {index === 0 && (
+                            <div 
+                              className="absolute -left-1/2 top-0 bottom-0 flex items-center justify-center z-90"
+                              style={{ width: `${SLOT_WIDTH}px` }}
+                            >
+                              <span className={`text-xs font-medium px-2 py-1 rounded-lg transition-all duration-300 ${
+                                isCurrentTimeSlot 
+                                  ? 'bg-red-600 text-white shadow-lg border-2 border-red-400 animate-pulse' 
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}>
+                                {slot.time}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Current time indicator dot */}
+                          {isCurrentTimeSlot && (
+                            <div className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full animate-ping"></div>
+                          )}
                         </th>
                       );
                     })}
                   </tr>
                 </thead>
-                
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Schedule Grid - Traditional Layout */}
+        <div className="flex-1 relative max-h-[calc(100vh-250px)] overflow-hidden">
+          <div className="flex h-full">
+            {/* Sticky First Column */}
+            <div ref={leftColumnRef} className="border-r border-gray-200 flex-shrink-0 z-20 overflow-hidden w-32 sm:w-40 md:w-48">
+              {/* Room Info Cells Container - Background Color */}
+              <div className="bg-gray-50">
+                {rooms.map(room => (
+                  <div key={room._id || room.id} className="border-b border-gray-200 p-3" style={{ height: SLOT_HEIGHT }}>
+                    <div className="flex items-center space-x-2 mb-1 min-w-0">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
+                      />
+                      <span className="text-sm font-medium text-gray-900 truncate" title={room.name}>{room.name}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 truncate">
+                      {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeline Content Area - No Scroll */}
+            <div ref={gridScrollRef} className="flex-1 overflow-hidden relative z-60" style={{ marginLeft: '0px' }}>
+              {/* Current time vertical line - clean without labels, smooth movement */}
+              {currentTimeData && (() => {
+                const timeInterval = settings.timeInterval || 15;
+                // Use precise calculation for smooth movement within time slots
+                const exactSlotPosition = currentTimeData.minutesFromStart / timeInterval;
+                const leftPixels = exactSlotPosition * SLOT_WIDTH;
+                return (
+                  <div
+                    className="absolute top-0 bottom-0 z-30 pointer-events-none transition-all duration-1000 ease-linear"
+                    style={{ 
+                      left: `${leftPixels}px`, 
+                      width: '3px',
+                      transform: 'translateX(-50%)' // Center the line on the exact time position
+                    }}
+                  >
+                    {/* Clean vertical line with subtle effects */}
+                    <div className="relative h-full">
+                      {/* Outer glow */}
+                      <div className="absolute -left-1 -right-1 top-0 bottom-0 bg-red-400 opacity-30 blur-sm"></div>
+                      {/* Main line with gradient */}
+                      <div className="w-full h-full bg-gradient-to-b from-red-500 via-red-600 to-red-700 shadow-lg"></div>
+                      {/* Inner highlight */}
+                      <div className="absolute top-0 left-0 w-full h-full bg-white opacity-20"></div>
+                      {/* Animated pulse overlay */}
+                      <div className="absolute top-0 left-0 w-full h-full bg-red-300 opacity-30 animate-pulse"></div>
+                    </div>
+                  </div>
+                );
+              })()}
+              
+              <table className="border-separate border-spacing-0" style={{ width: `${timeSlots.length * SLOT_WIDTH}px`, marginLeft: '0px' }}>
                 {/* Content Rows */}
                 <tbody>
                   {rooms.map(room => (
@@ -1639,31 +2040,37 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
               </table>
               
               {/* Bookings layer - positioned relative to the scrollable container */}
-              <div className="absolute" style={{ top: '48px', left: '0', right: '0', bottom: '0', pointerEvents: 'none' }}>
+              <div className="absolute" style={{ top: '0px', left: '0', right: '0', bottom: '0', pointerEvents: 'none' }}>
         {rooms.flatMap((room, roomIndex) => {
           const roomId = room._id || room.id;
           const roomBookings = bookingsByRoom[roomId] || [];
 
-          return roomBookings.map((booking) => (
+          return roomBookings.map((booking) => {
+            // Passing SLOT_WIDTH to DraggableBooking
+            return (
             <DraggableBooking
               key={`${roomId}-${booking._id || booking.id}`}
               booking={booking}
               onDoubleClick={handleBookingDoubleClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleBookingClick(booking);
+              }}
+              getBusinessHoursForDay={getBusinessHoursForDay}
               onResize={handleBookingResize}
+              settings={settings}
+              selectedDate={selectedDate}
+              SLOT_WIDTH={SLOT_WIDTH}
               style={{
                 position: 'absolute',
                 left: `${booking.leftPixels}px`,
                 width: `${booking.widthPixels}px`,
-                top: `${roomIndex * SLOT_HEIGHT + 1}px`, // Add 1px top margin
-                height: `${SLOT_HEIGHT - 6}px`, // Subtract 6px for margins
+                top: `${roomIndex * SLOT_HEIGHT}px`, // Align with room row
+                height: `${SLOT_HEIGHT}px`, // Full height to match slot
                 backgroundColor: settings.colorByBookingSource ? (settings.bookingSourceColors?.[(booking.source || '').toLowerCase()] || settings.bookingSourceColors?.online || '#2563eb') : (room.color || getRoomTypeColor(room.category)),
                 zIndex: 10,
                 pointerEvents: 'auto',
                 borderRadius: '4px', // Add rounded corners for better visual appearance
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleBookingClick(booking);
               }}
             >
               <div className="flex items-center justify-between">
@@ -1681,7 +2088,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
                 </div>
               )}
             </DraggableBooking>
-          ));
+            );
+          });
         })}
               </div>
             </div>
@@ -1707,8 +2115,28 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     <button
       type="button"
       onClick={() => {
-        const start = moment(selectedDate).startOf('hour');
+        const weekday = selectedDate.getDay();
+        const dayHours = getBusinessHoursForDay(weekday);
+        
+        // Check if business is closed
+        if (dayHours.isClosed) {
+          toast.error('Business is closed on this date. Please choose a different date.');
+          return;
+        }
+        
+        // Set start time to business open time or current time (whichever is later)
+        const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
+        const businessStart = moment(selectedDate).startOf('day').add(openHour, 'hours').add(openMinute, 'minutes');
+        const now = moment();
+        const start = now.isAfter(businessStart) ? now.startOf('hour').add(1, 'hour') : businessStart;
         const end = start.clone().add(1, 'hour');
+        
+        // Validate that the selected time is within business hours
+        if (!isWithinBusinessHours(selectedDate, start.toDate(), end.toDate())) {
+          toast.error('No available time slots within business hours. Please choose a different date.');
+          return;
+        }
+        
         setSelectedBooking({
           start: start.toDate(),
           end: end.toDate(),
@@ -1721,6 +2149,19 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     >
       <Plus className="w-8 h-8" />
     </button>
+
+    {/* Floating Tutorial Button - only show for first-time users */}
+    {isInitialized && showTutorialButton && (
+      <button
+        type="button"
+        onClick={handleTutorialClick}
+        className="fixed bottom-6 left-6 h-14 w-14 rounded-full bg-purple-600 text-white shadow-xl hover:bg-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-300 z-50 flex items-center justify-center animate-pulse"
+        aria-label={tutorialCompleted || tutorialSkipped ? "Restart tutorial" : "Start tutorial"}
+        title={tutorialCompleted || tutorialSkipped ? "Restart interactive tutorial" : "Start interactive tutorial"}
+      >
+        <HelpCircle className="w-6 h-6" />
+      </button>
+    )}
 
     <ReservationViewModal
       isOpen={isViewModalOpen}
@@ -1754,6 +2195,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     <InstructionsModal
       isOpen={showInstructions}
       onClose={() => setShowInstructions(false)}
+    />
+
+    <BookingConfirmation
+      isOpen={showConfirmation}
+      onClose={handleConfirmationClose}
+      booking={selectedBooking}
     />
     </>
   );
