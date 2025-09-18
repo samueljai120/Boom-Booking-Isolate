@@ -209,3 +209,9 @@ For issues and questions:
 ---
 
 **Note**: This is a standalone frontend with mock data. For production use, connect to a real backend API.
+
+## © Copyright
+
+© 2025 Sum Wing Samuel So. All rights reserved.
+
+
