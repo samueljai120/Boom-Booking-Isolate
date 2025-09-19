@@ -318,41 +318,6 @@ const BookingManagement = () => {
     return visibleFields.join(' ');
   };
 
-  // Helper function to format room option for dropdown
-  const formatRoomOption = (room) => {
-    if (!room) return 'Unknown room';
-    
-    const visibleFields = [];
-    
-    // Always show room name
-    visibleFields.push(room.name);
-    
-    // Check each field's visibility
-    Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
-      if (fieldConfig?.visible && room[fieldKey] !== undefined && room[fieldKey] !== null && room[fieldKey] !== '') {
-        let value = room[fieldKey];
-        
-        // Format value based on field type
-        if (fieldKey === 'capacity') {
-          value = `(${value} max)`;
-        } else if (fieldKey === 'hourlyRate') {
-          value = `- $${value}/hour`;
-        } else if (fieldKey === 'category') {
-          value = `[${value}]`;
-        } else if (fieldKey === 'color' || fieldKey === 'description' || fieldKey === 'amenities') {
-          // Don't show these in the room option
-          return;
-        } else {
-          value = `(${value})`;
-        }
-        
-        visibleFields.push(value);
-      }
-    });
-
-    return visibleFields.join(' ');
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -672,6 +637,44 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     totalPrice: 0,
   });
 
+  // Get room form fields configuration
+  const roomFormFields = settings.roomFormFields || {};
+
+  // Helper function to format room option for dropdown
+  const formatRoomOption = (room) => {
+    if (!room) return 'Unknown room';
+    
+    const visibleFields = [];
+    
+    // Always show room name
+    visibleFields.push(room.name);
+    
+    // Check each field's visibility
+    Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
+      if (fieldConfig?.visible && room[fieldKey] !== undefined && room[fieldKey] !== null && room[fieldKey] !== '') {
+        let value = room[fieldKey];
+        
+        // Format value based on field type
+        if (fieldKey === 'capacity') {
+          value = `(${value} max)`;
+        } else if (fieldKey === 'hourlyRate') {
+          value = `- $${value}/hour`;
+        } else if (fieldKey === 'category') {
+          value = `[${value}]`;
+        } else if (fieldKey === 'color' || fieldKey === 'description' || fieldKey === 'amenities') {
+          // Don't show these in the room option
+          return;
+        } else {
+          value = `(${value})`;
+        }
+        
+        visibleFields.push(value);
+      }
+    });
+
+    return visibleFields.join(' ');
+  };
+
   // Update form data when booking prop changes
   useEffect(() => {
     if (booking && isEditing) {
@@ -694,14 +697,18 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
         totalPrice: typeof booking.totalPrice === 'number' ? booking.totalPrice : 0,
       });
     } else if (!booking && !isEditing) {
-      // Reset form for new booking creation
+      // Reset form for new booking creation with sensible defaults
+      const now = new Date();
+      const defaultStartTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+      const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000); // 1 hour duration
+      
       setFormData({
         customerName: '',
         phone: '',
         email: '',
         room: '',
-        timeIn: '',
-        timeOut: '',
+        timeIn: defaultStartTime.toISOString().slice(0, 16), // Format for datetime-local input
+        timeOut: defaultEndTime.toISOString().slice(0, 16), // Format for datetime-local input
         source: 'walk_in',
         status: 'confirmed',
         priority: 'normal',
@@ -726,9 +733,21 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
       return;
     }
     
+    // Validate required fields
+    if (!formData.timeIn || !formData.timeOut) {
+      toast.error('Please select both start and end times for the booking.');
+      return;
+    }
+    
     // Calculate duration and total price
     const startTime = new Date(formData.timeIn);
     const endTime = new Date(formData.timeOut);
+    
+    // Validate that end time is after start time
+    if (endTime <= startTime) {
+      toast.error('End time must be after start time. Please select a valid time range.');
+      return;
+    }
     
     // Validate business hours
     if (!isWithinBusinessHours(startTime, formData.timeIn, formData.timeOut)) {
@@ -737,6 +756,13 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     }
     
     const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
+    
+    // Validate minimum duration (at least 15 minutes)
+    if (durationMinutes < 15) {
+      toast.error('Booking duration must be at least 15 minutes.');
+      return;
+    }
+    
     const selectedRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === formData.room) : null);
     const hourlyRate = selectedRoom?.hourlyRate || 25;
     const basePrice = (durationMinutes / 60) * hourlyRate;
@@ -807,6 +833,13 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
           basePrice: Math.round(basePrice * 100) / 100,
           totalPrice: Math.round((basePrice + (prev.additionalFees || 0) - (prev.discount || 0)) * 100) / 100
         }));
+      } else if (endTime <= startTime) {
+        // If end time is not after start time, automatically adjust end time to be 1 hour later
+        const adjustedEndTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+        setFormData(prev => ({
+          ...prev,
+          timeOut: adjustedEndTime.toISOString().slice(0, 16)
+        }));
       }
     } else if (field === 'timeOut' && formData.timeIn) {
       const startTime = new Date(formData.timeIn);
@@ -820,6 +853,13 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
           ...prev,
           basePrice: Math.round(basePrice * 100) / 100,
           totalPrice: Math.round((basePrice + (prev.additionalFees || 0) - (prev.discount || 0)) * 100) / 100
+        }));
+      } else if (endTime <= startTime) {
+        // If end time is not after start time, automatically adjust end time to be 1 hour later
+        const adjustedEndTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+        setFormData(prev => ({
+          ...prev,
+          timeOut: adjustedEndTime.toISOString().slice(0, 16)
         }));
       }
     }

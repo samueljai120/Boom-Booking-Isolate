@@ -26,7 +26,6 @@ import {
   Search,
   Download,
   Upload,
-  Eye,
   Save,
   Plus,
   Trash2,
@@ -46,7 +45,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('layout');
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showPreview, setShowPreview] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
@@ -209,71 +207,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
             )}
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowPreview(!showPreview)}
-              className="flex items-center space-x-1"
-            >
-              <Eye className="w-4 h-4" />
-              <span>{showPreview ? 'Hide' : 'Show'} Preview</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const settingsJson = JSON.stringify(settings, null, 2);
-                const blob = new Blob([settingsJson], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'karaoke-settings.json';
-                a.click();
-                URL.revokeObjectURL(url);
-                toast.success('Settings exported successfully');
-              }}
-              className="flex items-center space-x-1"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = (e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      try {
-                        const importedSettings = JSON.parse(e.target.result);
-                        // Apply imported settings
-                        Object.keys(importedSettings).forEach(key => {
-                          updateSetting(key, importedSettings[key]);
-                        });
-                        toast.success('Settings imported successfully');
-                      } catch (error) {
-                        toast.error('Invalid settings file');
-                      }
-                    };
-                    reader.readAsText(file);
-                  }
-                };
-                input.click();
-              }}
-              className="flex items-center space-x-1"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Import</span>
-            </Button>
-          </div>
         </CardHeader>
 
         <div className={`flex h-[70vh] transition-all duration-300 ${
@@ -305,24 +238,39 @@ const SettingsModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+
             {/* Navigation - Scrollable */}
             <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400">
               <nav className="p-4 space-y-4">
-                {Object.entries(groupedTabs).map(([category, categoryTabs]) => (
-                  <div key={category} className="space-y-2">
-                    <button
-                      onClick={() => setExpandedSections(prev => ({
-                        ...prev,
-                        [category]: !prev[category]
-                      }))}
-                      className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <span>{categoryLabels[category]}</span>
-                      {expandedSections[category] ? 
-                        <ChevronDown className="w-4 h-4" /> : 
-                        <ChevronRight className="w-4 h-4" />
-                      }
-                    </button>
+                {Object.entries(groupedTabs).map(([category, categoryTabs]) => {
+                  // Define icons for each category
+                  const categoryIcons = {
+                    appearance: Layout,
+                    business: Clock,
+                    forms: SettingsIcon,
+                    system: Globe
+                  };
+                  
+                  const Icon = categoryIcons[category] || SettingsIcon;
+                  
+                  return (
+                    <div key={category} className="space-y-2">
+                      <button
+                        onClick={() => setExpandedSections(prev => ({
+                          ...prev,
+                          [category]: !prev[category]
+                        }))}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <Icon className="w-4 h-4 text-gray-600" />
+                          <span>{categoryLabels[category]}</span>
+                        </div>
+                        {expandedSections[category] ? 
+                          <ChevronDown className="w-4 h-4" /> : 
+                          <ChevronRight className="w-4 h-4" />
+                        }
+                      </button>
                     
                     {expandedSections[category] && (
                       <div className="ml-4 space-y-1">
@@ -349,7 +297,8 @@ const SettingsModal = ({ isOpen, onClose }) => {
                       </div>
                     )}
                   </div>
-                ))}
+                  );
+                })}
                 
                 {searchQuery && filteredTabs.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
@@ -357,6 +306,84 @@ const SettingsModal = ({ isOpen, onClose }) => {
                     <p>No settings found for "{searchQuery}"</p>
                   </div>
                 )}
+
+                {/* Data Management Section - Bottom of Navigation */}
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setExpandedSections(prev => ({
+                      ...prev,
+                      dataManagement: !prev.dataManagement
+                    }))}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Save className="w-4 h-4 text-gray-600" />
+                      <span>Data Management</span>
+                    </div>
+                    {expandedSections.dataManagement ? 
+                      <ChevronDown className="w-4 h-4" /> : 
+                      <ChevronRight className="w-4 h-4" />
+                    }
+                  </button>
+                  
+                  {expandedSections.dataManagement && (
+                    <div className="ml-4 space-y-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const settingsJson = JSON.stringify(settings, null, 2);
+                          const blob = new Blob([settingsJson], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'karaoke-settings.json';
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success('Settings exported successfully');
+                        }}
+                        className="w-full flex items-center justify-center space-x-2"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Export Settings</span>
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = '.json';
+                          input.onchange = (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                try {
+                                  const importedSettings = JSON.parse(e.target.result);
+                                  // Apply imported settings
+                                  Object.keys(importedSettings).forEach(key => {
+                                    updateSetting(key, importedSettings[key]);
+                                  });
+                                  toast.success('Settings imported successfully');
+                                } catch (error) {
+                                  toast.error('Invalid settings file');
+                                }
+                              };
+                              reader.readAsText(file);
+                            }
+                          };
+                          input.click();
+                        }}
+                        className="w-full flex items-center justify-center space-x-2"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Import Settings</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </nav>
             </div>
           </div>
@@ -368,26 +395,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
             <CardContent className={`p-6 transition-all duration-300 ${
               isDraggingSlider ? 'bg-white bg-opacity-20' : 'bg-white'
             }`}>
-              {/* Preview Panel */}
-              {showPreview && (
-                <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-800">Live Preview</h4>
-                    <Badge variant="outline" className="text-green-600 border-green-200">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Live
-                    </Badge>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    <p>Preview how your settings will look in the actual schedule view.</p>
-                    <div className="mt-2 flex items-center space-x-4 text-xs">
-                      <span>Layout: {settings.layoutOrientation === 'rooms-x-time-y' ? 'Vertical' : 'Horizontal'}</span>
-                      <span>Time Format: {settings.timeFormat === '12h' ? '12-hour' : '24-hour'}</span>
-                      <span>Theme: {settings.colorByRoomType ? 'Room Type Colors' : 'Default'}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Settings Content */}
               {activeTab === 'layout' && <LayoutSettings currentLayout={settings.layoutOrientation} setIsDraggingSlider={setIsDraggingSlider} />}

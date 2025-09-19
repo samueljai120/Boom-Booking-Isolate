@@ -938,6 +938,8 @@ const AppleCalendarDashboard = () => {
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
+    console.log('🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
+    
     if (dayHours.isClosed) {
       return [];
     }
@@ -1106,6 +1108,14 @@ const AppleCalendarDashboard = () => {
               durationMinutes,
               booking
             });
+            
+            // For debugging: try to fix the booking by adding 1 hour to end time
+            if (clampedDuration === 0 && booking.startTime && booking.endTime) {
+              console.warn(`🔧 Attempting to fix booking with 0 duration by adjusting end time`);
+              // This is just for debugging - we don't actually modify the booking here
+              // The real fix should be in the form validation
+            }
+            
             return null;
           }
           

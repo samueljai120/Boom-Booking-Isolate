@@ -16,13 +16,13 @@ export const WebSocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Check if we're in development mode with mock backend
-    const isDevelopment = import.meta.env.DEV;
-    const isMockBackend = import.meta.env.VITE_API_BASE_URL?.includes('localhost:4000') || 
-                         !import.meta.env.VITE_API_BASE_URL;
+    // Check if we're in mock mode (same logic as API)
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+    const isMockMode = !API_BASE_URL || API_BASE_URL.includes('your-api-server.com') || API_BASE_URL.includes('localhost');
     
-    // Skip WebSocket connection in development with mock backend
-    if (isDevelopment && isMockBackend) {
+    // Skip WebSocket connection in mock mode
+    if (isMockMode) {
+      console.log('🔧 Skipping WebSocket connection in mock mode');
       setConnected(false);
       return;
     }

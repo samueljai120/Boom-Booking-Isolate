@@ -486,7 +486,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   // Mini calendar month base (independent from selected date)
   const [calendarBaseDate, setCalendarBaseDate] = useState(selectedDate);
   const { settings } = useSettings();
-  const { getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusinessHours } = useBusinessHours();
+  const { businessHours, getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusinessHours } = useBusinessHours();
   const { showTutorialButton, startTutorial, restartTutorial, tutorialCompleted, tutorialSkipped, isInitialized } = useTutorial();
   
   // Handle tutorial button click
@@ -874,6 +874,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
+    console.log('🕒 TraditionalSchedule: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
+    
     if (dayHours.isClosed) {
       return [];
     }
@@ -882,8 +884,22 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
     const [closeHour, closeMinute] = dayHours.closeTime.split(':').map(Number);
     
+    console.log('🕒 TraditionalSchedule: Parsed times:', {
+      openTime: dayHours.openTime,
+      closeTime: dayHours.closeTime,
+      openHour,
+      openMinute,
+      closeHour,
+      closeMinute
+    });
+    
     // Check if this is late night hours (close time is next day)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
+    
+    console.log('🕒 TraditionalSchedule: Late night check:', {
+      isLateNight,
+      reason: isLateNight ? 'Close time is before open time' : 'Normal hours'
+    });
     
     // Construct midnight of the selected date in the selected timezone
     const dateInTz = moment.tz(
@@ -903,8 +919,27 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const timeInterval = settings.timeInterval || 15; // Default to 15 minutes if not set
     let currentMinutes = (openHour * 60 + openMinute) - 60; // Start 1 hour before business open
     const closeMinutes = closeHour * 60 + closeMinute;
-    const maxVisibleMinutes = closeMinutes + 60; // Close time + 1 extra hour
+    
+    // Handle late night hours properly
+    let maxVisibleMinutes;
+    if (isLateNight) {
+      // For late night hours, close time is next day, so add 24 hours
+      maxVisibleMinutes = closeMinutes + (24 * 60) + 60; // Close time next day + 1 extra hour
+    } else {
+      // For normal hours, close time is same day
+      maxVisibleMinutes = closeMinutes + 60; // Close time + 1 extra hour
+    }
+    
     const maxSlots = 200; // Prevent infinite loops (200 slots = 50 hours max)
+    
+    console.log('🕒 TraditionalSchedule: Time slot generation parameters:', {
+      timeInterval,
+      currentMinutes,
+      closeMinutes,
+      maxVisibleMinutes,
+      openTimeInMinutes: openHour * 60 + openMinute,
+      closeTimeInMinutes: closeMinutes
+    });
     
     while (slots.length < maxSlots && currentMinutes < maxVisibleMinutes) {
       // Calculate the actual hour and minute for display
@@ -929,32 +964,48 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     }
     
     // Ensure we have exactly the close time and one hour after (if not already included)
-    const closeSlotTime = dateInTz.clone().add(closeHour, 'hours').add(closeMinute, 'minutes');
-    const oneHourAfterClose = closeSlotTime.clone().add(1, 'hour');
+    let closeSlotTime, oneHourAfterClose;
+    
+    if (isLateNight) {
+      // For late night hours, close time is next day
+      closeSlotTime = dateInTz.clone().add(1, 'day').add(closeHour, 'hours').add(closeMinute, 'minutes');
+      oneHourAfterClose = closeSlotTime.clone().add(1, 'hour');
+    } else {
+      // For normal hours, close time is same day
+      closeSlotTime = dateInTz.clone().add(closeHour, 'hours').add(closeMinute, 'minutes');
+      oneHourAfterClose = closeSlotTime.clone().add(1, 'hour');
+    }
     
     // Add close time if not already included
-    const hasCloseTime = slots.some(slot => 
-      slot.hour === closeHour && slot.minute === closeMinute
-    );
+    const hasCloseTime = slots.some(slot => {
+      if (isLateNight) {
+        // For late night, check if it's the next day close time
+        return slot.isNextDay && slot.hour === closeHour && slot.minute === closeMinute;
+      } else {
+        // For normal hours, check same day
+        return !slot.isNextDay && slot.hour === closeHour && slot.minute === closeMinute;
+      }
+    });
     
     if (!hasCloseTime) {
       slots.push({
         time: closeSlotTime.format('h:mm A'),
         hour: closeHour,
         minute: closeMinute,
-        minutes: closeHour * 60 + closeMinute,
+        minutes: closeHour * 60 + closeMinute + (isLateNight ? 24 * 60 : 0),
         slotTime: closeSlotTime,
         timeString: `${closeHour.toString().padStart(2, '0')}:${closeMinute.toString().padStart(2, '0')}`,
-        isNextDay: closeHour < openHour || (closeHour === openHour && closeMinute < openMinute)
+        isNextDay: isLateNight
       });
     }
     
     // Add exactly one hour after close time if not already included
     const oneHourAfterCloseHour = oneHourAfterClose.hour();
     const oneHourAfterCloseMinute = oneHourAfterClose.minute();
+    const isOneHourAfterNextDay = isLateNight || oneHourAfterCloseHour === 0;
     
     const hasOneHourAfter = slots.some(slot => 
-      slot.hour === oneHourAfterCloseHour && slot.minute === oneHourAfterCloseMinute
+      slot.hour === oneHourAfterCloseHour && slot.minute === oneHourAfterCloseMinute && slot.isNextDay === isOneHourAfterNextDay
     );
     
     if (!hasOneHourAfter) {
@@ -962,17 +1013,24 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         time: oneHourAfterClose.format('h:mm A'),
         hour: oneHourAfterCloseHour,
         minute: oneHourAfterCloseMinute,
-        minutes: oneHourAfterCloseHour * 60 + oneHourAfterCloseMinute,
+        minutes: oneHourAfterCloseHour * 60 + oneHourAfterCloseMinute + (isOneHourAfterNextDay ? 24 * 60 : 0),
         slotTime: oneHourAfterClose,
         timeString: `${oneHourAfterCloseHour.toString().padStart(2, '0')}:${oneHourAfterCloseMinute.toString().padStart(2, '0')}`,
-        isNextDay: oneHourAfterCloseHour < openHour || (oneHourAfterCloseHour === openHour && oneHourAfterCloseMinute < openMinute)
+        isNextDay: isOneHourAfterNextDay
       });
     }
     
     // Time slots generated
     
+    console.log('🕒 TraditionalSchedule: Generated time slots:', {
+      totalSlots: slots.length,
+      firstSlot: slots[0],
+      lastSlot: slots[slots.length - 1],
+      allSlots: slots.map(slot => `${slot.time} (${slot.timeString})`)
+    });
+    
     return slots;
-  }, [getBusinessHoursForDay, settings.timezone, settings.timeInterval, selectedDate]);
+  }, [getBusinessHoursForDay, settings.timezone, settings.timeInterval, selectedDate, businessHours]);
 
   // Calculate consistent slot dimensions based on settings
   // Enhanced slot size mapping with more options
@@ -1174,7 +1232,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         .filter(Boolean);
     });
     return grouped;
-  }, [rooms, normalizedBookings, selectedDate, getBusinessHoursForDay, SLOT_WIDTH]);
+  }, [rooms, normalizedBookings, selectedDate, getBusinessHoursForDay, SLOT_WIDTH, businessHours]);
 
   // Handle date navigation for main schedule
   const navigateDate = (direction) => {

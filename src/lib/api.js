@@ -1,13 +1,98 @@
 import { mockAPI } from './mockData.js';
+import axios from 'axios';
 
-// Mock API configuration for standalone frontend
-// This replaces the real API with mock data for demonstration purposes
+// API configuration - switches between mock and real backend based on environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const isMockMode = !API_BASE_URL || API_BASE_URL.includes('your-api-server.com') || API_BASE_URL.includes('localhost');
+
+// Log API configuration for debugging
+console.log('🔧 API Configuration:', {
+  API_BASE_URL,
+  isMockMode,
+  mode: isMockMode ? 'MOCK' : 'REAL_BACKEND'
+});
+
+// Create axios instance for real API calls
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include auth token
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Helper function to convert frontend business hours format to backend format
+const convertToBackendFormat = (businessHours) => {
+  return businessHours.map(bh => ({
+    day_of_week: bh.weekday,
+    open_time: bh.openTime,
+    close_time: bh.closeTime,
+    is_closed: bh.isClosed || false
+  }));
+};
+
+// Helper function to convert backend business hours format to frontend format
+const convertToFrontendFormat = (backendHours) => {
+  return backendHours.map(bh => ({
+    weekday: bh.day_of_week,
+    openTime: bh.open_time,
+    closeTime: bh.close_time,
+    isClosed: bh.is_closed || false
+  }));
+};
 
 // Auth API
 export const authAPI = {
-  login: (credentials) => mockAPI.login(credentials),
-  logout: () => mockAPI.logout(),
-  getSession: () => mockAPI.getSession(),
+  login: async (credentials) => {
+    if (isMockMode) {
+      return mockAPI.login(credentials);
+    }
+    
+    try {
+      const response = await apiClient.post('/auth/login', credentials);
+      return response.data;
+    } catch (error) {
+      console.error('Error logging in:', error);
+      throw error;
+    }
+  },
+  
+  logout: async () => {
+    if (isMockMode) {
+      return mockAPI.logout();
+    }
+    
+    try {
+      const response = await apiClient.post('/auth/logout');
+      return response.data;
+    } catch (error) {
+      console.error('Error logging out:', error);
+      throw error;
+    }
+  },
+  
+  getSession: async () => {
+    if (isMockMode) {
+      return mockAPI.getSession();
+    }
+    
+    try {
+      const response = await apiClient.get('/auth/me');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting session:', error);
+      throw error;
+    }
+  },
 };
 
 // Rooms API
@@ -91,8 +176,102 @@ export const availabilityAPI = {
 
 // Business Hours API
 export const businessHoursAPI = {
-  get: () => mockAPI.getBusinessHours(),
-  update: (data) => mockAPI.updateBusinessHours(data),
+  get: async () => {
+    if (isMockMode) {
+      console.log('🔧 Using mock API for business hours fetch');
+      return mockAPI.getBusinessHours();
+    }
+    
+    try {
+      console.log('🔧 Using real backend API for business hours fetch');
+      const response = await apiClient.get('/business-hours');
+      console.log('🔧 Received business hours from backend:', response.data);
+      
+      // Convert backend format to frontend format
+      const frontendHours = convertToFrontendFormat(response.data.data || []);
+      console.log('🔧 Converted to frontend format:', frontendHours);
+      
+      return {
+        data: {
+          success: true,
+          businessHours: frontendHours
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error fetching business hours:', error);
+      
+      // Enhanced error logging
+      if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        console.error('🌐 Network Error Details:', {
+          message: error.message,
+          code: error.code,
+          url: `${API_BASE_URL}/business-hours`,
+          timeout: 10000
+        });
+        
+        // Fallback to mock mode for network errors
+        console.log('🔄 Falling back to mock API due to network error');
+        return mockAPI.getBusinessHours();
+      }
+      
+      throw error;
+    }
+  },
+  
+  update: async (data) => {
+    if (isMockMode) {
+      console.log('🔧 Using mock API for business hours update');
+      return mockAPI.updateBusinessHours(data);
+    }
+    
+    try {
+      console.log('🔧 Using real backend API for business hours update');
+      
+      // Convert frontend format to backend format
+      const backendHours = convertToBackendFormat(data.businessHours || data);
+      console.log('🔧 Converting business hours for backend:', {
+        original: data.businessHours || data,
+        converted: backendHours
+      });
+      
+      const response = await apiClient.put('/business-hours', {
+        hours: backendHours
+      });
+      
+      // Convert response back to frontend format
+      const frontendHours = convertToFrontendFormat(response.data.data || []);
+      console.log('🔧 Converting backend response to frontend:', {
+        backend: response.data.data,
+        frontend: frontendHours
+      });
+      
+      return {
+        data: {
+          success: true,
+          businessHours: frontendHours
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error updating business hours:', error);
+      
+      // Enhanced error logging
+      if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
+        console.error('🌐 Network Error Details:', {
+          message: error.message,
+          code: error.code,
+          url: `${API_BASE_URL}/business-hours`,
+          timeout: 10000
+        });
+        
+        // Fallback to mock mode for network errors
+        console.log('🔄 Falling back to mock API due to network error');
+        return mockAPI.updateBusinessHours(data);
+      }
+      
+      throw error;
+    }
+  },
+  
   getExceptions: () => Promise.resolve({ data: [] }),
   createException: (data) => Promise.resolve({ data }),
   deleteException: (id) => Promise.resolve({ data: { message: 'Exception deleted' } }),
@@ -100,8 +279,33 @@ export const businessHoursAPI = {
 
 // Settings API
 export const settingsAPI = {
-  get: () => mockAPI.getSettings(),
-  update: (data) => mockAPI.updateSettings(data),
+  get: async () => {
+    if (isMockMode) {
+      return mockAPI.getSettings();
+    }
+    
+    try {
+      const response = await apiClient.get('/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      throw error;
+    }
+  },
+  
+  update: async (data) => {
+    if (isMockMode) {
+      return mockAPI.updateSettings(data);
+    }
+    
+    try {
+      const response = await apiClient.put('/settings', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      throw error;
+    }
+  },
 };
 
 // Health API
