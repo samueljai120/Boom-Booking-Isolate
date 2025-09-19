@@ -782,7 +782,7 @@ const AppleCalendarDashboard = () => {
   const resizeBookingMutation = useMutation({
     mutationFn: bookingsAPI.resize,
     onMutate: async (variables) => {
-      // console.log('🔄 Resize mutation onMutate called with variables:', variables);
+      // // console.log (removed for clean version)('🔄 Resize mutation onMutate called with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
@@ -795,7 +795,7 @@ const AppleCalendarDashboard = () => {
         }
         const updated = [...oldBookings];
         const current = updated[idx];
-        // console.log('🔄 Updating booking from:', {
+        // // console.log (removed for clean version)('🔄 Updating booking from:', {
         //   startTime: current.startTime,
         //   endTime: current.endTime
         // }, 'to:', {
@@ -816,7 +816,7 @@ const AppleCalendarDashboard = () => {
             bookings: updated,
           },
         }));
-        // console.log('✅ Optimistic resize update applied');
+        // // console.log (removed for clean version)('✅ Optimistic resize update applied');
       } catch (e) {
         console.warn('Optimistic resize update failed:', e);
       }
@@ -833,7 +833,7 @@ const AppleCalendarDashboard = () => {
       } catch {}
     },
     onSuccess: (data, variables) => {
-      // console.log('✅ Resize mutation succeeded:', { data, variables });
+      // // console.log (removed for clean version)('✅ Resize mutation succeeded:', { data, variables });
       toast.success('Booking resized');
     },
     onSettled: () => {},
@@ -938,7 +938,7 @@ const AppleCalendarDashboard = () => {
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
-    console.log('🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
+      // Debug logging removed for clean version'🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
     
     if (dayHours.isClosed) {
       return [];
@@ -1193,7 +1193,7 @@ const AppleCalendarDashboard = () => {
       end: endTime.toDate(),
       resource: {
         roomId: room._id || room.id,
-        roomName: room.name,
+        roomName: room.name || 'Unnamed Room',
         roomType: room.category,
         capacity: room.capacity,
       },
@@ -1439,8 +1439,7 @@ const AppleCalendarDashboard = () => {
     // Get the current time interval setting
     const timeInterval = settings.timeInterval || 15;
     
-    // Debug logging (remove in production)
-    // console.log('🔧 Resize Debug - AppleCalendarDashboard:', {
+    // Debug logging removed for clean version
     //   timeInterval,
     //   settingsTimeInterval: settings.timeInterval,
     //   is60Minute: timeInterval === 60,
@@ -1479,7 +1478,7 @@ const AppleCalendarDashboard = () => {
     }
 
     // Call resize API
-    // console.log('🚀 Calling resize API with:', {
+    // // console.log (removed for clean version)('🚀 Calling resize API with:', {
     //   bookingId,
     //   newStartTime,
     //   newEndTime,
@@ -1824,7 +1823,7 @@ const AppleCalendarDashboard = () => {
                           style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
                         />
                         <div>
-                          <h3 className="font-medium text-gray-900">{room.name}</h3>
+                          <h3 className="font-medium text-gray-900">{room.name || 'Unnamed Room'}</h3>
                           <p className="text-sm text-gray-500">
                             {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)
                           </p>

@@ -289,8 +289,8 @@ const BookingManagement = () => {
     
     const visibleFields = [];
     
-    // Always show room name
-    visibleFields.push(room.name);
+    // Always show room name (with null check)
+    visibleFields.push(room.name || 'Unnamed Room');
     
     // Check each field's visibility
     Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
@@ -646,8 +646,8 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     
     const visibleFields = [];
     
-    // Always show room name
-    visibleFields.push(room.name);
+    // Always show room name (with null check)
+    visibleFields.push(room.name || 'Unnamed Room');
     
     // Check each field's visibility
     Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {

@@ -46,10 +46,10 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   // Reset form when booking changes
   useEffect(() => {
     if (booking) {
-      console.log('🔍 BookingModal: Booking object received:', booking);
+      // Debug logging removed for clean version'🔍 BookingModal: Booking object received:', booking);
       if (booking.id || booking._id) {
         // Editing existing booking
-        console.log('🔍 BookingModal: Editing existing booking, resetting form');
+        // Debug logging removed for clean version'🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
         reset({
           customerName: booking.title || booking.customerName || '',
@@ -69,7 +69,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           specialRequests: booking.resource?.specialRequests || booking.specialRequests || '',
           roomId: booking.resource?.roomId || booking.room?._id || booking.roomId || '',
         });
-        console.log('🔍 BookingModal: Form reset with values:', {
+        // Debug logging removed for clean version'🔍 BookingModal: Form reset with values:', {
           customerName: booking.title || booking.customerName || '',
           phone: booking.resource?.phone || booking.phone || '',
           email: booking.resource?.email || booking.email || '',

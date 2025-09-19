@@ -59,10 +59,10 @@ app.use('/api/health', healthRoutes);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  // console.log (removed for clean version)('Client connected:', socket.id);
   
   socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+    // console.log (removed for clean version)('Client disconnected:', socket.id);
   });
   
   // Join room for booking updates
@@ -97,13 +97,13 @@ app.use((err, req, res, next) => {
 async function startServer() {
   try {
     await initDatabase();
-    console.log('✅ Database initialized successfully');
+    // console.log (removed for clean version)('✅ Database initialized successfully');
     
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 Frontend: http://localhost:${PORT}`);
-      console.log(`🔌 API: http://localhost:${PORT}/api`);
-      console.log(`🌐 Socket.IO: http://localhost:${PORT}`);
+      // console.log (removed for clean version)(`🚀 Server running on port ${PORT}`);
+      // console.log (removed for clean version)(`📱 Frontend: http://localhost:${PORT}`);
+      // console.log (removed for clean version)(`🔌 API: http://localhost:${PORT}/api`);
+      // console.log (removed for clean version)(`🌐 Socket.IO: http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

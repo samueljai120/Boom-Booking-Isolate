@@ -55,7 +55,7 @@ if (isLateNight) {
 }
 ```
 
-### 4. Enhanced Debugging and Logging
+### 4. Enhanced Monitoring and Logging
 Added comprehensive logging to track:
 - Business hours data received
 - Parsed open/close times
@@ -86,7 +86,7 @@ Added comprehensive logging to track:
 4. Navigate to schedule grid
 5. **Expected Result**: All days should show 5:00 PM - 3:00 AM timeline
 
-### 4. Verify Debug Logs
+### 4. Verify Enhanced Logging
 Open browser console and look for:
 ```
 🕒 TraditionalSchedule: Generating time slots for weekday X with business hours: {...}
@@ -103,7 +103,7 @@ Open browser console and look for:
 - ✅ **Supports Both Business Types**: Works for normal hours (9 AM - 5 PM) and late night (6 PM - 2 AM)
 - ✅ **Bulk Actions Work**: Bulk business hours settings properly update the timeline
 - ✅ **Real-time Updates**: Timeline updates immediately when business hours change
-- ✅ **Enhanced Debugging**: Detailed logs for troubleshooting future issues
+- ✅ **Enhanced Monitoring**: Detailed tracking for monitoring future issues
 - ✅ **No Breaking Changes**: All existing functionality preserved
 
 ## Business Hours Scenarios Now Supported
@@ -122,7 +122,7 @@ Open browser console and look for:
 - **Closed**: Timeline shows no time slots (empty grid)
 
 ## Future Improvements
-1. Remove debugging logs in production builds
+1. Monitor performance in production builds
 2. Add unit tests for time slot generation logic
 3. Consider adding timezone support for international businesses
 4. Add support for split shifts (e.g., 9 AM - 1 PM, 5 PM - 9 PM)

@@ -74,8 +74,12 @@ const RoomManagement = () => {
 
   // Update room mutation
   const updateRoomMutation = useMutation({
-    mutationFn: ({ id, data }) => roomsAPI.update(id, data),
+    mutationFn: ({ id, data }) => {
+      // Debug logging removed for clean version'🚀 Update room mutation called with:', { id, data });
+      return roomsAPI.update(id, data);
+    },
     onSuccess: (resp) => {
+      // Debug logging removed for clean version'✅ Room update successful:', resp);
       // Invalidate queries to refetch the updated room list
       queryClient.invalidateQueries(['rooms']);
       queryClient.invalidateQueries(['room-categories']);
@@ -84,6 +88,7 @@ const RoomManagement = () => {
       setSelectedRoom(null);
     },
     onError: (error) => {
+      console.error('❌ Room update failed:', error);
       toast.error(error.response?.data?.error || 'Failed to update room');
     },
   });
@@ -272,7 +277,7 @@ const RoomManagement = () => {
                 )}
                 <div className="min-w-0">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium truncate">{room.name}</span>
+                    <span className="font-medium truncate">{room.name || 'Unnamed Room'}</span>
                     {/* Status badge - only show if status field is visible */}
                     {roomFormFields.status?.visible && (
                       <Badge className={getStatusColor(room.status)}>
@@ -359,7 +364,10 @@ const RoomManagement = () => {
           }}
           onSave={(data) => {
             if (isEditing) {
-              updateRoomMutation.mutate({ id: selectedRoom._id, data });
+              // Use both _id and id for compatibility
+              const roomId = selectedRoom._id || selectedRoom.id;
+              // Debug logging removed for clean version'🔧 Room update - ID:', roomId, 'Room:', selectedRoom, 'Data:', data);
+              updateRoomMutation.mutate({ id: roomId, data });
             } else {
               createRoomMutation.mutate(data);
             }
@@ -453,11 +461,13 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // console.log (removed for clean version)('🔧 Form submitted with data:', formData);
     // Provide server-compatible data, ensuring required fields exist
     const payload = {
       ...formData,
       isActive: formData.status !== 'inactive',
     };
+    // console.log (removed for clean version)('🔧 Form payload:', payload);
     onSave(payload);
   };
 

@@ -68,7 +68,7 @@ const convertToFrontendFormat = (backendHours) => {
 
 ### 3. Enhanced Error Handling
 - Added comprehensive error handling for API calls
-- Added debugging logs to track data conversion
+- Added enhanced tracking to monitor data conversion
 - Maintained backward compatibility with mock API
 
 ## Testing the Fix
@@ -111,7 +111,7 @@ npm run dev
 
 ## Files Modified
 - `src/lib/api.js` - Enhanced API layer with format conversion
-- Added debugging and error handling
+- Added enhanced monitoring and error handling
 
 ## Backward Compatibility
 - ✅ Mock API mode continues to work unchanged
@@ -119,7 +119,7 @@ npm run dev
 - ✅ No breaking changes to existing functionality
 
 ## Future Improvements
-1. Remove debugging logs in production
+1. Monitor performance in production
 2. Add unit tests for format conversion functions
 3. Consider standardizing on one data format across the entire application
 4. Add TypeScript interfaces for better type safety

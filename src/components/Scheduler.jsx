@@ -174,13 +174,13 @@ const Scheduler = ({ selectedDate, onDateChange }) => {
             className="w-3 h-3 rounded-full"
             style={{ backgroundColor: room.color || getRoomTypeColor(room.category) }}
           />
-          <span className="font-medium">{room.name}</span>
+          <span className="font-medium">{room.name || 'Unnamed Room'}</span>
           <Badge className="text-xs">
             {room.capacity}
           </Badge>
         </div>
       ),
-      name: room.name,
+      name: room.name || 'Unnamed Room',
       type: room.category,
       capacity: room.capacity,
       color: room.color || getRoomTypeColor(room.category),

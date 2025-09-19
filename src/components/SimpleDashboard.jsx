@@ -140,7 +140,7 @@ const SimpleDashboard = () => {
                           style={{ backgroundColor: room.color }}
                         />
                         <div>
-                          <p className="font-medium">{room.name}</p>
+                          <p className="font-medium">{room.name || 'Unnamed Room'}</p>
                           <p className="text-sm text-gray-600">{room.capacity} people</p>
                         </div>
                       </div>

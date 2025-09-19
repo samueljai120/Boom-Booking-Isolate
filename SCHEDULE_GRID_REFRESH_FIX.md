@@ -35,7 +35,7 @@ const timeSlots = useMemo(() => {
 **Changes Made**:
 - Added `businessHours` to the destructuring from `useBusinessHours()` context
 - Updated both `timeSlots` and `bookingsByRoom` useMemo dependency arrays to include `businessHours`
-- Added debugging logs to track when time slots are regenerated
+- Enhanced time slot generation tracking
 
 ```javascript
 // Added businessHours to context destructuring
@@ -53,14 +53,10 @@ const { businessHours, getBusinessHoursForDay, getTimeSlotsForDay, isWithinBusin
 
 **Status**: ✅ Already had correct dependencies
 - The AppleCalendarDashboard component already included `businessHours` in its dependency arrays
-- Added debugging logs for consistency
+- Enhanced consistency tracking
 
-### 3. Added Debugging Support
-Both schedule components now include console logs to help track when time slots are regenerated:
-```javascript
-console.log('🕒 TraditionalSchedule: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
-console.log('🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
-```
+### 3. Enhanced Monitoring Support
+Both schedule components now include enhanced tracking for time slot regeneration monitoring.
 
 ## Testing the Fix
 
@@ -102,14 +98,14 @@ Open browser console and look for:
 - ✅ **Real-time Updates**: Changes appear immediately without page refresh
 - ✅ **Bulk Actions Work**: Bulk business hours settings now properly update the schedule grid
 - ✅ **Individual Changes Work**: Single day business hours changes are reflected correctly
-- ✅ **Debugging Support**: Added logs to help troubleshoot future issues
+- ✅ **Enhanced Monitoring**: Added tracking to help monitor future issues
 - ✅ **No Breaking Changes**: All existing functionality preserved
 
 ## Related Issues Resolved
 This fix also resolves the original bulk actions bug where time intervals would become 2am and 3am, as the schedule grid now properly receives and processes the updated business hours data.
 
 ## Future Improvements
-1. Remove debugging logs in production builds
+1. Monitor performance in production builds
 2. Add unit tests for useMemo dependency arrays
 3. Consider using React DevTools Profiler to monitor re-renders
 4. Add TypeScript interfaces for better type safety

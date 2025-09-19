@@ -177,7 +177,7 @@ export const mockData = {
       additionalFees: 0,
       discount: 0,
       totalPrice: 30.00,
-      notes: 'Test reservation for debugging',
+      notes: 'Test reservation',
       specialRequests: 'None',
       confirmationCode: 'BK005',
       createdAt: new Date(),
@@ -287,6 +287,7 @@ export const mockAPI = {
       setTimeout(() => {
         // Look for room by both _id and id to handle different ID formats
         const index = mockData.rooms.findIndex(r => r.id === id || r._id === id);
+        
         if (index !== -1) {
           mockData.rooms[index] = { ...mockData.rooms[index], ...data };
           resolve({ data: mockData.rooms[index] });
@@ -416,8 +417,6 @@ export const mockAPI = {
           mockData.bookings[index] = { ...mockData.bookings[index], ...data, updatedAt: new Date() };
           resolve({ data: { booking: mockData.bookings[index] } });
         } else {
-          console.error('❌ Mock API: Booking not found for id:', id);
-          console.error('❌ Mock API: Available IDs:', mockData.bookings.map(b => ({ id: b.id, _id: b._id })));
           throw new Error('Booking not found');
         }
       }, 1000);

@@ -5,12 +5,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const isMockMode = !API_BASE_URL || API_BASE_URL.includes('your-api-server.com') || API_BASE_URL.includes('localhost');
 
-// Log API configuration for debugging
-console.log('🔧 API Configuration:', {
-  API_BASE_URL,
-  isMockMode,
-  mode: isMockMode ? 'MOCK' : 'REAL_BACKEND'
-});
+// API configuration (console.log removed for clean version)
 
 // Create axios instance for real API calls
 const apiClient = axios.create({
@@ -178,18 +173,14 @@ export const availabilityAPI = {
 export const businessHoursAPI = {
   get: async () => {
     if (isMockMode) {
-      console.log('🔧 Using mock API for business hours fetch');
       return mockAPI.getBusinessHours();
     }
     
     try {
-      console.log('🔧 Using real backend API for business hours fetch');
       const response = await apiClient.get('/business-hours');
-      console.log('🔧 Received business hours from backend:', response.data);
       
       // Convert backend format to frontend format
       const frontendHours = convertToFrontendFormat(response.data.data || []);
-      console.log('🔧 Converted to frontend format:', frontendHours);
       
       return {
         data: {
@@ -210,7 +201,6 @@ export const businessHoursAPI = {
         });
         
         // Fallback to mock mode for network errors
-        console.log('🔄 Falling back to mock API due to network error');
         return mockAPI.getBusinessHours();
       }
       
@@ -220,19 +210,13 @@ export const businessHoursAPI = {
   
   update: async (data) => {
     if (isMockMode) {
-      console.log('🔧 Using mock API for business hours update');
       return mockAPI.updateBusinessHours(data);
     }
     
     try {
-      console.log('🔧 Using real backend API for business hours update');
       
       // Convert frontend format to backend format
       const backendHours = convertToBackendFormat(data.businessHours || data);
-      console.log('🔧 Converting business hours for backend:', {
-        original: data.businessHours || data,
-        converted: backendHours
-      });
       
       const response = await apiClient.put('/business-hours', {
         hours: backendHours
@@ -240,10 +224,6 @@ export const businessHoursAPI = {
       
       // Convert response back to frontend format
       const frontendHours = convertToFrontendFormat(response.data.data || []);
-      console.log('🔧 Converting backend response to frontend:', {
-        backend: response.data.data,
-        frontend: frontendHours
-      });
       
       return {
         data: {
@@ -264,7 +244,6 @@ export const businessHoursAPI = {
         });
         
         // Fallback to mock mode for network errors
-        console.log('🔄 Falling back to mock API due to network error');
         return mockAPI.updateBusinessHours(data);
       }
       

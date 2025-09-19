@@ -109,7 +109,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
       id: 'system', 
       label: 'System Settings', 
       icon: Globe, 
-      description: 'Timezone, notifications, and integrations',
+      description: 'Timezone and integrations',
       category: 'system'
     }
   ];
@@ -1477,7 +1477,8 @@ const SystemSettings = () => {
         </div>
       </div>
 
-      {/* Notification Settings */}
+      {/* Notification Settings - HIDDEN */}
+      {false && (
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
           <AlertCircle className="w-5 h-5 text-gray-600" />
@@ -1525,6 +1526,7 @@ const SystemSettings = () => {
           </label>
         </div>
       </div>
+      )}
 
       {/* Performance Settings */}
       <div className="space-y-4">
@@ -1534,6 +1536,8 @@ const SystemSettings = () => {
         </div>
         
         <div className="space-y-3">
+          {/* Auto-refresh setting - HIDDEN */}
+          {false && (
           <label className="flex items-center justify-between">
             <div>
               <div className="font-medium">Auto-refresh Schedule</div>
@@ -1546,7 +1550,10 @@ const SystemSettings = () => {
               className="w-4 h-4 text-blue-600 rounded"
             />
           </label>
+          )}
           
+          {/* Refresh interval setting - HIDDEN */}
+          {false && (
           <div>
             <label className="text-sm font-medium text-gray-700 mb-2 block">Refresh Interval (seconds)</label>
             <input
@@ -1558,6 +1565,7 @@ const SystemSettings = () => {
               className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          )}
         </div>
       </div>
 
@@ -1622,7 +1630,6 @@ const SystemSettings = () => {
             <p className="font-medium mb-1">System Settings Information:</p>
             <ul className="space-y-1 text-blue-700">
               <li>• Timezone affects all time displays and business hours</li>
-              <li>• Notifications help you stay updated on booking changes</li>
               <li>• Performance settings optimize the application for your needs</li>
               <li>• Regular backups ensure you don't lose your configuration</li>
             </ul>

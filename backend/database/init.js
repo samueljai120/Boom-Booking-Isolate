@@ -94,7 +94,7 @@ export async function initDatabase() {
       // Insert default data
       insertDefaultData()
         .then(() => {
-          console.log('✅ Database tables created successfully');
+          // console.log (removed for clean version)('✅ Database tables created successfully');
           resolve();
         })
         .catch(reject);
@@ -112,12 +112,12 @@ async function insertDefaultData() {
       }
 
       if (row.count > 0) {
-        console.log('📊 Default data already exists, skipping...');
+        // console.log (removed for clean version)('📊 Default data already exists, skipping...');
         resolve();
         return;
       }
 
-      console.log('📊 Inserting default data...');
+      // console.log (removed for clean version)('📊 Inserting default data...');
 
       // Insert default user
       const hashedPassword = bcrypt.hashSync('demo123', 10);
@@ -193,7 +193,7 @@ async function insertDefaultData() {
         `, booking);
       });
 
-      console.log('✅ Default data inserted successfully');
+      // console.log (removed for clean version)('✅ Default data inserted successfully');
       resolve();
     });
   });

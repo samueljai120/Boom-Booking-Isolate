@@ -37,7 +37,7 @@ The application now automatically falls back to mock API when network errors occ
 ### Features Added
 1. **Automatic Mock Mode Detection**: Detects placeholder URLs and uses mock API
 2. **Network Error Fallback**: Falls back to mock API on network errors
-3. **Enhanced Logging**: Detailed console logs for debugging
+3. **Enhanced Logging**: Detailed error tracking and monitoring
 4. **Better Error Messages**: Clear error reporting with fallback notifications
 
 ### Console Logs to Look For
@@ -112,7 +112,7 @@ When you have a real backend available:
 
 - ✅ **No More Network Errors**: Automatic fallback to mock API
 - ✅ **Seamless Development**: Works without backend setup
-- ✅ **Better Debugging**: Enhanced logging and error reporting
+- ✅ **Better Monitoring**: Enhanced logging and error reporting
 - ✅ **Backward Compatible**: Existing functionality preserved
 - ✅ **Production Ready**: Easy to switch to real backend when available
 

@@ -218,7 +218,7 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
       const actualFinalLeft = localStyle?.left !== undefined ? localStyle.left : Math.max(0, finalLeft);
       const actualFinalWidth = localStyle?.width !== undefined ? localStyle.width : Math.max(20, finalWidth);
       
-      console.log('🚀 Final resize calculation:', { 
+      // Debug logging removed for clean version'🚀 Final resize calculation:', { 
         handle, 
         actualFinalLeft, 
         actualFinalWidth,
@@ -633,9 +633,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const { data: bookingsData, isFetching: bookingsFetching, isLoading: bookingsLoading, error: bookingsError } = useQuery({
     queryKey: ['bookings', selectedDate],
     queryFn: async () => {
-      console.log('🔍 Fetching bookings for date:', selectedDate);
       const result = await bookingsAPI.getAll({ date: selectedDate });
-      console.log('🔍 Bookings API result:', result);
       return result;
     },
     staleTime: 10 * 60 * 1000,
@@ -654,11 +652,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   // Mutation for moving bookings with optimistic update
   const moveBookingMutation = useMutation({
     mutationFn: (data) => {
-      console.log('🚀 TraditionalSchedule: Calling move API with data:', data);
       return bookingsAPI.move(data);
     },
     onMutate: async (variables) => {
-      console.log('🔄 TraditionalSchedule: Optimistic update starting with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
@@ -706,7 +702,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
             endTime: newTimeOut,
           };
           
-          console.log('🔄 TraditionalSchedule: Updated booking after move:', {
             customerName: updated[sourceIdx].customerName,
             room: updated[sourceIdx].room,
             roomId: updated[sourceIdx].roomId,
@@ -736,8 +731,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       } catch {}
     },
     onSuccess: (data, variables) => {
-      console.log('✅ TraditionalSchedule: Move mutation successful:', data);
-      console.log('🔄 TraditionalSchedule: About to invalidate queries - current bookings data:', queryClient.getQueryData(['bookings']));
       toast.success(variables?.targetBookingId ? 'Booking swapped' : 'Booking moved');
       // Invalidate queries to ensure data consistency with server
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
@@ -759,11 +752,11 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   // Mutation for resizing bookings with optimistic update
   const resizeBookingMutation = useMutation({
     mutationFn: (data) => {
-      console.log('🔄 Resize mutation called with data:', data);
+      // Debug logging removed for clean version'🔄 Resize mutation called with data:', data);
       return bookingsAPI.resize(data);
     },
     onMutate: async (variables) => {
-      console.log('🔄 Resize mutation onMutate called with variables:', variables);
+      // Debug logging removed for clean version'🔄 Resize mutation onMutate called with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
@@ -803,7 +796,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       } catch {}
     },
     onSuccess: (data, variables) => {
-      console.log('✅ Resize mutation succeeded:', { data, variables });
+      // Debug logging removed for clean version'✅ Resize mutation succeeded:', { data, variables });
       toast.success('Booking resized');
     },
     onSettled: () => {
@@ -874,7 +867,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
-    console.log('🕒 TraditionalSchedule: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
+    // console.log (removed for clean version)('🕒 TraditionalSchedule: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
     
     if (dayHours.isClosed) {
       return [];
@@ -884,7 +877,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
     const [closeHour, closeMinute] = dayHours.closeTime.split(':').map(Number);
     
-    console.log('🕒 TraditionalSchedule: Parsed times:', {
+    // console.log (removed for clean version)('🕒 TraditionalSchedule: Parsed times:', {
       openTime: dayHours.openTime,
       closeTime: dayHours.closeTime,
       openHour,
@@ -896,7 +889,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     // Check if this is late night hours (close time is next day)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
     
-    console.log('🕒 TraditionalSchedule: Late night check:', {
+    // console.log (removed for clean version)('🕒 TraditionalSchedule: Late night check:', {
       isLateNight,
       reason: isLateNight ? 'Close time is before open time' : 'Normal hours'
     });
@@ -932,7 +925,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     
     const maxSlots = 200; // Prevent infinite loops (200 slots = 50 hours max)
     
-    console.log('🕒 TraditionalSchedule: Time slot generation parameters:', {
+    // console.log (removed for clean version)('🕒 TraditionalSchedule: Time slot generation parameters:', {
       timeInterval,
       currentMinutes,
       closeMinutes,
@@ -1022,7 +1015,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     
     // Time slots generated
     
-    console.log('🕒 TraditionalSchedule: Generated time slots:', {
+    // console.log (removed for clean version)('🕒 TraditionalSchedule: Generated time slots:', {
       totalSlots: slots.length,
       firstSlot: slots[0],
       lastSlot: slots[slots.length - 1],
@@ -1273,7 +1266,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       end: endTime.toDate(),
       resource: {
         roomId: room._id || room.id,
-        roomName: room.name,
+        roomName: room.name || 'Unnamed Room',
         roomType: room.category,
         capacity: room.capacity,
       },
@@ -1421,7 +1414,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         if (conflicts.length === 1) {
           // Single conflict - perform swap
           const targetBooking = conflicts[0];
-          console.log('🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
+          // Debug logging removed for clean version'🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
           
           // Calculate the target booking's new time (swap the start times)
           const targetDuration = moment(targetBooking.timeOut || targetBooking.endTime).diff(moment(targetBooking.timeIn || targetBooking.startTime), 'minutes', true);
@@ -1455,7 +1448,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           window.dispatchEvent(new CustomEvent('exit-edit-mode'));
         } else if (conflicts.length === 0) {
           // No conflicts - simple move
-          console.log('📍 Moving booking:', booking.customerName, 'to new position');
+          // Debug logging removed for clean version'📍 Moving booking:', booking.customerName, 'to new position');
           moveBookingMutation.mutate({
             bookingId: booking._id,
             newRoomId: roomId,
@@ -1479,7 +1472,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         const targetRoomId = targetBooking.room?._id || targetBooking.roomId?._id || targetBooking.room?.id || targetBooking.roomId?.id || targetBooking.roomId;
         const sourceRoomId = booking.room?._id || booking.roomId?._id || booking.room?.id || booking.roomId?.id || booking.roomId;
         
-        console.log('🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
+        // Debug logging removed for clean version'🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
         moveBookingMutation.mutate({
           bookingId: booking._id,
           newRoomId: targetRoomId,
@@ -1512,8 +1505,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // Get the actual time interval from settings
       const timeInterval = settings.timeInterval || 15;
       
-      // Debug logging (remove in production)
-      // console.log('🔧 Resize Debug - TraditionalSchedule:', {
+      // Debug logging removed for clean version
       //   timeInterval,
       //   settingsTimeInterval: settings.timeInterval,
       //   is60Minute: timeInterval === 60,
@@ -1526,7 +1518,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // For other intervals, use the interval itself
       const resizeSnapInterval = timeInterval === 60 ? 30 : timeInterval;
       
-      console.log('🔧 Time calculation inputs:', {
+      // Debug logging removed for clean version'🔧 Time calculation inputs:', {
         finalLeft,
         finalWidth,
         slotWidth,
@@ -1557,7 +1549,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         }
         newEndTime = booking.endTime || booking.timeOut; // Keep end time same
         
-        console.log('🔧 Left handle calculation:', {
+        // Debug logging removed for clean version'🔧 Left handle calculation:', {
           slotFraction,
           newStartMinutes,
           snappedMinutes: newStartMinutes,
@@ -1588,7 +1580,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           newEndTime = proposedEndTime.toISOString();
         }
         
-        console.log('🔧 Right handle calculation:', {
+        // Debug logging removed for clean version'🔧 Right handle calculation:', {
           endSlotFraction,
           newEndMinutes,
           snappedMinutes: newEndMinutes,
@@ -1600,7 +1592,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         });
       }
 
-      console.log('🚀 Calling exact position resize API with:', {
+      // Debug logging removed for clean version'🚀 Calling exact position resize API with:', {
         bookingId,
         newStartTime,
         newEndTime,
@@ -1640,7 +1632,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         newEndTime = currentEnd.clone().add(intervalDirection * intervalDuration).toISOString();
       }
 
-      console.log('🚀 Calling interval-based resize API with:', {
+      // Debug logging removed for clean version'🚀 Calling interval-based resize API with:', {
         bookingId,
         newStartTime,
         newEndTime,
@@ -2113,7 +2105,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
                           className="w-3 h-3 rounded-full flex-shrink-0"
                           style={{ backgroundColor: settings.colorByBookingSource ? '#9ca3af' : (room.color || getRoomTypeColor(room.category)) }}
                         />
-                        <span className="text-sm font-medium truncate text-gray-900" title={room.name}>{room.name}</span>
+                        <span className="text-sm font-medium truncate text-gray-900" title={room.name || 'Unnamed Room'}>{room.name || 'Unnamed Room'}</span>
                       </div>
                       <div className="text-xs truncate text-gray-500">
                         {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)} ({room.capacity} max)

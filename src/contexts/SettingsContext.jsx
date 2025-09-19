@@ -62,7 +62,7 @@ export const SettingsProvider = ({ children }) => {
           businessHours: { openHour: 16, closeHour: 23 },
           timezone: 'America/New_York', // Default to Eastern Time
           timeFormat: '12h',
-          timeInterval: 15, // Default to 15 minutes
+          timeInterval: 60, // Default to 60 minutes (1 hour)
           showBusinessHours: true,
           // Coloring options
           colorByRoomType: true,
