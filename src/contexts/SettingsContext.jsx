@@ -35,7 +35,7 @@ export const SettingsProvider = ({ children }) => {
           showBusinessHours: true,
           // Coloring options
           colorByRoomType: true,
-          colorByBookingSource: false,
+          colorByBookingSource: true,
           bookingSourceColors: {
             walkin: '#22c55e', // green
             phone: '#f59e0b', // amber
@@ -118,7 +118,7 @@ export const SettingsProvider = ({ children }) => {
       timeFormat: '12h',
       timeInterval: 15, // Default to 15 minutes
       showBusinessHours: true,
-      colorByBookingSource: false,
+      colorByBookingSource: true,
       bookingSourceColors: {
         walkin: '#22c55e',
         phone: '#f59e0b',

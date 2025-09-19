@@ -46,8 +46,10 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   // Reset form when booking changes
   useEffect(() => {
     if (booking) {
+      console.log('🔍 BookingModal: Booking object received:', booking);
       if (booking.id) {
         // Editing existing booking
+        console.log('🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
         reset({
           customerName: booking.title || booking.customerName || '',
@@ -55,8 +57,8 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           email: booking.resource?.email || booking.email || '',
           partySize: booking.resource?.partySize || booking.partySize || '',
           source: booking.resource?.source || booking.source || 'walk_in',
-          startTime: moment(booking.start).format('YYYY-MM-DDTHH:mm'),
-          endTime: moment(booking.end).format('YYYY-MM-DDTHH:mm'),
+          startTime: moment(booking.startTime || booking.start).format('YYYY-MM-DDTHH:mm'),
+          endTime: moment(booking.endTime || booking.end).format('YYYY-MM-DDTHH:mm'),
           status: booking.resource?.status || booking.status || 'confirmed',
           priority: booking.resource?.priority || booking.priority || 'normal',
           basePrice: booking.resource?.basePrice || booking.basePrice || '',
@@ -66,6 +68,14 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           notes: booking.resource?.notes || booking.notes || '',
           specialRequests: booking.resource?.specialRequests || booking.specialRequests || '',
           roomId: booking.resource?.roomId || booking.room?._id || booking.roomId || '',
+        });
+        console.log('🔍 BookingModal: Form reset with values:', {
+          customerName: booking.title || booking.customerName || '',
+          phone: booking.resource?.phone || booking.phone || '',
+          email: booking.resource?.email || booking.email || '',
+          source: booking.resource?.source || booking.source || 'walk_in',
+          startTime: moment(booking.startTime || booking.start).format('YYYY-MM-DDTHH:mm'),
+          endTime: moment(booking.endTime || booking.end).format('YYYY-MM-DDTHH:mm'),
         });
       } else {
         // Creating new booking
@@ -90,7 +100,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
         });
       }
     }
-  }, [booking, reset]);
+  }, [booking]);
 
   // Create booking mutation (optimistic)
   const createBookingMutation = useMutation({
@@ -290,7 +300,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     };
 
     if (isEditing) {
-      updateBookingMutation.mutate({ id: booking.id, data: bookingData });
+      updateBookingMutation.mutate({ id: booking._id || booking.id, data: bookingData });
     } else {
       createBookingMutation.mutate(bookingData);
     }

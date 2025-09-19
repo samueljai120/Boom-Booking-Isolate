@@ -269,7 +269,12 @@ export const mockAPI = {
           category: data.category,
           amenities: data.amenities || [],
           isActive: data.isActive !== false,
-          color: data.color || '#3B82F6'
+          status: data.status || 'active',
+          color: data.color || '#3B82F6',
+          description: data.description || '',
+          hourlyRate: data.hourlyRate || 0,
+          isBookable: data.isBookable !== false,
+          sortOrder: data.sortOrder || 0
         };
         mockData.rooms.push(newRoom);
         resolve({ data: newRoom });
@@ -280,7 +285,8 @@ export const mockAPI = {
   updateRoom: (id, data) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const index = mockData.rooms.findIndex(r => r.id === id);
+        // Look for room by both _id and id to handle different ID formats
+        const index = mockData.rooms.findIndex(r => r.id === id || r._id === id);
         if (index !== -1) {
           mockData.rooms[index] = { ...mockData.rooms[index], ...data };
           resolve({ data: mockData.rooms[index] });
@@ -294,7 +300,8 @@ export const mockAPI = {
   deleteRoom: (id) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const index = mockData.rooms.findIndex(r => r.id === id);
+        // Look for room by both _id and id to handle different ID formats
+        const index = mockData.rooms.findIndex(r => r.id === id || r._id === id);
         if (index !== -1) {
           mockData.rooms.splice(index, 1);
           resolve({ data: { message: 'Room deleted successfully' } });

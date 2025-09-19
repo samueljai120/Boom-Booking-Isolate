@@ -807,6 +807,19 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
     },
   });
+
+  // Delete booking mutation
+  const deleteBookingMutation = useMutation({
+    mutationFn: (id) => bookingsAPI.delete(id),
+    onSuccess: () => {
+      toast.success('Booking deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Failed to delete booking');
+    },
+  });
+
   const normalizedBookings = useMemo(() => {
     const mapped = bookings.map(b => ({
       ...b,
@@ -2113,7 +2126,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
                 width: `${booking.widthPixels}px`,
                 top: `${roomIndex * SLOT_HEIGHT}px`, // Align with room row
                 height: `${SLOT_HEIGHT}px`, // Full height to match slot
-                backgroundColor: settings.colorByBookingSource ? (settings.bookingSourceColors?.[(booking.source || '').toLowerCase()] || settings.bookingSourceColors?.online || '#2563eb') : (room.color || getRoomTypeColor(room.category)),
+                backgroundColor: settings.colorByBookingSource ? (settings.bookingSourceColors?.[(booking.source || '').toLowerCase() === 'walk_in' ? 'walkin' : (booking.source || '').toLowerCase()] || settings.bookingSourceColors?.online || '#2563eb') : (room.color || getRoomTypeColor(room.category)),
                 zIndex: 10,
                 pointerEvents: 'auto',
                 borderRadius: '4px', // Add rounded corners for better visual appearance
@@ -2219,8 +2232,10 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       onEdit={handleEditBooking}
       onNoShow={handleNoShow}
       onDelete={(booking) => {
-        // Handle delete if needed
-        console.log('Delete booking:', booking);
+        if (window.confirm('Are you sure you want to delete this reservation?')) {
+          deleteBookingMutation.mutate(booking._id);
+          setIsViewModalOpen(false);
+        }
       }}
     />
 
