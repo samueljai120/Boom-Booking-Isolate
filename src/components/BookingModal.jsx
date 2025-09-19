@@ -317,6 +317,78 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   // Get business hours for the selected date
   const weekday = selectedDate.getDay();
   const dayHours = getBusinessHoursForDay(weekday);
+
+  // Helper function to render form fields based on settings
+  const renderFormField = (fieldKey, fieldConfig, register, errors, options = {}) => {
+    if (!fieldConfig?.visible) return null;
+
+    const isRequired = fieldConfig.required;
+    const label = fieldConfig.label || fieldKey;
+    const placeholder = fieldConfig.placeholder || `Enter ${label.toLowerCase()}`;
+    
+    // Get validation rules based on field configuration
+    const getValidationRules = () => {
+      const rules = {};
+      if (isRequired) {
+        rules.required = `${label} is required`;
+      }
+      
+      switch (fieldConfig.validation) {
+        case 'email':
+          rules.pattern = {
+            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+            message: 'Please enter a valid email address'
+          };
+          break;
+        case 'phone':
+          rules.pattern = {
+            value: /^[\+]?[1-9][\d]{7,15}$/,
+            message: 'Please enter a valid phone number (8-16 digits, starting with 1-9)'
+          };
+          break;
+        case 'number':
+          rules.pattern = {
+            value: /^\d+$/,
+            message: 'Please enter a valid number'
+          };
+          break;
+        case 'currency':
+          rules.pattern = {
+            value: /^\d+(\.\d{1,2})?$/,
+            message: 'Please enter a valid currency amount'
+          };
+          break;
+      }
+      
+      return rules;
+    };
+
+    const validationRules = getValidationRules();
+
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          {label} {isRequired && '*'}
+        </label>
+        <div className="relative">
+          {options.icon && (
+            <div className="absolute left-3 top-3 w-4 h-4 text-gray-400">
+              {options.icon}
+            </div>
+          )}
+          <Input
+            {...register(fieldKey, validationRules)}
+            placeholder={placeholder}
+            className={options.icon ? "pl-10" : ""}
+            type={fieldConfig.type === 'email' ? 'email' : fieldConfig.type === 'tel' ? 'tel' : fieldConfig.type === 'number' ? 'number' : 'text'}
+          />
+        </div>
+        {errors[fieldKey] && (
+          <p className="text-sm text-red-500">{errors[fieldKey].message}</p>
+        )}
+      </div>
+    );
+  };
   
   // Generate available time slots for the selected date
   const availableTimeSlots = getTimeSlotsForDay(selectedDate);
@@ -362,106 +434,38 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Customer Information */}
-            {(settings.bookingFormFields.customerName || settings.bookingFormFields.phone || settings.bookingFormFields.email || settings.bookingFormFields.partySize) && (
+            {(settings.bookingFormFields.customerName?.visible || settings.bookingFormFields.phone?.visible || settings.bookingFormFields.email?.visible || settings.bookingFormFields.partySize?.visible) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Customer Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.customerName && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Customer Name *</label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('customerName', { 
-                            required: settings.bookingFormFields.customerName ? 'Customer name is required' : false 
-                          })}
-                          placeholder="Enter customer name"
-                          className="pl-10"
-                        />
-                      </div>
-                      {errors.customerName && (
-                        <p className="text-sm text-red-500">{errors.customerName.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.phone && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Phone Number *</label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('phone', { 
-                            required: settings.bookingFormFields.phone ? 'Phone number is required' : false,
-                            pattern: {
-                              value: /^[\+]?[1-9][\d]{7,15}$/,
-                              message: 'Please enter a valid phone number (8-16 digits, starting with 1-9)'
-                            }
-                          })}
-                          placeholder="Enter phone number (e.g., 15551234567)"
-                          className="pl-10"
-                        />
-                      </div>
-                      {errors.phone && (
-                        <p className="text-sm text-red-500">{errors.phone.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.email && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Email Address</label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('email', {
-                            pattern: {
-                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                              message: 'Please enter a valid email address'
-                            }
-                          })}
-                          placeholder="Enter email address"
-                          className="pl-10"
-                        />
-                      </div>
-                      {errors.email && (
-                        <p className="text-sm text-red-500">{errors.email.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.partySize && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Party Size</label>
-                      <div className="relative">
-                        <Users className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('partySize', {
-                            pattern: {
-                              value: /^\d+$/,
-                              message: 'Please enter a valid number'
-                            }
-                          })}
-                          placeholder="Enter party size"
-                          className="pl-10"
-                          type="number"
-                          min="1"
-                        />
-                      </div>
-                      {errors.partySize && (
-                        <p className="text-sm text-red-500">{errors.partySize.message}</p>
-                      )}
-                    </div>
-                  )}
+                  {renderFormField('customerName', settings.bookingFormFields.customerName, register, errors, { icon: <User className="w-4 h-4" /> })}
+                  {renderFormField('phone', settings.bookingFormFields.phone, register, errors, { icon: <Phone className="w-4 h-4" /> })}
+                  {renderFormField('email', settings.bookingFormFields.email, register, errors, { icon: <Mail className="w-4 h-4" /> })}
+                  {renderFormField('partySize', settings.bookingFormFields.partySize, register, errors, { icon: <Users className="w-4 h-4" /> })}
                 </div>
               </div>
             )}
 
+            {/* Custom Fields */}
+            {settings.customBookingFields?.filter(field => field.visible).map((field) => (
+              <div key={field.id} className="space-y-4">
+                <h3 className="text-lg font-semibold">Additional Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {renderFormField(field.name, field, register, errors)}
+                </div>
+              </div>
+            ))}
+
             {/* Booking Details */}
-            {(settings.bookingFormFields.room || settings.bookingFormFields.source || settings.bookingFormFields.timeIn || settings.bookingFormFields.timeOut || settings.bookingFormFields.status || settings.bookingFormFields.priority) && (
+            {(settings.bookingFormFields.room?.visible || settings.bookingFormFields.source?.visible || settings.bookingFormFields.startTime?.visible || settings.bookingFormFields.endTime?.visible || settings.bookingFormFields.status?.visible || settings.bookingFormFields.priority?.visible) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Booking Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.room && (
+                  {settings.bookingFormFields.room?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Room *</label>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.room.label} {settings.bookingFormFields.room.required && '*'}
+                      </label>
                       <CustomSelect
                         value={watch('roomId')}
                         onChange={(value) => setValue('roomId', value)}
@@ -469,20 +473,13 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                           .filter(r => r.status === 'active' && r.isBookable)
                           .map(r => ({ value: r._id || r.id, label: `${r.name} (${r.capacity} max) - $${r.hourlyRate || 0}/hour` }))}
                       />
-                      <input
-                        {...register('roomId', { 
-                          required: settings.bookingFormFields.room ? 'Room is required' : false 
-                        })}
-                        type="hidden"
-                      />
-                      {errors.roomId && (
-                        <p className="text-sm text-red-500">{errors.roomId.message}</p>
-                      )}
                     </div>
                   )}
-                  {settings.bookingFormFields.source && (
+                  {settings.bookingFormFields.source?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Source</label>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.source.label} {settings.bookingFormFields.source.required && '*'}
+                      </label>
                       <CustomSelect
                         value={watch('source')}
                         onChange={(value) => setValue('source', value)}
@@ -497,9 +494,53 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.status && (
+                  {settings.bookingFormFields.startTime?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Status</label>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.startTime.label} {settings.bookingFormFields.startTime.required && '*'}
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          {...register('startTime', { 
+                            required: settings.bookingFormFields.startTime.required ? 'Start time is required' : false 
+                          })}
+                          type="datetime-local"
+                          placeholder={settings.bookingFormFields.startTime.placeholder}
+                          className="pl-10"
+                        />
+                      </div>
+                      {errors.startTime && (
+                        <p className="text-sm text-red-500">{errors.startTime.message}</p>
+                      )}
+                    </div>
+                  )}
+                  {settings.bookingFormFields.endTime?.visible && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.endTime.label} {settings.bookingFormFields.endTime.required && '*'}
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                        <Input
+                          {...register('endTime', { 
+                            required: settings.bookingFormFields.endTime.required ? 'End time is required' : false 
+                          })}
+                          type="datetime-local"
+                          placeholder={settings.bookingFormFields.endTime.placeholder}
+                          className="pl-10"
+                        />
+                      </div>
+                      {errors.endTime && (
+                        <p className="text-sm text-red-500">{errors.endTime.message}</p>
+                      )}
+                    </div>
+                  )}
+                  {settings.bookingFormFields.status?.visible && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.status.label} {settings.bookingFormFields.status.required && '*'}
+                      </label>
                       <CustomSelect
                         value={watch('status')}
                         onChange={(value) => setValue('status', value)}
@@ -512,9 +553,11 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.priority && (
+                  {settings.bookingFormFields.priority?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Priority</label>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.priority.label} {settings.bookingFormFields.priority.required && '*'}
+                      </label>
                       <CustomSelect
                         value={watch('priority')}
                         onChange={(value) => setValue('priority', value)}
@@ -531,139 +574,57 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
               </div>
             )}
 
-            {/* Time Selection */}
-            {(settings.bookingFormFields.timeIn || settings.bookingFormFields.timeOut) && (
+            {/* Pricing */}
+            {(settings.bookingFormFields.basePrice?.visible || settings.bookingFormFields.additionalFees?.visible || settings.bookingFormFields.discount?.visible || settings.bookingFormFields.totalPrice?.visible) && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Time Selection</h3>
-                {/* Business Hours Status */}
-                <div className={`p-3 rounded-lg border ${
-                  isBusinessClosed 
-                    ? 'bg-red-50 border-red-200' 
-                    : isTimeWithinBusinessHours 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-yellow-50 border-yellow-200'
-                }`}>
-                  <div className="flex items-center">
-                    <Clock className={`w-4 h-4 mr-2 ${
-                      isBusinessClosed 
-                        ? 'text-red-600' 
-                        : isTimeWithinBusinessHours 
-                          ? 'text-green-600' 
-                          : 'text-yellow-600'
-                    }`} />
-                    <div className="text-sm">
-                      <span className="font-medium">
-                        {moment(selectedDate).format('dddd, MMMM D, YYYY')}
-                      </span>
-                      <span className="ml-2">
-                        {isBusinessClosed ? (
-                          <span className="text-red-600 font-medium">Closed</span>
-                        ) : (
-                          <span className="text-gray-600">
-                            Business Hours: {getBusinessHoursText()}
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  {!isTimeWithinBusinessHours && !isBusinessClosed && (
-                    <div className="mt-2 flex items-start">
-                      <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-yellow-800">
-                        Selected time is outside business hours. Please choose a time between {dayHours.openTime} and {dayHours.closeTime}.
-                      </p>
-                    </div>
-                  )}
-                  {isBusinessClosed && (
-                    <div className="mt-2 flex items-start">
-                      <AlertCircle className="w-4 h-4 text-red-600 mr-2 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-red-800">
-                        Business is closed on this date. Please choose a different date.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
+                <h3 className="text-lg font-semibold">Pricing</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.timeIn && (
+                  {renderFormField('basePrice', settings.bookingFormFields.basePrice, register, errors, { icon: <DollarSign className="w-4 h-4" /> })}
+                  {renderFormField('additionalFees', settings.bookingFormFields.additionalFees, register, errors, { icon: <DollarSign className="w-4 h-4" /> })}
+                  {renderFormField('discount', settings.bookingFormFields.discount, register, errors, { icon: <DollarSign className="w-4 h-4" /> })}
+                  {renderFormField('totalPrice', settings.bookingFormFields.totalPrice, register, errors, { icon: <DollarSign className="w-4 h-4" /> })}
+                </div>
+              </div>
+            )}
+
+            {/* Additional Information */}
+            {(settings.bookingFormFields.notes?.visible || settings.bookingFormFields.specialRequests?.visible) && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Additional Information</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  {settings.bookingFormFields.notes?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Start Time *</label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="datetime-local"
-                          {...register('startTime', { 
-                            required: settings.bookingFormFields.timeIn ? 'Start time is required' : false,
-                            validate: (value) => {
-                              if (!value) return true;
-                              const selectedDate = new Date(value);
-                              const dayHours = getBusinessHoursForDay(selectedDate.getDay());
-                              if (dayHours.isClosed) {
-                                return 'Business is closed on this date';
-                              }
-                              return true;
-                            }
-                          })}
-                          className={`pl-10 ${
-                            !isTimeWithinBusinessHours && !isBusinessClosed 
-                              ? 'border-yellow-300 focus:border-yellow-500 focus:ring-yellow-500' 
-                              : isBusinessClosed 
-                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                                : ''
-                          }`}
-                          min={isBusinessClosed ? undefined : moment(selectedDate).format('YYYY-MM-DDTHH:mm')}
-                          max={isBusinessClosed ? undefined : moment(selectedDate).endOf('day').format('YYYY-MM-DDTHH:mm')}
-                        />
-                      </div>
-                      {errors.startTime && (
-                        <p className="text-sm text-red-500">{errors.startTime.message}</p>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.notes.label} {settings.bookingFormFields.notes.required && '*'}
+                      </label>
+                      <textarea
+                        {...register('notes', { 
+                          required: settings.bookingFormFields.notes.required ? 'Notes are required' : false 
+                        })}
+                        placeholder={settings.bookingFormFields.notes.placeholder}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                      />
+                      {errors.notes && (
+                        <p className="text-sm text-red-500">{errors.notes.message}</p>
                       )}
                     </div>
                   )}
-
-                  {settings.bookingFormFields.timeOut && (
+                  {settings.bookingFormFields.specialRequests?.visible && (
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">End Time *</label>
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          type="datetime-local"
-                          {...register('endTime', { 
-                            required: settings.bookingFormFields.timeOut ? 'End time is required' : false,
-                            validate: (value) => {
-                              if (!value) return true;
-                              const selectedDate = new Date(value);
-                              const dayHours = getBusinessHoursForDay(selectedDate.getDay());
-                              if (dayHours.isClosed) {
-                                return 'Business is closed on this date';
-                              }
-                              
-                              // Check if end time is after start time
-                              const startTime = watch('startTime');
-                              if (startTime && value) {
-                                const startDate = new Date(startTime);
-                                const endDate = new Date(value);
-                                if (endDate <= startDate) {
-                                  return 'End time must be after start time';
-                                }
-                              }
-                              
-                              return true;
-                            }
-                          })}
-                          className={`pl-10 ${
-                            !isTimeWithinBusinessHours && !isBusinessClosed 
-                              ? 'border-yellow-300 focus:border-yellow-500 focus:ring-yellow-500' 
-                              : isBusinessClosed 
-                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                                : ''
-                          }`}
-                          min={isBusinessClosed ? undefined : moment(selectedDate).format('YYYY-MM-DDTHH:mm')}
-                          max={isBusinessClosed ? undefined : moment(selectedDate).endOf('day').format('YYYY-MM-DDTHH:mm')}
-                        />
-                      </div>
-                      {errors.endTime && (
-                        <p className="text-sm text-red-500">{errors.endTime.message}</p>
+                      <label className="text-sm font-medium">
+                        {settings.bookingFormFields.specialRequests.label} {settings.bookingFormFields.specialRequests.required && '*'}
+                      </label>
+                      <textarea
+                        {...register('specialRequests', { 
+                          required: settings.bookingFormFields.specialRequests.required ? 'Special requests are required' : false 
+                        })}
+                        placeholder={settings.bookingFormFields.specialRequests.placeholder}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        rows={3}
+                      />
+                      {errors.specialRequests && (
+                        <p className="text-sm text-red-500">{errors.specialRequests.message}</p>
                       )}
                     </div>
                   )}
@@ -699,147 +660,6 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
               </div>
             )}
 
-            {/* Pricing */}
-            {(settings.bookingFormFields.basePrice || settings.bookingFormFields.additionalFees || settings.bookingFormFields.discount || settings.bookingFormFields.totalPrice) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Pricing</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.basePrice && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Base Price</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('basePrice', {
-                            pattern: {
-                              value: /^\d+(\.\d{1,2})?$/,
-                              message: 'Please enter a valid price (e.g., 25.00)'
-                            }
-                          })}
-                          placeholder="Enter base price"
-                          className="pl-10"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                      {errors.basePrice && (
-                        <p className="text-sm text-red-500">{errors.basePrice.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.additionalFees && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Additional Fees</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('additionalFees', {
-                            pattern: {
-                              value: /^\d+(\.\d{1,2})?$/,
-                              message: 'Please enter a valid amount (e.g., 5.00)'
-                            }
-                          })}
-                          placeholder="Enter additional fees"
-                          className="pl-10"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                      {errors.additionalFees && (
-                        <p className="text-sm text-red-500">{errors.additionalFees.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.discount && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Discount</label>
-                      <div className="relative">
-                        <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('discount', {
-                            pattern: {
-                              value: /^\d+(\.\d{1,2})?$/,
-                              message: 'Please enter a valid discount amount (e.g., 10.00)'
-                            }
-                          })}
-                          placeholder="Enter discount amount"
-                          className="pl-10"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                      {errors.discount && (
-                        <p className="text-sm text-red-500">{errors.discount.message}</p>
-                      )}
-                    </div>
-                  )}
-                  {settings.bookingFormFields.totalPrice && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Total Price</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('totalPrice', {
-                            pattern: {
-                              value: /^\d+(\.\d{1,2})?$/,
-                              message: 'Please enter a valid total price (e.g., 30.00)'
-                            }
-                          })}
-                          placeholder="Enter total price"
-                          className="pl-10"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                      {errors.totalPrice && (
-                        <p className="text-sm text-red-500">{errors.totalPrice.message}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Additional Information */}
-            {(settings.bookingFormFields.notes || settings.bookingFormFields.specialRequests) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Additional Information</h3>
-                <div className="space-y-4">
-                  {settings.bookingFormFields.notes && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Notes</label>
-                      <div className="relative">
-                        <FileText className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <textarea
-                          {...register('notes')}
-                          placeholder="Additional notes..."
-                          className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {settings.bookingFormFields.specialRequests && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Special Requests</label>
-                      <div className="relative">
-                        <Star className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <textarea
-                          {...register('specialRequests')}
-                          placeholder="Any special requests or requirements..."
-                          className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px] resize-none"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Room Info Display */}
             {selectedRoom && (

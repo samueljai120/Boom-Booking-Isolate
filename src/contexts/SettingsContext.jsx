@@ -55,23 +55,24 @@ export const SettingsProvider = ({ children }) => {
             slotHeight: 'medium',
           },
           bookingFormFields: {
-            customerName: true,
-            phone: true,
-            email: true,
-            partySize: true,
-            room: true,
-            source: true,
-            timeIn: true,
-            timeOut: true,
-            status: true,
-            priority: true,
-            basePrice: true,
-            additionalFees: true,
-            discount: true,
-            totalPrice: true,
-            notes: true,
-            specialRequests: true,
+            customerName: { visible: true, required: true, label: 'Customer Name', placeholder: 'Enter customer name', validation: 'required' },
+            phone: { visible: true, required: true, label: 'Phone Number', placeholder: 'Enter phone number', validation: 'phone' },
+            email: { visible: true, required: false, label: 'Email Address', placeholder: 'Enter email address', validation: 'email' },
+            partySize: { visible: true, required: false, label: 'Party Size', placeholder: 'Number of people', validation: 'number' },
+            room: { visible: true, required: true, label: 'Room Selection', placeholder: 'Select a room', validation: 'required' },
+            source: { visible: true, required: false, label: 'Booking Source', placeholder: 'How did they book?', validation: 'none' },
+            timeIn: { visible: true, required: true, label: 'Start Time', placeholder: 'Select start time', validation: 'required' },
+            timeOut: { visible: true, required: true, label: 'End Time', placeholder: 'Select end time', validation: 'required' },
+            status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+            priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+            basePrice: { visible: true, required: false, label: 'Base Price', placeholder: 'Base price amount', validation: 'currency' },
+            additionalFees: { visible: true, required: false, label: 'Additional Fees', placeholder: 'Extra charges', validation: 'currency' },
+            discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+            totalPrice: { visible: true, required: false, label: 'Total Price', placeholder: 'Total amount', validation: 'currency' },
+            notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
+            specialRequests: { visible: true, required: false, label: 'Special Requests', placeholder: 'Special requirements', validation: 'none' },
           },
+          customBookingFields: [],
           // Confirmation template settings
           confirmationTemplate: {
             template: '🎤 BOOKING CONFIRMATION\n\n' +
@@ -220,13 +221,39 @@ export const SettingsProvider = ({ children }) => {
     }));
   };
 
-  const updateBookingFormField = (fieldName, isVisible) => {
+  const updateBookingFormField = (fieldName, property, value) => {
     setSettings(prev => ({
       ...prev,
       bookingFormFields: {
         ...prev.bookingFormFields,
-        [fieldName]: isVisible
+        [fieldName]: {
+          ...prev.bookingFormFields[fieldName],
+          [property]: value
+        }
       }
+    }));
+  };
+
+  const addCustomBookingField = (field) => {
+    setSettings(prev => ({
+      ...prev,
+      customBookingFields: [...prev.customBookingFields, field]
+    }));
+  };
+
+  const updateCustomBookingField = (fieldId, property, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customBookingFields: prev.customBookingFields.map(field => 
+        field.id === fieldId ? { ...field, [property]: value } : field
+      )
+    }));
+  };
+
+  const removeCustomBookingField = (fieldId) => {
+    setSettings(prev => ({
+      ...prev,
+      customBookingFields: prev.customBookingFields.filter(field => field.id !== fieldId)
     }));
   };
 
@@ -347,6 +374,9 @@ export const SettingsProvider = ({ children }) => {
     updateSetting,
     toggleLayoutOrientation,
     updateBookingFormField,
+    addCustomBookingField,
+    updateCustomBookingField,
+    removeCustomBookingField,
     updateLayoutSlotSetting,
     updateBookingSourceColor,
     updateConfirmationTemplate,

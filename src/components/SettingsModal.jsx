@@ -28,6 +28,8 @@ import {
   Upload,
   Eye,
   Save,
+  Plus,
+  Trash2,
   RefreshCw,
   ChevronRight,
   ChevronDown,
@@ -1011,7 +1013,17 @@ const DisplaySettings = () => {
 
 // Booking Form Settings Component
 const BookingFormSettings = () => {
-  const { settings, updateBookingFormField } = useSettings();
+  const { settings, updateBookingFormField, addCustomBookingField, updateCustomBookingField, removeCustomBookingField } = useSettings();
+  const [expandedField, setExpandedField] = useState(null);
+  const [showAddCustomField, setShowAddCustomField] = useState(false);
+  const [newCustomField, setNewCustomField] = useState({
+    name: '',
+    label: '',
+    placeholder: '',
+    type: 'text',
+    required: false,
+    validation: 'none'
+  });
 
   const fieldGroups = [
     {
@@ -1052,6 +1064,47 @@ const BookingFormSettings = () => {
     }
   ];
 
+  const validationTypes = [
+    { value: 'none', label: 'No validation' },
+    { value: 'required', label: 'Required field' },
+    { value: 'email', label: 'Email format' },
+    { value: 'phone', label: 'Phone number' },
+    { value: 'number', label: 'Numeric value' },
+    { value: 'currency', label: 'Currency amount' },
+  ];
+
+  const fieldTypes = [
+    { value: 'text', label: 'Text Input' },
+    { value: 'textarea', label: 'Text Area' },
+    { value: 'number', label: 'Number Input' },
+    { value: 'email', label: 'Email Input' },
+    { value: 'tel', label: 'Phone Input' },
+    { value: 'select', label: 'Dropdown Select' },
+    { value: 'checkbox', label: 'Checkbox' },
+    { value: 'date', label: 'Date Picker' },
+    { value: 'time', label: 'Time Picker' },
+  ];
+
+  const handleAddCustomField = () => {
+    if (newCustomField.name && newCustomField.label) {
+      const field = {
+        id: Date.now().toString(),
+        ...newCustomField,
+        visible: true
+      };
+      addCustomBookingField(field);
+      setNewCustomField({
+        name: '',
+        label: '',
+        placeholder: '',
+        type: 'text',
+        required: false,
+        validation: 'none'
+      });
+      setShowAddCustomField(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="space-y-4">
@@ -1060,7 +1113,7 @@ const BookingFormSettings = () => {
           <h3 className="text-lg font-semibold">Booking Form Fields</h3>
         </div>
         <p className="text-sm text-gray-600">
-          Choose which fields to show or hide in the booking edit form. Required fields cannot be hidden.
+          Configure field visibility, labels, placeholders, and validation rules for booking forms.
         </p>
       </div>
 
@@ -1069,34 +1122,210 @@ const BookingFormSettings = () => {
           <h4 className="text-md font-medium text-gray-800 border-b border-gray-200 pb-2">
             {group.title}
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {group.fields.map((field) => (
-              <div key={field.key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-700">{field.label}</span>
-                    {field.required && (
-                      <Badge variant="outline" className="text-xs text-red-600 border-red-200">
-                        Required
-                      </Badge>
-                    )}
+          <div className="space-y-3">
+            {group.fields.map((field) => {
+              const fieldConfig = settings.bookingFormFields[field.key];
+              const isExpanded = expandedField === field.key;
+              
+              return (
+                <div key={field.key} className="border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-700">{fieldConfig?.label || field.label}</span>
+                        {fieldConfig?.required && (
+                          <Badge variant="outline" className="text-xs text-red-600 border-red-200">
+                            Required
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={fieldConfig?.visible || false}
+                          onChange={(e) => updateBookingFormField(field.key, 'visible', e.target.checked)}
+                          disabled={fieldConfig?.required}
+                          className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 ${fieldConfig?.required ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpandedField(isExpanded ? null : field.key)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        {isExpanded ? 'Collapse' : 'Configure'}
+                      </Button>
+                    </div>
                   </div>
+                  
+                  {isExpanded && (
+                    <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Field Label</label>
+                          <Input
+                            value={fieldConfig?.label || ''}
+                            onChange={(e) => updateBookingFormField(field.key, 'label', e.target.value)}
+                            placeholder="Field label"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Placeholder Text</label>
+                          <Input
+                            value={fieldConfig?.placeholder || ''}
+                            onChange={(e) => updateBookingFormField(field.key, 'placeholder', e.target.value)}
+                            placeholder="Placeholder text"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Validation Type</label>
+                          <CustomSelect
+                            value={fieldConfig?.validation || 'none'}
+                            onChange={(value) => updateBookingFormField(field.key, 'validation', value)}
+                            options={validationTypes}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={fieldConfig?.required || false}
+                              onChange={(e) => updateBookingFormField(field.key, 'required', e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Required Field</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={settings.bookingFormFields[field.key] || false}
-                    onChange={(e) => updateBookingFormField(field.key, e.target.checked)}
-                    disabled={field.required}
-                    className="sr-only peer"
-                  />
-                  <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 ${field.required ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
-                </label>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
+
+      {/* Custom Fields Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-md font-medium text-gray-800 border-b border-gray-200 pb-2">
+            Custom Fields
+          </h4>
+          <Button
+            onClick={() => setShowAddCustomField(true)}
+            className="text-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Custom Field
+          </Button>
+        </div>
+        
+        {settings.customBookingFields?.map((field) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                  Custom
+                </Badge>
+                {field.required && (
+                  <Badge variant="outline" className="text-xs text-red-600 border-red-200">
+                    Required
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCustomBookingField(field.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {showAddCustomField && (
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <h5 className="text-sm font-medium text-gray-700 mb-4">Add Custom Field</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Name (ID)</label>
+                <Input
+                  value={newCustomField.name}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., specialInstructions"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Label</label>
+                <Input
+                  value={newCustomField.label}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, label: e.target.value }))}
+                  placeholder="e.g., Special Instructions"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Type</label>
+                <CustomSelect
+                  value={newCustomField.type}
+                  onChange={(value) => setNewCustomField(prev => ({ ...prev, type: value }))}
+                  options={fieldTypes}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Validation</label>
+                <CustomSelect
+                  value={newCustomField.validation}
+                  onChange={(value) => setNewCustomField(prev => ({ ...prev, validation: value }))}
+                  options={validationTypes}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Placeholder</label>
+                <Input
+                  value={newCustomField.placeholder}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, placeholder: e.target.value }))}
+                  placeholder="Placeholder text"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={newCustomField.required}
+                    onChange={(e) => setNewCustomField(prev => ({ ...prev, required: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Required Field</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setShowAddCustomField(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddCustomField}
+                disabled={!newCustomField.name || !newCustomField.label}
+              >
+                Add Field
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
         <div className="flex items-start space-x-3">

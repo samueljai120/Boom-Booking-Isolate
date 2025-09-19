@@ -43,7 +43,7 @@ const Scheduler = ({ selectedDate, onDateChange }) => {
       end: new Date(booking.endTime),
       resource: {
         roomId: booking.roomId._id,
-        roomName: booking.roomId.name,
+        roomName: booking.roomId?.name || booking.room?.name || booking.room_name || 'Unknown room',
         roomType: booking.roomId.type,
         capacity: booking.roomId.capacity,
         color: booking.roomId.color,

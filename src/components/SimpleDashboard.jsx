@@ -191,7 +191,7 @@ const SimpleDashboard = () => {
                         </Badge>
                       </div>
                       <div className="text-sm text-gray-600 space-y-1">
-                        <p>{booking.roomId.name}</p>
+                        <p>{booking.roomId?.name || booking.room?.name || booking.room_name || 'Unknown room'}</p>
                         <p>
                           {moment(booking.startTime).format('h:mm A')} - {moment(booking.endTime).format('h:mm A')}
                         </p>
