@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingsAPI, roomsAPI } from '../lib/api';
 import { useSettings } from '../contexts/SettingsContext';
@@ -654,23 +654,67 @@ const BookingManagement = () => {
 const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = false, isWithinBusinessHours }) => {
   const { settings } = useSettings();
   const [formData, setFormData] = useState({
-    customerName: booking?.customerName || '',
-    phone: booking?.phone || '',
-    email: booking?.email || '',
-    room: booking?.roomId?._id || '',
-    timeIn: booking?.startTime ? moment(booking.startTime).format('YYYY-MM-DDTHH:mm') : '',
-    timeOut: booking?.endTime ? moment(booking.endTime).format('YYYY-MM-DDTHH:mm') : '',
-    source: booking?.source || 'walk_in',
-    status: booking?.status || 'confirmed',
-    priority: booking?.priority || 'normal',
-    notes: booking?.notes || '',
-    specialRequests: booking?.specialRequests || '',
-    partySize: booking?.partySize || 1,
-    basePrice: typeof booking?.basePrice === 'number' ? booking.basePrice : 0,
-    additionalFees: typeof booking?.additionalFees === 'number' ? booking.additionalFees : 0,
-    discount: typeof booking?.discount === 'number' ? booking.discount : 0,
-    totalPrice: typeof booking?.totalPrice === 'number' ? booking.totalPrice : 0,
+    customerName: '',
+    phone: '',
+    email: '',
+    room: '',
+    timeIn: '',
+    timeOut: '',
+    source: 'walk_in',
+    status: 'confirmed',
+    priority: 'normal',
+    notes: '',
+    specialRequests: '',
+    partySize: 1,
+    basePrice: 0,
+    additionalFees: 0,
+    discount: 0,
+    totalPrice: 0,
   });
+
+  // Update form data when booking prop changes
+  useEffect(() => {
+    if (booking && isEditing) {
+      setFormData({
+        customerName: booking.customerName || '',
+        phone: booking.phone || '',
+        email: booking.email || '',
+        room: booking.roomId?._id || booking.room || '',
+        timeIn: booking.startTime ? moment(booking.startTime).format('YYYY-MM-DDTHH:mm') : '',
+        timeOut: booking.endTime ? moment(booking.endTime).format('YYYY-MM-DDTHH:mm') : '',
+        source: booking.source || 'walk_in',
+        status: booking.status || 'confirmed',
+        priority: booking.priority || 'normal',
+        notes: booking.notes || '',
+        specialRequests: booking.specialRequests || '',
+        partySize: booking.partySize || 1,
+        basePrice: typeof booking.basePrice === 'number' ? booking.basePrice : 0,
+        additionalFees: typeof booking.additionalFees === 'number' ? booking.additionalFees : 0,
+        discount: typeof booking.discount === 'number' ? booking.discount : 0,
+        totalPrice: typeof booking.totalPrice === 'number' ? booking.totalPrice : 0,
+      });
+    } else if (!booking && !isEditing) {
+      // Reset form for new booking creation
+      setFormData({
+        customerName: '',
+        phone: '',
+        email: '',
+        room: '',
+        timeIn: '',
+        timeOut: '',
+        source: 'walk_in',
+        status: 'confirmed',
+        priority: 'normal',
+        notes: '',
+        specialRequests: '',
+        partySize: 1,
+        basePrice: 0,
+        additionalFees: 0,
+        discount: 0,
+        totalPrice: 0,
+      });
+    }
+  }, [booking, isEditing]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

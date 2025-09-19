@@ -47,7 +47,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   useEffect(() => {
     if (booking) {
       console.log('🔍 BookingModal: Booking object received:', booking);
-      if (booking.id) {
+      if (booking.id || booking._id) {
         // Editing existing booking
         console.log('🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
@@ -99,8 +99,29 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           roomId: booking.resource?.roomId || '',
         });
       }
+    } else {
+      // No booking provided, reset to defaults
+      setIsEditing(false);
+      reset({
+        customerName: '',
+        phone: '',
+        email: '',
+        partySize: '',
+        source: 'walk_in',
+        startTime: '',
+        endTime: '',
+        status: 'confirmed',
+        priority: 'normal',
+        basePrice: '',
+        additionalFees: '',
+        discount: '',
+        totalPrice: '',
+        notes: '',
+        specialRequests: '',
+        roomId: '',
+      });
     }
-  }, [booking]);
+  }, [booking, reset]);
 
   // Create booking mutation (optimistic)
   const createBookingMutation = useMutation({

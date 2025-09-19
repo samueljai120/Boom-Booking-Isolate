@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomsAPI } from '../lib/api';
 import { useSettings } from '../contexts/SettingsContext';
@@ -376,17 +376,17 @@ const RoomManagement = () => {
 const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false }) => {
   const { settings } = useSettings();
   const [formData, setFormData] = useState({
-    name: room?.name || '',
-    capacity: room?.capacity || 8,
-    type: room?.type || 'medium',
-    category: room?.category || 'Standard',
-    status: room?.status || 'active',
-    color: room?.color || '#3B82F6',
-    description: room?.description || '',
-    amenities: room?.amenities || [],
-    hourlyRate: room?.hourlyRate || 0,
-    isBookable: room?.isBookable !== undefined ? room.isBookable : true,
-    sortOrder: room?.sortOrder || 0
+    name: '',
+    capacity: 8,
+    type: 'medium',
+    category: 'Standard',
+    status: 'active',
+    color: '#3B82F6',
+    description: '',
+    amenities: [],
+    hourlyRate: 0,
+    isBookable: true,
+    sortOrder: 0
   });
 
   const [newAmenity, setNewAmenity] = useState('');
@@ -394,6 +394,62 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
   // Get room form fields configuration
   const roomFormFields = settings.roomFormFields || {};
   const customRoomFields = settings.customRoomFields || [];
+
+  // Update form data when room prop changes
+  useEffect(() => {
+    const baseFormData = {
+      name: '',
+      capacity: 8,
+      type: 'medium',
+      category: 'Standard',
+      status: 'active',
+      color: '#3B82F6',
+      description: '',
+      amenities: [],
+      hourlyRate: 0,
+      isBookable: true,
+      sortOrder: 0
+    };
+
+    // Initialize custom fields
+    const customFieldsData = {};
+    customRoomFields.forEach(customField => {
+      if (customField.visible) {
+        customFieldsData[customField.name] = '';
+      }
+    });
+
+    if (room && isEditing) {
+      setFormData({
+        ...baseFormData,
+        ...customFieldsData,
+        name: room.name || '',
+        capacity: room.capacity || 8,
+        type: room.type || 'medium',
+        category: room.category || 'Standard',
+        status: room.status || 'active',
+        color: room.color || '#3B82F6',
+        description: room.description || '',
+        amenities: room.amenities || [],
+        hourlyRate: room.hourlyRate || 0,
+        isBookable: room.isBookable !== undefined ? room.isBookable : true,
+        sortOrder: room.sortOrder || 0,
+        // Add custom field values from room data
+        ...customRoomFields.reduce((acc, field) => {
+          if (field.visible && room[field.name] !== undefined) {
+            acc[field.name] = room[field.name];
+          }
+          return acc;
+        }, {})
+      });
+    } else if (!room && !isEditing) {
+      // Reset form for new room creation
+      setFormData({
+        ...baseFormData,
+        ...customFieldsData
+      });
+    }
+  }, [room, isEditing, customRoomFields]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -426,7 +482,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
   const renderFormField = (fieldKey, fieldConfig) => {
     if (!fieldConfig?.visible) return null;
 
-    const value = formData[fieldKey];
+    const value = formData[fieldKey] ?? '';
     const label = fieldConfig.label || fieldKey;
     const placeholder = fieldConfig.placeholder || '';
     const required = fieldConfig.required || false;
@@ -442,7 +498,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
           <div className="space-y-2">
             <label className="text-sm font-medium">{label}</label>
             <Input
-              value={value || ''}
+              value={value}
               onChange={(e) => handleChange(e.target.value)}
               placeholder={placeholder}
               required={required}
@@ -456,8 +512,11 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
             <label className="text-sm font-medium">{label}</label>
             <Input
               type="number"
-              value={value || ''}
-              onChange={(e) => handleChange(parseInt(e.target.value) || 0)}
+              value={value === 0 ? '' : value}
+              onChange={(e) => {
+                const numValue = e.target.value === '' ? 0 : parseInt(e.target.value);
+                handleChange(isNaN(numValue) ? 0 : numValue);
+              }}
               placeholder={placeholder}
               min="0"
               required={required}
@@ -493,7 +552,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
           <div className="space-y-2">
             <label className="text-sm font-medium">{label}</label>
             <CustomSelect
-              value={value || ''}
+              value={value}
               onChange={handleChange}
               options={options}
               placeholder={placeholder}
@@ -507,7 +566,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
             <input
               type="checkbox"
               id={fieldKey}
-              checked={value || false}
+              checked={Boolean(value)}
               onChange={(e) => handleChange(e.target.checked)}
               className="w-4 h-4 text-blue-600 rounded"
             />
@@ -529,7 +588,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
                 className="w-12 h-10 p-1"
               />
               <Input
-                value={value || ''}
+                value={value}
                 onChange={(e) => handleChange(e.target.value)}
                 placeholder={placeholder}
                 className="flex-1"
@@ -543,7 +602,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
           <div className="space-y-2">
             <label className="text-sm font-medium">{label}</label>
             <textarea
-              value={value || ''}
+              value={value}
               onChange={(e) => handleChange(e.target.value)}
               placeholder={placeholder}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
@@ -557,7 +616,7 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
           <div className="space-y-2">
             <label className="text-sm font-medium">{label}</label>
             <Input
-              value={value || ''}
+              value={value}
               onChange={(e) => handleChange(e.target.value)}
               placeholder={placeholder}
               required={required}
@@ -650,11 +709,6 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
             {/* Custom Fields */}
             {customRoomFields.map((customField) => {
               if (!customField.visible) return null;
-              
-              // Initialize custom field value if not exists
-              if (formData[customField.name] === undefined) {
-                setFormData(prev => ({ ...prev, [customField.name]: '' }));
-              }
 
               return (
                 <div key={customField.id}>
