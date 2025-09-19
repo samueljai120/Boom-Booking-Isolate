@@ -3,7 +3,7 @@ import moment from 'moment';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { X, Calendar, Clock, Users, Phone, Mail, User, Edit, Trash2, Copy, FileText } from 'lucide-react';
+import { X, Calendar, Clock, Users, Phone, Mail, User, Edit, Trash2, Copy } from 'lucide-react';
 import BookingConfirmation from './BookingConfirmation';
 
 const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNoShow }) => {
@@ -43,162 +43,135 @@ const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNo
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto relative">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-lg mx-auto max-h-[85vh] overflow-y-auto relative">
         {/* Exit Button - Top Right Corner */}
         <Button
           variant="ghost"
-          size="icon"
           onClick={onClose}
-          className="absolute top-4 right-4 h-12 w-12 z-10 bg-white hover:bg-gray-100 border border-gray-200 shadow-lg"
+          className="absolute top-2 right-2 h-8 w-8 z-10 bg-white hover:bg-gray-100 border border-gray-200 shadow-sm flex items-center justify-center"
         >
-          <X className="h-8 w-8 font-bold text-gray-700" />
+          <X className="h-4 w-4 text-gray-600" />
         </Button>
         
-        <CardHeader className="flex flex-row items-center space-y-0 pb-4 pr-16">
-          <CardTitle className="text-xl font-semibold">Reservation Details</CardTitle>
+        <CardHeader className="flex flex-row items-center space-y-0 pb-2 pr-10">
+          <CardTitle className="text-lg font-semibold">Reservation Details</CardTitle>
         </CardHeader>
         
-        <CardContent className="space-y-6">
-          {/* Customer Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <User className="h-5 w-5 mr-2" />
-              Customer Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Customer Name</label>
-                <p className="text-sm text-gray-900 mt-1">{booking.customerName || 'N/A'}</p>
+        <CardContent className="space-y-4">
+          {/* Customer & Reservation Info */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-medium text-gray-900 flex items-center">
+                <User className="h-4 w-4 mr-2" />
+                {booking.customerName || 'Guest'}
+              </h3>
+              <div className="flex items-center space-x-2">
+                <Badge className={getStatusColor(booking.status)}>
+                  {booking.status || 'confirmed'}
+                </Badge>
+                <Badge className={getSourceColor(booking.source)}>
+                  {formatSource(booking.source)}
+                </Badge>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Phone</label>
-                <p className="text-sm text-gray-900 mt-1 flex items-center">
-                  <Phone className="h-4 w-4 mr-1" />
-                  {booking.phone || 'N/A'}
-                </p>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center text-gray-600">
+                <Phone className="h-3 w-3 mr-1" />
+                {booking.phone || 'N/A'}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Email</label>
-                <p className="text-sm text-gray-900 mt-1 flex items-center">
-                  <Mail className="h-4 w-4 mr-1" />
-                  {booking.email || 'N/A'}
-                </p>
+              <div className="flex items-center text-gray-600">
+                <Mail className="h-3 w-3 mr-1" />
+                {booking.email || 'N/A'}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Party Size</label>
-                <p className="text-sm text-gray-900 mt-1 flex items-center">
-                  <Users className="h-4 w-4 mr-1" />
-                  {booking.partySize || 'N/A'}
-                </p>
+              <div className="flex items-center text-gray-600">
+                <Users className="h-3 w-3 mr-1" />
+                {booking.partySize || 'N/A'} guests
+              </div>
+              <div className="flex items-center text-gray-600">
+                <Calendar className="h-3 w-3 mr-1" />
+                {booking.room?.name || booking.roomId?.name || booking.room_name || 'N/A'}
               </div>
             </div>
           </div>
 
-          {/* Reservation Details */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900 flex items-center">
-              <Calendar className="h-5 w-5 mr-2" />
-              Reservation Details
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Date</label>
-                <p className="text-sm text-gray-900 mt-1">
-                  {moment(booking.startTime).format('MMMM DD, YYYY')}
-                </p>
+          {/* Date & Time */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="flex items-center justify-between text-sm">
+              <div className="flex items-center text-gray-900">
+                <Calendar className="h-4 w-4 mr-2" />
+                {moment(booking.startTime).format('MMM DD, YYYY')}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Time</label>
-                <p className="text-sm text-gray-900 mt-1 flex items-center">
-                  <Clock className="h-4 w-4 mr-1" />
-                  {moment(booking.startTime).format('h:mm A')} - {moment(booking.endTime).format('h:mm A')}
-                </p>
+              <div className="flex items-center text-gray-900">
+                <Clock className="h-4 w-4 mr-2" />
+                {moment(booking.startTime).format('h:mm A')} - {moment(booking.endTime).format('h:mm A')}
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Duration</label>
-                <p className="text-sm text-gray-900 mt-1">
-                  {moment(booking.endTime).diff(moment(booking.startTime), 'hours', true).toFixed(1)} hours
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Room</label>
-                <p className="text-sm text-gray-900 mt-1">{booking.room?.name || 'N/A'}</p>
+              <div className="text-gray-600">
+                {moment(booking.endTime).diff(moment(booking.startTime), 'hours', true).toFixed(1)}h
               </div>
             </div>
           </div>
 
-          {/* Status and Source */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Status & Source</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-700">Status</label>
-                <div className="mt-1">
-                  <Badge className={getStatusColor(booking.status)}>
-                    {booking.status || 'confirmed'}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700">Source</label>
-                <div className="mt-1">
-                  <Badge className={getSourceColor(booking.source)}>
-                    {formatSource(booking.source)}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Additional Information */}
           {(booking.notes || booking.specialRequests || booking.pricing) && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Additional Information</h3>
+            <div className="space-y-2">
               {booking.notes && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Notes</label>
-                  <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded-md">
-                    {booking.notes}
-                  </p>
+                <div className="bg-blue-50 p-2 rounded text-sm">
+                  <span className="font-medium text-blue-800">Notes:</span>
+                  <p className="text-blue-700 mt-1">{booking.notes}</p>
                 </div>
               )}
               {booking.specialRequests && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Special Requests</label>
-                  <p className="text-sm text-gray-900 mt-1 bg-gray-50 p-3 rounded-md">
-                    {booking.specialRequests}
-                  </p>
+                <div className="bg-orange-50 p-2 rounded text-sm">
+                  <span className="font-medium text-orange-800">Special Requests:</span>
+                  <p className="text-orange-700 mt-1">{booking.specialRequests}</p>
                 </div>
               )}
               {booking.pricing && (
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Pricing</label>
-                  <p className="text-sm text-gray-900 mt-1">${booking.pricing}</p>
+                <div className="bg-green-50 p-2 rounded text-sm">
+                  <span className="font-medium text-green-800">Pricing:</span>
+                  <span className="text-green-700 ml-2">${booking.pricing}</span>
                 </div>
               )}
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex flex-wrap gap-2 pt-3 border-t">
+            {onEdit && (
+              <Button
+                onClick={() => onEdit(booking)}
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+            )}
+            {onNoShow && booking.status === 'confirmed' && (
+              <Button
+                onClick={() => onNoShow(booking)}
+                size="sm"
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                <User className="h-3 w-3 mr-1" />
+                No Show
+              </Button>
+            )}
             <Button
               variant="outline"
-              onClick={onClose}
-            >
-              Close
-            </Button>
-            <Button
-              variant="outline"
+              size="sm"
               onClick={() => setShowConfirmation(true)}
-              className="flex items-center space-x-2"
             >
-              <Copy className="h-4 w-4" />
-              <span>Copy Confirmation</span>
+              <Copy className="h-3 w-3 mr-1" />
+              Copy Confirmation
             </Button>
             {onDelete && (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   if (window.confirm('Are you sure you want to delete this reservation?')) {
                     onDelete(booking);
@@ -206,28 +179,17 @@ const ReservationViewModal = ({ isOpen, onClose, booking, onEdit, onDelete, onNo
                 }}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
+                <Trash2 className="h-3 w-3 mr-1" />
                 Delete
               </Button>
             )}
-            {onEdit && (
-              <Button
-                onClick={() => onEdit(booking)}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Reservation
-              </Button>
-            )}
-            {onNoShow && booking.status === 'confirmed' && (
-              <Button
-                onClick={() => onNoShow(booking)}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                <User className="h-4 w-4 mr-2" />
-                Mark as No Show
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+            >
+              Close
+            </Button>
           </div>
         </CardContent>
       </Card>
