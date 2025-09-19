@@ -527,7 +527,7 @@ const AppleCalendarDashboard = () => {
     const map = settings.bookingSourceColors || {};
     // Normalize common aliases
     const normalized =
-      sourceKey === 'walk-in' || sourceKey === 'walkin' ? 'walkin' :
+      sourceKey === 'walk_in' || sourceKey === 'walk-in' || sourceKey === 'walkin' ? 'walkin' :
       sourceKey === 'phone' || sourceKey === 'call' ? 'phone' :
       sourceKey === 'email' ? 'email' :
       sourceKey === 'message' || sourceKey === 'msg' || sourceKey === 'sms' ? 'message' :
@@ -838,6 +838,19 @@ const AppleCalendarDashboard = () => {
     },
     onSettled: () => {},
   });
+
+  // Delete booking mutation
+  const deleteBookingMutation = useMutation({
+    mutationFn: (id) => bookingsAPI.delete(id),
+    onSuccess: () => {
+      toast.success('Booking deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.error || 'Failed to delete booking');
+    },
+  });
+
   const normalizedBookings = useMemo(() => {
     // Safety check: ensure bookings is always an array
     if (!bookings || !Array.isArray(bookings)) {
@@ -2039,7 +2052,10 @@ const AppleCalendarDashboard = () => {
           onEdit={handleEditBooking}
           onNoShow={handleNoShow}
           onDelete={(booking) => {
-            // Handle delete if needed
+            if (window.confirm('Are you sure you want to delete this reservation?')) {
+              deleteBookingMutation.mutate(booking._id);
+              setIsViewModalOpen(false);
+            }
           }}
         />
 
