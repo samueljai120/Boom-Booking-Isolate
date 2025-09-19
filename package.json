@@ -2,7 +2,7 @@
   "name": "boom-karaoke-frontend-standalone",
   "description": "Standalone frontend for Boom Karaoke booking system with mock data",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.0-clean",
   "type": "module",
   "scripts": {
     "dev": "vite",
