@@ -778,15 +778,26 @@ const AppleCalendarDashboard = () => {
   const resizeBookingMutation = useMutation({
     mutationFn: bookingsAPI.resize,
     onMutate: async (variables) => {
+      // console.log('🔄 Resize mutation onMutate called with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
         const oldBookings = previous?.data?.bookings || [];
         const { bookingId, newStartTime, newEndTime } = variables || {};
         const idx = oldBookings.findIndex(b => b._id === bookingId);
-        if (idx === -1) return { previous };
+        if (idx === -1) {
+          // console.warn('❌ Booking not found for resize:', bookingId);
+          return { previous };
+        }
         const updated = [...oldBookings];
         const current = updated[idx];
+        // console.log('🔄 Updating booking from:', {
+        //   startTime: current.startTime,
+        //   endTime: current.endTime
+        // }, 'to:', {
+        //   startTime: newStartTime,
+        //   endTime: newEndTime
+        // });
         updated[idx] = {
           ...current,
           timeIn: newStartTime,
@@ -801,21 +812,24 @@ const AppleCalendarDashboard = () => {
             bookings: updated,
           },
         }));
+        // console.log('✅ Optimistic resize update applied');
       } catch (e) {
         console.warn('Optimistic resize update failed:', e);
       }
       return { previous };
     },
-    onError: (_err, _vars, context) => {
+    onError: (err, vars, context) => {
+      // console.error('❌ Resize mutation failed:', err);
       if (context?.previous) {
         queryClient.setQueryData(['bookings'], context.previous);
       }
       try {
-        const message = _err?.response?.data?.message || _err?.response?.data?.error || 'Failed to resize booking';
+        const message = err?.response?.data?.message || err?.response?.data?.error || 'Failed to resize booking';
         toast.error(message);
       } catch {}
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // console.log('✅ Resize mutation succeeded:', { data, variables });
       toast.success('Booking resized');
     },
     onSettled: () => {},
@@ -1078,17 +1092,12 @@ const AppleCalendarDashboard = () => {
             return null;
           }
           
-          // Calculate exact positioning based on actual time, aligned to time interval slots
+          // Calculate exact positioning based on actual time, using precise pixel calculations
           const timeInterval = settings.timeInterval || 15; // Use configurable time interval
           
-          // Find which slot the booking starts in
-          const startSlotIndex = Math.floor(clampedStartMinutes / timeInterval);
-          const endSlotIndex = Math.ceil((clampedStartMinutes + clampedDuration) / timeInterval);
-          const durationInSlots = endSlotIndex - startSlotIndex;
-          
-          // Position based on slot boundaries
-          const topPixels = startSlotIndex * SLOT_HEIGHT;
-          const heightPixels = durationInSlots * SLOT_HEIGHT;
+          // Calculate precise pixel positions based on actual time, not slot boundaries
+          const topPixels = (clampedStartMinutes / timeInterval) * SLOT_HEIGHT;
+          const heightPixels = (clampedDuration / timeInterval) * SLOT_HEIGHT;
           
           // For debugging, also calculate the slot-based approach
           const debugStartSlotIndex = Math.round(clampedStartMinutes / timeInterval);
@@ -1296,10 +1305,17 @@ const AppleCalendarDashboard = () => {
       // Convert slot index to actual time (each slot is configurable minutes)
       const timeInterval = settings.timeInterval || 15; // Use configurable time interval
       const slotIndex = parseInt(timeSlotIndex);
-      const slotMinutes = slotIndex * timeInterval; // Each slot is configurable minutes
-      const totalMinutes = (openHour * 60) + openMinute + slotMinutes;
-      const slotHour = Math.floor(totalMinutes / 60);
-      const slotMinute = totalMinutes % 60;
+      
+      // Get the actual time slot from the generated timeSlots array
+      const targetSlot = timeSlots[slotIndex];
+      if (!targetSlot) {
+        console.warn('Target slot not found for index:', slotIndex);
+        return;
+      }
+      
+      // Use the slot's actual time instead of calculating from index
+      const slotHour = targetSlot.hour;
+      const slotMinute = targetSlot.minute;
       
       const dayStart = moment(selectedDate).startOf('day');
       const newTimeIn = dayStart.clone().add(slotHour, 'hours').add(slotMinute, 'minutes').toISOString();
@@ -1393,23 +1409,59 @@ const AppleCalendarDashboard = () => {
     const [openHour] = dayHours.openTime.split(':').map(Number);
     const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
     
-    // Calculate new times based on pixel changes
-    const topHours = top / SLOT_HEIGHT;
-    const heightHours = height / SLOT_HEIGHT;
+    // Get the current time interval setting
+    const timeInterval = settings.timeInterval || 15;
+    
+    // Debug logging (remove in production)
+    // console.log('🔧 Resize Debug - AppleCalendarDashboard:', {
+    //   timeInterval,
+    //   settingsTimeInterval: settings.timeInterval,
+    //   is60Minute: timeInterval === 60,
+    //   top,
+    //   height,
+    //   SLOT_HEIGHT
+    // });
+    
+    // Calculate new times based on visual slot proportions
+    // Each slot represents the timeInterval, so we need to calculate based on slot fractions
+    const topSlots = top / SLOT_HEIGHT;
+    const heightSlots = height / SLOT_HEIGHT;
+    
+    // Convert slot fractions to actual time changes
+    const topMinutes = topSlots * timeInterval;
+    const heightMinutes = heightSlots * timeInterval;
+    
+    // For 60-minute intervals, allow 30-minute granularity (half-slot precision)
+    // For other intervals, use the interval itself
+    const resizeSnapInterval = timeInterval === 60 ? 30 : timeInterval;
+    
+    // Snap to resize interval
+    const snappedTopMinutes = Math.round(topMinutes / resizeSnapInterval) * resizeSnapInterval;
+    const snappedHeightMinutes = Math.round(heightMinutes / resizeSnapInterval) * resizeSnapInterval;
     
     let newStartTime, newEndTime;
     
     if (handle === 'top') {
       // Changing start time (top edge)
-      newStartTime = dayStart.clone().add(topHours, 'hours').toISOString();
+      newStartTime = dayStart.clone().add(snappedTopMinutes, 'minutes').toISOString();
       newEndTime = booking.endTime; // Keep end time same
     } else {
       // Changing end time (bottom edge)
       newStartTime = booking.startTime; // Keep start time same
-      newEndTime = dayStart.clone().add(topHours + heightHours, 'hours').toISOString();
+      newEndTime = dayStart.clone().add(snappedTopMinutes + snappedHeightMinutes, 'minutes').toISOString();
     }
 
     // Call resize API
+    // console.log('🚀 Calling resize API with:', {
+    //   bookingId,
+    //   newStartTime,
+    //   newEndTime,
+    //   originalStartTime: booking.startTime,
+    //   originalEndTime: booking.endTime,
+    //   timeInterval,
+    //   resizeSnapInterval
+    // });
+    
     resizeBookingMutation.mutate({
       bookingId,
       newStartTime,

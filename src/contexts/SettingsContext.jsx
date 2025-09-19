@@ -31,6 +31,7 @@ export const SettingsProvider = ({ children }) => {
           businessHours: { openHour: 16, closeHour: 23 },
           timezone: 'America/New_York', // Default to Eastern Time
           timeFormat: '12h',
+          timeInterval: 15, // Default to 15 minutes
           showBusinessHours: true,
           // Coloring options
           colorByRoomType: true,
@@ -115,6 +116,7 @@ export const SettingsProvider = ({ children }) => {
       businessHours: { openHour: 16, closeHour: 23 },
       timezone: 'America/New_York',
       timeFormat: '12h',
+      timeInterval: 15, // Default to 15 minutes
       showBusinessHours: true,
       colorByBookingSource: false,
       bookingSourceColors: {
@@ -304,6 +306,7 @@ export const SettingsProvider = ({ children }) => {
       businessHours: { openHour: 16, closeHour: 23 },
       timezone: 'America/New_York',
       timeFormat: '12h',
+      timeInterval: 15, // Default to 15 minutes
       showBusinessHours: true,
       colorByRoomType: true,
       slotSize: 'medium',

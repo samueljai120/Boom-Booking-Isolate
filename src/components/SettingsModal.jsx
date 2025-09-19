@@ -645,6 +645,25 @@ const LayoutSettings = ({ currentLayout, setIsDraggingSlider }) => {
           </label>
         </div>
 
+        {/* Time Interval Setting */}
+        <div className="mt-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-2 block">Time Slot Interval</label>
+            <select
+              value={settings.timeInterval || 15}
+              onChange={(e) => { updateSetting('timeInterval', parseInt(e.target.value)); notifyApplied(); }}
+              className="w-48 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value={15}>15 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={60}>60 minutes (1 hour)</option>
+            </select>
+            <div className="text-xs text-gray-500 mt-1">
+              Controls the granularity of time slots in the calendar view
+            </div>
+          </div>
+        </div>
+
         {/* Layout-Specific Slot Settings - Only show for current layout */}
         <div className="mt-4">
           <label className="text-sm font-medium text-gray-700 mb-2 block">Slot Sizes for Current Layout</label>

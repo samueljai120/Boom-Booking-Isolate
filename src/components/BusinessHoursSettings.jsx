@@ -4,7 +4,7 @@ import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import CustomSelect from './ui/CustomSelect';
-import { Clock, Save, RotateCcw, Copy, Trash2, Plus, Check, X, AlertCircle, Calendar, Sun, Moon } from 'lucide-react';
+import { Clock, Save, RotateCcw, Copy, Trash2, Plus, Check, X, AlertCircle, Calendar, Sun, Moon, Zap, Users, Coffee, Music } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const BusinessHoursSettings = () => {
@@ -14,6 +14,7 @@ const BusinessHoursSettings = () => {
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' or 'visual'
   const [showPresets, setShowPresets] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   const daysOfWeek = [
     { id: 0, name: 'Sunday', short: 'Sun' },
@@ -184,6 +185,49 @@ const BusinessHoursSettings = () => {
     setShowPresets(false);
   };
 
+  // Bulk operations
+  const setAllDays = (openTime, closeTime, isClosed = false) => {
+    const updatedHours = localBusinessHours.map(bh => ({
+      ...bh,
+      openTime,
+      closeTime,
+      isClosed
+    }));
+    setLocalBusinessHours(updatedHours);
+    toast.success(`Set all days to ${isClosed ? 'closed' : `${openTime} - ${closeTime}`}`);
+  };
+
+  const setWeekdays = (openTime, closeTime, isClosed = false) => {
+    const updatedHours = localBusinessHours.map(bh => ({
+      ...bh,
+      openTime: bh.weekday >= 1 && bh.weekday <= 5 ? openTime : bh.openTime,
+      closeTime: bh.weekday >= 1 && bh.weekday <= 5 ? closeTime : bh.closeTime,
+      isClosed: bh.weekday >= 1 && bh.weekday <= 5 ? isClosed : bh.isClosed
+    }));
+    setLocalBusinessHours(updatedHours);
+    toast.success(`Set weekdays to ${isClosed ? 'closed' : `${openTime} - ${closeTime}`}`);
+  };
+
+  const setWeekends = (openTime, closeTime, isClosed = false) => {
+    const updatedHours = localBusinessHours.map(bh => ({
+      ...bh,
+      openTime: bh.weekday === 0 || bh.weekday === 6 ? openTime : bh.openTime,
+      closeTime: bh.weekday === 0 || bh.weekday === 6 ? closeTime : bh.closeTime,
+      isClosed: bh.weekday === 0 || bh.weekday === 6 ? isClosed : bh.isClosed
+    }));
+    setLocalBusinessHours(updatedHours);
+    toast.success(`Set weekends to ${isClosed ? 'closed' : `${openTime} - ${closeTime}`}`);
+  };
+
+  const closeAllDays = () => {
+    const updatedHours = localBusinessHours.map(bh => ({
+      ...bh,
+      isClosed: true
+    }));
+    setLocalBusinessHours(updatedHours);
+    toast.success('Closed all days');
+  };
+
   // Time Picker Component
   const TimePicker = ({ value, onChange, label, disabled = false }) => {
     const [hour, setHour] = useState(0);
@@ -343,6 +387,16 @@ const BusinessHoursSettings = () => {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setShowBulkActions(!showBulkActions)}
+            className="flex items-center space-x-1"
+          >
+            <Users className="w-4 h-4" />
+            <span>Bulk Actions</span>
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setViewMode(viewMode === 'detailed' ? 'visual' : 'detailed')}
             className="flex items-center space-x-1"
           >
@@ -356,7 +410,7 @@ const BusinessHoursSettings = () => {
             onClick={() => setShowPresets(!showPresets)}
             className="flex items-center space-x-1"
           >
-            <Plus className="w-4 h-4" />
+            <Zap className="w-4 h-4" />
             <span>Presets</span>
           </Button>
           
@@ -381,6 +435,144 @@ const BusinessHoursSettings = () => {
           </Button>
         </div>
       </div>
+
+      {/* Bulk Actions */}
+      {showBulkActions && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Users className="w-5 h-5" />
+              <span>Bulk Actions</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Quick Set All Days</label>
+                <div className="space-y-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllDays('18:00', '02:00')}
+                    className="w-full justify-start"
+                  >
+                    <Music className="w-4 h-4 mr-2" />
+                    6 PM - 2 AM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllDays('20:00', '04:00')}
+                    className="w-full justify-start"
+                  >
+                    <Moon className="w-4 h-4 mr-2" />
+                    8 PM - 4 AM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllDays('10:00', '22:00')}
+                    className="w-full justify-start"
+                  >
+                    <Coffee className="w-4 h-4 mr-2" />
+                    10 AM - 10 PM
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Weekdays Only</label>
+                <div className="space-y-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekdays('18:00', '02:00')}
+                    className="w-full justify-start"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    6 PM - 2 AM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekdays('09:00', '17:00')}
+                    className="w-full justify-start"
+                  >
+                    <Sun className="w-4 h-4 mr-2" />
+                    9 AM - 5 PM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekdays('00:00', '00:00', true)}
+                    className="w-full justify-start"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Closed
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Weekends Only</label>
+                <div className="space-y-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekends('18:00', '03:00')}
+                    className="w-full justify-start"
+                  >
+                    <Music className="w-4 h-4 mr-2" />
+                    6 PM - 3 AM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekends('12:00', '02:00')}
+                    className="w-full justify-start"
+                  >
+                    <Sun className="w-4 h-4 mr-2" />
+                    12 PM - 2 AM
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setWeekends('00:00', '00:00', true)}
+                    className="w-full justify-start"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Closed
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Quick Actions</label>
+                <div className="space-y-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={closeAllDays}
+                    className="w-full justify-start"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Close All Days
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAllDays('00:00', '23:59')}
+                    className="w-full justify-start"
+                  >
+                    <Clock className="w-4 h-4 mr-2" />
+                    Open 24/7
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Presets Panel */}
       {showPresets && (

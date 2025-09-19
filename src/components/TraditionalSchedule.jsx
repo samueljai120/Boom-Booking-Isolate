@@ -1135,21 +1135,13 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           const minutesPerSlot = timeInterval; // Each slot represents configurable minutes
           const slotsPerHour = 60 / minutesPerSlot; // Calculate slots per hour based on interval
           
-          // Find which slot the booking starts in - use precise alignment
+          // Calculate precise pixel positions based on actual time, not slot boundaries
           // Adjust for the 1-hour offset before business open
           const adjustedStartMinutes = visibleStartMinutes + 60; // Add 60 minutes to account for 1 hour before open
-          const startSlotIndex = Math.floor(adjustedStartMinutes / timeInterval);
           
-          // Calculate end slot with precise boundary detection
-          const exactEndMinutes = adjustedStartMinutes + visibleDurationMinutes;
-          const endSlotIndex = Math.floor(exactEndMinutes / timeInterval);
-          
-          // Ensure minimum 1 slot duration and handle exact boundaries
-          const durationInSlots = Math.max(1, endSlotIndex - startSlotIndex);
-          
-          // Position based on slot boundaries with pixel-perfect alignment
-          const leftPixels = Math.round(startSlotIndex * SLOT_WIDTH);
-          const widthPixels = Math.round(durationInSlots * SLOT_WIDTH);
+          // Calculate precise pixel positions based on actual time
+          const leftPixels = (adjustedStartMinutes / timeInterval) * SLOT_WIDTH;
+          const widthPixels = (visibleDurationMinutes / timeInterval) * SLOT_WIDTH;
           
           // Booking positioning calculated
 
@@ -1322,10 +1314,18 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // Convert slot index to actual time (each slot is configurable minutes)
       const timeInterval = settings.timeInterval || 15; // Use configurable time interval
       const slotIndex = parseInt(timeSlotIndex);
-      const slotMinutes = slotIndex * timeInterval; // Each slot is configurable minutes
-      const totalMinutes = (openHour * 60) + openMinute + slotMinutes;
-      const slotHour = Math.floor(totalMinutes / 60);
-      const slotMinute = totalMinutes % 60;
+      
+      // Get the actual time slot from the generated timeSlots array
+      const targetSlot = timeSlots[slotIndex];
+      if (!targetSlot) {
+        console.warn('Target slot not found for index:', slotIndex);
+        return;
+      }
+      
+      // Use the slot's actual time instead of calculating from index
+      // TraditionalSchedule starts 1 hour before business open, so we need to use the slot's actual time
+      const slotHour = targetSlot.hour;
+      const slotMinute = targetSlot.minute;
       
       const dayStart = moment(selectedDate).startOf('day');
       const newTimeIn = dayStart.clone().add(slotHour, 'hours').add(slotMinute, 'minutes').toISOString();
@@ -1437,20 +1437,38 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // Get the actual time interval from settings
       const timeInterval = settings.timeInterval || 15;
       
+      // Debug logging (remove in production)
+      // console.log('🔧 Resize Debug - TraditionalSchedule:', {
+      //   timeInterval,
+      //   settingsTimeInterval: settings.timeInterval,
+      //   is60Minute: timeInterval === 60,
+      //   finalLeft,
+      //   finalWidth,
+      //   slotWidth
+      // });
+      
+      // For 60-minute intervals, allow 30-minute granularity (half-slot precision)
+      // For other intervals, use the interval itself
+      const resizeSnapInterval = timeInterval === 60 ? 30 : timeInterval;
+      
       console.log('🔧 Time calculation inputs:', {
         finalLeft,
         finalWidth,
         slotWidth,
         timeInterval,
+        resizeSnapInterval,
         dayStartMoment: dayStartMoment.format('YYYY-MM-DD HH:mm:ss'),
         handle
       });
       
       if (handle === 'left') {
         // Left handle: set new start time based on final position
-        // Convert pixels to time slots, accounting for 1-hour offset before business hours
-        const slotIndex = Math.round(finalLeft / slotWidth);
-        const newStartMinutes = slotIndex * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        // Convert pixels to slot fractions, accounting for 1-hour offset before business hours
+        const slotFraction = finalLeft / slotWidth;
+        let newStartMinutes = slotFraction * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        
+        // Snap to resize interval for better granularity
+        newStartMinutes = Math.round(newStartMinutes / resizeSnapInterval) * resizeSnapInterval;
         
         // Ensure the new start time is not after the current end time
         const currentEndTime = moment(booking.endTime || booking.timeOut);
@@ -1465,8 +1483,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         newEndTime = booking.endTime || booking.timeOut; // Keep end time same
         
         console.log('🔧 Left handle calculation:', {
-          slotIndex,
+          slotFraction,
           newStartMinutes,
+          snappedMinutes: newStartMinutes,
           proposedStartTime: proposedStartTime.format('YYYY-MM-DD HH:mm:ss'),
           newStartTime,
           currentEndTime: currentEndTime.format('YYYY-MM-DD HH:mm:ss'),
@@ -1476,9 +1495,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       } else {
         // Right handle: set new end time based on final position
         newStartTime = booking.startTime || booking.timeIn; // Keep start time same
-        // Convert pixels to time slots, accounting for 1-hour offset before business hours
-        const endSlotIndex = Math.round((finalLeft + finalWidth) / slotWidth);
-        const newEndMinutes = endSlotIndex * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        // Convert pixels to slot fractions, accounting for 1-hour offset before business hours
+        const endSlotFraction = (finalLeft + finalWidth) / slotWidth;
+        let newEndMinutes = endSlotFraction * timeInterval - 60; // Subtract 60 minutes for 1-hour offset before open
+        
+        // Snap to resize interval for better granularity
+        newEndMinutes = Math.round(newEndMinutes / resizeSnapInterval) * resizeSnapInterval;
         
         // Ensure the new end time is not before the current start time
         const currentStartTime = moment(booking.startTime || booking.timeIn);
@@ -1492,8 +1514,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         }
         
         console.log('🔧 Right handle calculation:', {
-          endSlotIndex,
+          endSlotFraction,
           newEndMinutes,
+          snappedMinutes: newEndMinutes,
           proposedEndTime: proposedEndTime.format('YYYY-MM-DD HH:mm:ss'),
           newEndTime,
           currentStartTime: currentStartTime.format('YYYY-MM-DD HH:mm:ss'),
