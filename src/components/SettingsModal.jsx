@@ -87,6 +87,13 @@ const SettingsModal = ({ isOpen, onClose }) => {
       category: 'forms'
     },
     { 
+      id: 'room-fields', 
+      label: 'Room Fields', 
+      icon: Home, 
+      description: 'Customize room information fields',
+      category: 'forms'
+    },
+    { 
       id: 'confirmation', 
       label: 'Confirmation Templates', 
       icon: FileText, 
@@ -388,6 +395,7 @@ const SettingsModal = ({ isOpen, onClose }) => {
               {activeTab === 'rooms' && <RoomManagement />}
               {activeTab === 'bookings' && <BookingManagement />}
               {activeTab === 'form' && <BookingFormSettings />}
+              {activeTab === 'room-fields' && <RoomFieldsSettings />}
               {activeTab === 'confirmation' && <ConfirmationTemplateSettings />}
               {activeTab === 'display' && <DisplaySettings />}
               {activeTab === 'system' && <SystemSettings />}
@@ -1032,7 +1040,7 @@ const DisplaySettings = () => {
 
 // Booking Form Settings Component
 const BookingFormSettings = () => {
-  const { settings, updateBookingFormField, addCustomBookingField, updateCustomBookingField, removeCustomBookingField } = useSettings();
+  const { settings, updateBookingFormField, addCustomBookingField, updateCustomBookingField, removeCustomBookingField, saveAsDefaultFormFields, resetToDefaultFormFields } = useSettings();
   const [expandedField, setExpandedField] = useState(null);
   const [showAddCustomField, setShowAddCustomField] = useState(false);
   const [newCustomField, setNewCustomField] = useState({
@@ -1048,19 +1056,19 @@ const BookingFormSettings = () => {
     {
       title: 'Customer Information',
       fields: [
-        { key: 'customerName', label: 'Customer Name', required: true },
-        { key: 'phone', label: 'Phone Number', required: true },
-        { key: 'email', label: 'Email Address', required: false },
-        { key: 'partySize', label: 'Party Size', required: false },
+        { key: 'customerName', label: 'Customer name', required: true },
+        { key: 'phone', label: 'Phone number', required: true },
+        { key: 'email', label: 'Email address', required: false },
+        { key: 'partySize', label: 'Party size', required: false },
       ]
     },
     {
       title: 'Booking Details',
       fields: [
-        { key: 'room', label: 'Room Selection', required: true },
-        { key: 'source', label: 'Booking Source', required: false },
-        { key: 'timeIn', label: 'Start Time', required: true },
-        { key: 'timeOut', label: 'End Time', required: true },
+        { key: 'room', label: 'Room selection', required: true },
+        { key: 'source', label: 'Booking source', required: false },
+        { key: 'timeIn', label: 'Start time', required: true },
+        { key: 'timeOut', label: 'End time', required: true },
         { key: 'status', label: 'Status', required: false },
         { key: 'priority', label: 'Priority', required: false },
       ]
@@ -1068,17 +1076,17 @@ const BookingFormSettings = () => {
     {
       title: 'Pricing',
       fields: [
-        { key: 'basePrice', label: 'Base Price', required: false },
-        { key: 'additionalFees', label: 'Additional Fees', required: false },
+        { key: 'basePrice', label: 'Base price', required: false },
+        { key: 'additionalFees', label: 'Additional fees', required: false },
         { key: 'discount', label: 'Discount', required: false },
-        { key: 'totalPrice', label: 'Total Price', required: false },
+        { key: 'totalPrice', label: 'Total price', required: false },
       ]
     },
     {
       title: 'Additional Information',
       fields: [
         { key: 'notes', label: 'Notes', required: false },
-        { key: 'specialRequests', label: 'Special Requests', required: false },
+        { key: 'specialRequests', label: 'Special requests', required: false },
       ]
     }
   ];
@@ -1346,6 +1354,52 @@ const BookingFormSettings = () => {
         )}
       </div>
 
+      {/* Default Settings Actions */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <div>
+            <h4 className="text-sm font-medium text-gray-800">Save Current Configuration</h4>
+            <p className="text-xs text-gray-600 mt-1">
+              Save your current form field settings as defaults for future use
+              {settings.formFieldsSavedAt && (
+                <span className="block mt-1 text-green-600">
+                  Last saved: {new Date(settings.formFieldsSavedAt).toLocaleString()}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                saveAsDefaultFormFields();
+                toast.success('Form field settings saved as defaults');
+              }}
+              className="flex items-center space-x-1"
+            >
+              <Save className="w-4 h-4" />
+              <span>Save as Default</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to reset all form fields to the saved defaults? This will overwrite your current configuration.')) {
+                  resetToDefaultFormFields();
+                  toast.success('Form fields reset to saved defaults');
+                }
+              }}
+              disabled={!settings.defaultBookingFormFields && !settings.defaultRoomFormFields}
+              className="flex items-center space-x-1 text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reset to Defaults</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
         <div className="flex items-start space-x-3">
           <div className="w-5 h-5 text-blue-600 mt-0.5">
@@ -1581,27 +1635,27 @@ const ConfirmationTemplateSettings = () => {
 
   // Available field placeholders
   const availableFields = [
-    { key: 'customerName', label: 'Customer Name', type: 'text' },
-    { key: 'phone', label: 'Phone Number', type: 'text' },
+    { key: 'customerName', label: 'Customer name', type: 'text' },
+    { key: 'phone', label: 'Phone number', type: 'text' },
     { key: 'email', label: 'Email', type: 'text' },
     { key: 'date', label: 'Date', type: 'text' },
     { key: 'time', label: 'Time', type: 'text' },
     { key: 'duration', label: 'Duration', type: 'text' },
-    { key: 'roomName', label: 'Room Name', type: 'text' },
-    { key: 'roomCapacity', label: 'Room Capacity', type: 'text' },
+    { key: 'roomName', label: 'Room name', type: 'text' },
+    { key: 'roomCapacity', label: 'Room capacity', type: 'text' },
     { key: 'status', label: 'Status', type: 'text' },
     { key: 'source', label: 'Source', type: 'text' },
-    { key: 'confirmationCode', label: 'Confirmation Code', type: 'text' },
-    { key: 'totalPrice', label: 'Total Price', type: 'text' },
+    { key: 'confirmationCode', label: 'Confirmation code', type: 'text' },
+    { key: 'totalPrice', label: 'Total price', type: 'text' },
     { key: 'notes', label: 'Notes', type: 'text' },
-    { key: 'specialRequests', label: 'Special Requests', type: 'text' },
-    { key: 'businessName', label: 'Business Name', type: 'text' },
-    { key: 'businessPhone', label: 'Business Phone', type: 'text' },
-    { key: 'businessEmail', label: 'Business Email', type: 'text' },
-    { key: 'businessAddress', label: 'Business Address', type: 'text' },
-    { key: 'businessWebsite', label: 'Business Website', type: 'text' },
-    { key: 'confirmationMessage', label: 'Confirmation Message', type: 'text' },
-    { key: 'generatedDate', label: 'Generated Date', type: 'text' },
+    { key: 'specialRequests', label: 'Special requests', type: 'text' },
+    { key: 'businessName', label: 'Business name', type: 'text' },
+    { key: 'businessPhone', label: 'Business phone', type: 'text' },
+    { key: 'businessEmail', label: 'Business email', type: 'text' },
+    { key: 'businessAddress', label: 'Business address', type: 'text' },
+    { key: 'businessWebsite', label: 'Business website', type: 'text' },
+    { key: 'confirmationMessage', label: 'Confirmation message', type: 'text' },
+    { key: 'generatedDate', label: 'Generated date', type: 'text' },
   ];
 
   // Initialize template from settings
@@ -1813,6 +1867,387 @@ const ConfirmationTemplateSettings = () => {
               <li>• Custom fields will be available as {'{{customFieldKey}}'}</li>
               <li>• Changes are saved automatically when you click Save</li>
             </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Room Fields Settings Component
+const RoomFieldsSettings = () => {
+  const { settings, updateRoomFormField, addCustomRoomField, updateCustomRoomField, removeCustomRoomField, saveAsDefaultFormFields, resetToDefaultFormFields } = useSettings();
+  const [expandedField, setExpandedField] = useState(null);
+  const [showAddCustomField, setShowAddCustomField] = useState(false);
+  const [newCustomField, setNewCustomField] = useState({
+    name: '',
+    label: '',
+    placeholder: '',
+    type: 'text',
+    required: false,
+    validation: 'none'
+  });
+
+  const fieldGroups = [
+    {
+      title: 'Basic Information',
+      fields: [
+        { key: 'name', label: 'Room name', required: true },
+        { key: 'capacity', label: 'Capacity', required: true },
+        { key: 'type', label: 'Room type', required: true },
+        { key: 'category', label: 'Category', required: true },
+      ]
+    },
+    {
+      title: 'Status & Availability',
+      fields: [
+        { key: 'status', label: 'Status', required: true },
+        { key: 'isBookable', label: 'Available for booking', required: false },
+        { key: 'sortOrder', label: 'Sort order', required: false },
+      ]
+    },
+    {
+      title: 'Pricing & Details',
+      fields: [
+        { key: 'hourlyRate', label: 'Hourly rate', required: false },
+        { key: 'color', label: 'Room color', required: false },
+        { key: 'description', label: 'Description', required: false },
+        { key: 'amenities', label: 'Amenities', required: false },
+      ]
+    }
+  ];
+
+  const validationTypes = [
+    { value: 'none', label: 'No validation' },
+    { value: 'required', label: 'Required field' },
+    { value: 'number', label: 'Numeric value' },
+    { value: 'currency', label: 'Currency amount' },
+    { value: 'email', label: 'Email format' },
+    { value: 'phone', label: 'Phone number' },
+  ];
+
+  const fieldTypes = [
+    { value: 'text', label: 'Text Input' },
+    { value: 'textarea', label: 'Text Area' },
+    { value: 'number', label: 'Number Input' },
+    { value: 'email', label: 'Email Input' },
+    { value: 'tel', label: 'Phone Input' },
+    { value: 'select', label: 'Dropdown Select' },
+    { value: 'checkbox', label: 'Checkbox' },
+    { value: 'color', label: 'Color Picker' },
+    { value: 'date', label: 'Date Picker' },
+    { value: 'time', label: 'Time Picker' },
+  ];
+
+  const handleAddCustomField = () => {
+    if (newCustomField.name && newCustomField.label) {
+      const field = {
+        id: Date.now().toString(),
+        ...newCustomField,
+        visible: true
+      };
+      addCustomRoomField(field);
+      setNewCustomField({
+        name: '',
+        label: '',
+        placeholder: '',
+        type: 'text',
+        required: false,
+        validation: 'none'
+      });
+      setShowAddCustomField(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Home className="w-5 h-5 text-gray-600" />
+          <h3 className="text-lg font-semibold">Room Information Fields</h3>
+        </div>
+        <p className="text-sm text-gray-600">
+          Configure field visibility, labels, placeholders, and validation rules for room information forms.
+        </p>
+      </div>
+
+      {fieldGroups.map((group, groupIndex) => (
+        <div key={groupIndex} className="space-y-4">
+          <h4 className="text-md font-medium text-gray-800 border-b border-gray-200 pb-2">
+            {group.title}
+          </h4>
+          <div className="space-y-3">
+            {group.fields.map((field) => {
+              const fieldConfig = settings.roomFormFields?.[field.key];
+              const isExpanded = expandedField === field.key;
+              
+              return (
+                <div key={field.key} className="border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-700">{fieldConfig?.label || field.label}</span>
+                        {fieldConfig?.required && (
+                          <Badge variant="outline" className="text-xs text-red-600 border-red-200">
+                            Required
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={fieldConfig?.visible || false}
+                          onChange={(e) => updateRoomFormField(field.key, 'visible', e.target.checked)}
+                          disabled={fieldConfig?.required}
+                          className="sr-only peer"
+                        />
+                        <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 ${fieldConfig?.required ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpandedField(isExpanded ? null : field.key)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        {isExpanded ? 'Collapse' : 'Configure'}
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {isExpanded && (
+                    <div className="px-4 pb-4 border-t border-gray-100 bg-gray-50">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Field Label</label>
+                          <Input
+                            value={fieldConfig?.label || ''}
+                            onChange={(e) => updateRoomFormField(field.key, 'label', e.target.value)}
+                            placeholder="Field label"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Placeholder Text</label>
+                          <Input
+                            value={fieldConfig?.placeholder || ''}
+                            onChange={(e) => updateRoomFormField(field.key, 'placeholder', e.target.value)}
+                            placeholder="Placeholder text"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Field Type</label>
+                          <CustomSelect
+                            value={fieldConfig?.type || 'text'}
+                            onChange={(value) => updateRoomFormField(field.key, 'type', value)}
+                            options={fieldTypes}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">Validation Type</label>
+                          <CustomSelect
+                            value={fieldConfig?.validation || 'none'}
+                            onChange={(value) => updateRoomFormField(field.key, 'validation', value)}
+                            options={validationTypes}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={fieldConfig?.required || false}
+                              onChange={(e) => updateRoomFormField(field.key, 'required', e.target.checked)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="text-sm font-medium text-gray-700">Required Field</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Custom Fields Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-md font-medium text-gray-800 border-b border-gray-200 pb-2">
+            Custom Fields
+          </h4>
+          <Button
+            onClick={() => setShowAddCustomField(true)}
+            className="text-sm"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Custom Field
+          </Button>
+        </div>
+        
+        {settings.customRoomFields?.map((field) => (
+          <div key={field.id} className="border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
+                  Custom
+                </Badge>
+                {field.required && (
+                  <Badge variant="outline" className="text-xs text-red-600 border-red-200">
+                    Required
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCustomRoomField(field.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {showAddCustomField && (
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <h5 className="text-sm font-medium text-gray-700 mb-4">Add Custom Field</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Name (ID)</label>
+                <Input
+                  value={newCustomField.name}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., specialFeatures"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Label</label>
+                <Input
+                  value={newCustomField.label}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, label: e.target.value }))}
+                  placeholder="e.g., Special Features"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Field Type</label>
+                <CustomSelect
+                  value={newCustomField.type}
+                  onChange={(value) => setNewCustomField(prev => ({ ...prev, type: value }))}
+                  options={fieldTypes}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Validation</label>
+                <CustomSelect
+                  value={newCustomField.validation}
+                  onChange={(value) => setNewCustomField(prev => ({ ...prev, validation: value }))}
+                  options={validationTypes}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Placeholder</label>
+                <Input
+                  value={newCustomField.placeholder}
+                  onChange={(e) => setNewCustomField(prev => ({ ...prev, placeholder: e.target.value }))}
+                  placeholder="Placeholder text"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={newCustomField.required}
+                    onChange={(e) => setNewCustomField(prev => ({ ...prev, required: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Required Field</span>
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button
+                variant="ghost"
+                onClick={() => setShowAddCustomField(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddCustomField}
+                disabled={!newCustomField.name || !newCustomField.label}
+              >
+                Add Field
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Default Settings Actions */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg">
+          <div>
+            <h4 className="text-sm font-medium text-gray-800">Save Current Configuration</h4>
+            <p className="text-xs text-gray-600 mt-1">
+              Save your current room field settings as defaults for future use
+              {settings.formFieldsSavedAt && (
+                <span className="block mt-1 text-green-600">
+                  Last saved: {new Date(settings.formFieldsSavedAt).toLocaleString()}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                saveAsDefaultFormFields();
+                toast.success('Room field settings saved as defaults');
+              }}
+              className="flex items-center space-x-1"
+            >
+              <Save className="w-4 h-4" />
+              <span>Save as Default</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (window.confirm('Are you sure you want to reset all room fields to the saved defaults? This will overwrite your current configuration.')) {
+                  resetToDefaultFormFields();
+                  toast.success('Room fields reset to saved defaults');
+                }
+              }}
+              disabled={!settings.defaultBookingFormFields && !settings.defaultRoomFormFields}
+              className="flex items-center space-x-1 text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reset to Defaults</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 p-4 bg-blue-50 rounded-lg">
+        <div className="flex items-start space-x-3">
+          <div className="w-5 h-5 text-blue-600 mt-0.5">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-medium text-blue-800">Note</h4>
+            <p className="text-sm text-blue-700 mt-1">
+              Required fields cannot be hidden as they are essential for room creation. 
+              Changes will be applied immediately to all room forms in the application.
+            </p>
           </div>
         </div>
       </div>

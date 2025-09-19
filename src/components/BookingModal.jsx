@@ -47,7 +47,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   useEffect(() => {
     if (booking) {
       console.log('🔍 BookingModal: Booking object received:', booking);
-      if (booking.id) {
+      if (booking.id || booking._id) {
         // Editing existing booking
         console.log('🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
@@ -99,8 +99,29 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           roomId: booking.resource?.roomId || '',
         });
       }
+    } else {
+      // No booking provided, reset to defaults
+      setIsEditing(false);
+      reset({
+        customerName: '',
+        phone: '',
+        email: '',
+        partySize: '',
+        source: 'walk_in',
+        startTime: '',
+        endTime: '',
+        status: 'confirmed',
+        priority: 'normal',
+        basePrice: '',
+        additionalFees: '',
+        discount: '',
+        totalPrice: '',
+        notes: '',
+        specialRequests: '',
+        roomId: '',
+      });
     }
-  }, [booking]);
+  }, [booking, reset]);
 
   // Create booking mutation (optimistic)
   const createBookingMutation = useMutation({
@@ -467,7 +488,7 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
             ))}
 
             {/* Booking Details */}
-            {(settings.bookingFormFields.room?.visible || settings.bookingFormFields.source?.visible || settings.bookingFormFields.startTime?.visible || settings.bookingFormFields.endTime?.visible || settings.bookingFormFields.status?.visible || settings.bookingFormFields.priority?.visible) && (
+            {(settings.bookingFormFields.room?.visible || settings.bookingFormFields.room === true || settings.bookingFormFields.source?.visible || settings.bookingFormFields.source === true || settings.bookingFormFields.timeIn?.visible || settings.bookingFormFields.timeIn === true || settings.bookingFormFields.timeOut?.visible || settings.bookingFormFields.timeOut === true || settings.bookingFormFields.status?.visible || settings.bookingFormFields.status === true || settings.bookingFormFields.priority?.visible || settings.bookingFormFields.priority === true) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Booking Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -504,19 +525,19 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.startTime?.visible && (
+                  {(settings.bookingFormFields.timeIn?.visible || settings.bookingFormFields.timeIn === true) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.startTime.label} {settings.bookingFormFields.startTime.required && '*'}
+                        {settings.bookingFormFields.timeIn?.label || 'Start time'} {(settings.bookingFormFields.timeIn?.required || settings.bookingFormFields.timeIn === true) && '*'}
                       </label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <Input
                           {...register('startTime', { 
-                            required: settings.bookingFormFields.startTime.required ? 'Start time is required' : false 
+                            required: (settings.bookingFormFields.timeIn?.required || settings.bookingFormFields.timeIn === true) ? 'Start time is required' : false 
                           })}
                           type="datetime-local"
-                          placeholder={settings.bookingFormFields.startTime.placeholder}
+                          placeholder={settings.bookingFormFields.timeIn?.placeholder || 'Select start time'}
                           className="pl-10"
                         />
                       </div>
@@ -525,19 +546,19 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       )}
                     </div>
                   )}
-                  {settings.bookingFormFields.endTime?.visible && (
+                  {(settings.bookingFormFields.timeOut?.visible || settings.bookingFormFields.timeOut === true) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.endTime.label} {settings.bookingFormFields.endTime.required && '*'}
+                        {settings.bookingFormFields.timeOut?.label || 'End time'} {(settings.bookingFormFields.timeOut?.required || settings.bookingFormFields.timeOut === true) && '*'}
                       </label>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                         <Input
                           {...register('endTime', { 
-                            required: settings.bookingFormFields.endTime.required ? 'End time is required' : false 
+                            required: (settings.bookingFormFields.timeOut?.required || settings.bookingFormFields.timeOut === true) ? 'End time is required' : false 
                           })}
                           type="datetime-local"
-                          placeholder={settings.bookingFormFields.endTime.placeholder}
+                          placeholder={settings.bookingFormFields.timeOut?.placeholder || 'Select end time'}
                           className="pl-10"
                         />
                       </div>

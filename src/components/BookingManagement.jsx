@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bookingsAPI, roomsAPI } from '../lib/api';
 import { useSettings } from '../contexts/SettingsContext';
@@ -35,6 +35,7 @@ import moment from 'moment';
 import ReservationViewModal from './ReservationViewModal';
 
 const BookingManagement = () => {
+  const { settings } = useSettings();
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -279,6 +280,79 @@ const BookingManagement = () => {
     return colors[source] || 'bg-gray-100 text-gray-800';
   };
 
+  // Get room form fields configuration
+  const roomFormFields = settings.roomFormFields || {};
+
+  // Helper function to format room information based on field visibility
+  const formatRoomInfo = (room) => {
+    if (!room) return 'Unknown room';
+    
+    const visibleFields = [];
+    
+    // Always show room name
+    visibleFields.push(room.name);
+    
+    // Check each field's visibility
+    Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
+      if (fieldConfig?.visible && room[fieldKey] !== undefined && room[fieldKey] !== null && room[fieldKey] !== '') {
+        let value = room[fieldKey];
+        
+        // Format value based on field type
+        if (fieldKey === 'capacity') {
+          value = `(${value} max)`;
+        } else if (fieldKey === 'hourlyRate') {
+          value = `- $${value}/hour`;
+        } else if (fieldKey === 'category') {
+          value = `[${value}]`;
+        } else if (fieldKey === 'color' || fieldKey === 'description' || fieldKey === 'amenities') {
+          // Don't show these in the room info line
+          return;
+        } else {
+          value = `(${value})`;
+        }
+        
+        visibleFields.push(value);
+      }
+    });
+
+    return visibleFields.join(' ');
+  };
+
+  // Helper function to format room option for dropdown
+  const formatRoomOption = (room) => {
+    if (!room) return 'Unknown room';
+    
+    const visibleFields = [];
+    
+    // Always show room name
+    visibleFields.push(room.name);
+    
+    // Check each field's visibility
+    Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
+      if (fieldConfig?.visible && room[fieldKey] !== undefined && room[fieldKey] !== null && room[fieldKey] !== '') {
+        let value = room[fieldKey];
+        
+        // Format value based on field type
+        if (fieldKey === 'capacity') {
+          value = `(${value} max)`;
+        } else if (fieldKey === 'hourlyRate') {
+          value = `- $${value}/hour`;
+        } else if (fieldKey === 'category') {
+          value = `[${value}]`;
+        } else if (fieldKey === 'color' || fieldKey === 'description' || fieldKey === 'amenities') {
+          // Don't show these in the room option
+          return;
+        } else {
+          value = `(${value})`;
+        }
+        
+        visibleFields.push(value);
+      }
+    });
+
+    return visibleFields.join(' ');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -401,7 +475,7 @@ const BookingManagement = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <MapPin className="w-4 h-4" />
-                      <span>{booking.roomId?.name || 'Unknown room'} {booking.roomId?.capacity ? `(${booking.roomId.capacity} max)` : ''}</span>
+                      <span>{formatRoomInfo(booking.roomId)}</span>
                     </div>
                     <div className="flex items-center space-x-2 text-sm text-gray-600">
                       <CalendarIcon className="w-4 h-4" />
@@ -580,23 +654,67 @@ const BookingManagement = () => {
 const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = false, isWithinBusinessHours }) => {
   const { settings } = useSettings();
   const [formData, setFormData] = useState({
-    customerName: booking?.customerName || '',
-    phone: booking?.phone || '',
-    email: booking?.email || '',
-    room: booking?.roomId?._id || '',
-    timeIn: booking?.startTime ? moment(booking.startTime).format('YYYY-MM-DDTHH:mm') : '',
-    timeOut: booking?.endTime ? moment(booking.endTime).format('YYYY-MM-DDTHH:mm') : '',
-    source: booking?.source || 'walk_in',
-    status: booking?.status || 'confirmed',
-    priority: booking?.priority || 'normal',
-    notes: booking?.notes || '',
-    specialRequests: booking?.specialRequests || '',
-    partySize: booking?.partySize || 1,
-    basePrice: typeof booking?.basePrice === 'number' ? booking.basePrice : 0,
-    additionalFees: typeof booking?.additionalFees === 'number' ? booking.additionalFees : 0,
-    discount: typeof booking?.discount === 'number' ? booking.discount : 0,
-    totalPrice: typeof booking?.totalPrice === 'number' ? booking.totalPrice : 0,
+    customerName: '',
+    phone: '',
+    email: '',
+    room: '',
+    timeIn: '',
+    timeOut: '',
+    source: 'walk_in',
+    status: 'confirmed',
+    priority: 'normal',
+    notes: '',
+    specialRequests: '',
+    partySize: 1,
+    basePrice: 0,
+    additionalFees: 0,
+    discount: 0,
+    totalPrice: 0,
   });
+
+  // Update form data when booking prop changes
+  useEffect(() => {
+    if (booking && isEditing) {
+      setFormData({
+        customerName: booking.customerName || '',
+        phone: booking.phone || '',
+        email: booking.email || '',
+        room: booking.roomId?._id || booking.room || '',
+        timeIn: booking.startTime ? moment(booking.startTime).format('YYYY-MM-DDTHH:mm') : '',
+        timeOut: booking.endTime ? moment(booking.endTime).format('YYYY-MM-DDTHH:mm') : '',
+        source: booking.source || 'walk_in',
+        status: booking.status || 'confirmed',
+        priority: booking.priority || 'normal',
+        notes: booking.notes || '',
+        specialRequests: booking.specialRequests || '',
+        partySize: booking.partySize || 1,
+        basePrice: typeof booking.basePrice === 'number' ? booking.basePrice : 0,
+        additionalFees: typeof booking.additionalFees === 'number' ? booking.additionalFees : 0,
+        discount: typeof booking.discount === 'number' ? booking.discount : 0,
+        totalPrice: typeof booking.totalPrice === 'number' ? booking.totalPrice : 0,
+      });
+    } else if (!booking && !isEditing) {
+      // Reset form for new booking creation
+      setFormData({
+        customerName: '',
+        phone: '',
+        email: '',
+        room: '',
+        timeIn: '',
+        timeOut: '',
+        source: 'walk_in',
+        status: 'confirmed',
+        priority: 'normal',
+        notes: '',
+        specialRequests: '',
+        partySize: 1,
+        basePrice: 0,
+        additionalFees: 0,
+        discount: 0,
+        totalPrice: 0,
+      });
+    }
+  }, [booking, isEditing]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -769,7 +887,7 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
                         onChange={(value) => setFormData(prev => ({ ...prev, room: value }))}
                         options={rooms
                           .filter(r => r.status === 'active' && r.isBookable)
-                          .map(r => ({ value: r._id || r.id, label: `${r.name} (${r.capacity} max) - $${r.hourlyRate || 0}/hour` }))}
+                          .map(r => ({ value: r._id || r.id, label: formatRoomOption(r) }))}
                       />
                     </div>
                   )}

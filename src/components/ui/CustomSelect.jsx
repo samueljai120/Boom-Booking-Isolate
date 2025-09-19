@@ -39,7 +39,11 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (selectRef.current && !selectRef.current.contains(event.target)) {
+      // Check if the click is outside both the select button and the dropdown
+      const isClickInsideSelect = selectRef.current && selectRef.current.contains(event.target);
+      const isClickInsideDropdown = dropdownRef.current && dropdownRef.current.contains(event.target);
+      
+      if (!isClickInsideSelect && !isClickInsideDropdown) {
         setIsOpen(false);
       }
     };
@@ -64,7 +68,9 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
     };
   }, [isOpen]);
 
-  const handleSelect = (option) => {
+  const handleSelect = (option, event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     onChange(option.value);
     setIsOpen(false);
   };
@@ -102,7 +108,7 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
               key={option.key || option.value || index}
               type="button"
               className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none first:rounded-t-md last:rounded-b-md"
-              onClick={() => handleSelect(option)}
+              onClick={(event) => handleSelect(option, event)}
             >
               {option.label}
             </button>
