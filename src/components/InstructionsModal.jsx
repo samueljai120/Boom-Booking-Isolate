@@ -104,6 +104,8 @@ const InstructionsModal = ({ isOpen, onClose }) => {
               <li><strong>Demo Mode:</strong> This app runs in demo mode with pre-loaded sample data. No login required!</li>
               <li><strong>Two Layouts:</strong> Switch between Horizontal (Time × Rooms) and Vertical (Rooms × Time) layouts</li>
               <li><strong>Real-time Clock:</strong> Digital clock shows current time and updates automatically</li>
+              <li><strong>Synchronized Indicators:</strong> Red time line and slot highlighting are perfectly aligned</li>
+              <li><strong>Consistent Interface:</strong> All form fields use standardized sentence case labels</li>
               <li><strong>Responsive Design:</strong> Works on desktop, tablet, and mobile devices</li>
             </ul>
           </section>
@@ -156,7 +158,8 @@ const InstructionsModal = ({ isOpen, onClose }) => {
               <li><strong>Date Navigation:</strong> Use arrow buttons or click days in the mini calendar to jump to specific dates</li>
               <li><strong>Today Button:</strong> Quickly return to today's date using the "Today" button in the mini calendar</li>
               <li><strong>Sidebar Toggle:</strong> Click the menu button to expand/collapse the left sidebar for more screen space</li>
-              <li><strong>Current Time Indicator:</strong> Red line shows current time on the schedule grid</li>
+              <li><strong>Current Time Indicator:</strong> Red line shows current time on the schedule grid with synchronized slot highlighting</li>
+              <li><strong>Real-time Updates:</strong> Time indicators update every minute and stay perfectly aligned</li>
             </ul>
           </section>
 
@@ -231,7 +234,8 @@ const InstructionsModal = ({ isOpen, onClose }) => {
               <li><strong>Drag & Drop:</strong> Drag bookings to different times/rooms. Drop onto another booking to swap positions</li>
               <li><strong>Resize Bookings:</strong> Long-press a booking, then drag edges to resize duration</li>
               <li><strong>View Details:</strong> Click any booking to view full details, edit, mark no-show, or delete</li>
-              <li><strong>Booking Form Fields:</strong> Customer info, room selection, pricing, priority, notes, and special requests</li>
+              <li><strong>Standardized Form Fields:</strong> All fields use consistent sentence case labels (e.g., "Customer name", "Phone number", "Start time")</li>
+              <li><strong>Enhanced Validation:</strong> Improved form validation with clear error messages and field requirements</li>
               <li><strong>Status Management:</strong> Set booking status (confirmed, cancelled, no-show) and priority levels</li>
             </ul>
           </section>
@@ -374,6 +378,8 @@ const InstructionsModal = ({ isOpen, onClose }) => {
               <li><strong>Time Format:</strong> Choose between 12-hour and 24-hour time display</li>
               <li><strong>Layout Orientations:</strong> Switch between Vertical (Rooms × Time) and Horizontal (Time × Rooms) layouts</li>
               <li><strong>Slot Sizing:</strong> Adjust time slot width and height for better visibility</li>
+              <li><strong>Field Customization:</strong> Customize form fields, labels, and validation rules in Settings → Form Fields</li>
+              <li><strong>Automatic Migration:</strong> Settings automatically update to use the latest standardized field labels</li>
             </ul>
           </section>
 
@@ -416,9 +422,63 @@ const InstructionsModal = ({ isOpen, onClose }) => {
             <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
               <li><strong>Color Coding:</strong> Enable color by booking source (Walk-in, Phone, Email, Online, App) or room type</li>
               <li><strong>Custom Colors:</strong> Adjust colors for each booking source in Settings → Display</li>
-              <li><strong>Form Fields:</strong> Customize which fields appear in booking forms via Settings → Form</li>
+              <li><strong>Form Fields:</strong> Customize which fields appear in booking forms via Settings → Form Fields</li>
+              <li><strong>Consistent Labels:</strong> All form fields use standardized sentence case for better readability</li>
               <li><strong>Live Preview:</strong> See changes in real-time as you adjust settings</li>
               <li><strong>Theme Options:</strong> Choose between different visual themes and color schemes</li>
+            </ul>
+          </section>
+
+          {/* Recent Improvements */}
+          <section>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>
+              Recent Improvements
+            </h3>
+            
+            {/* Recent Improvements Visual */}
+            <div className="mb-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+              <div className="flex items-center space-x-4 mb-3">
+                <span className="text-sm font-medium text-emerald-800">✨ Latest Updates</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                    <span className="text-xs font-medium text-gray-700">Synchronized Indicators</span>
+                  </div>
+                  <div className="text-xs text-gray-600">Red time line and slot highlighting are perfectly aligned</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xs">📝</span>
+                    <span className="text-xs font-medium text-gray-700">Standardized Labels</span>
+                  </div>
+                  <div className="text-xs text-gray-600">All form fields use consistent sentence case</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xs">⚙️</span>
+                    <span className="text-xs font-medium text-gray-700">Auto Migration</span>
+                  </div>
+                  <div className="text-xs text-gray-600">Settings automatically update to latest standards</div>
+                </div>
+                <div className="bg-white p-3 rounded border">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xs">🎯</span>
+                    <span className="text-xs font-medium text-gray-700">Enhanced UX</span>
+                  </div>
+                  <div className="text-xs text-gray-600">Improved user experience and interface consistency</div>
+                </div>
+              </div>
+            </div>
+
+            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-700">
+              <li><strong>Perfect Time Synchronization:</strong> Red time indicators and slot highlighting now move together seamlessly</li>
+              <li><strong>Consistent Field Labels:</strong> All form fields use standardized sentence case (e.g., "Customer name" instead of "customerName")</li>
+              <li><strong>Automatic Settings Migration:</strong> Your existing settings automatically update to use the new standardized labels</li>
+              <li><strong>Enhanced Visual Feedback:</strong> Time indicators provide better visual feedback with perfect alignment</li>
+              <li><strong>Improved Form Experience:</strong> More professional and consistent form field presentation</li>
             </ul>
           </section>
 

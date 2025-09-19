@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { roomsAPI } from '../lib/api';
+import { useSettings } from '../contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -25,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 
 const RoomManagement = () => {
+  const { settings } = useSettings();
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -145,6 +147,50 @@ const RoomManagement = () => {
     return colors[type] || '#3B82F6';
   };
 
+  // Get room form fields configuration
+  const roomFormFields = settings.roomFormFields || {};
+  const customRoomFields = settings.customRoomFields || [];
+
+  // Helper function to render room information based on field visibility
+  const renderRoomInfo = (room) => {
+    const visibleFields = [];
+    
+    // Check each field's visibility
+    Object.entries(roomFormFields).forEach(([fieldKey, fieldConfig]) => {
+      if (fieldConfig?.visible && room[fieldKey] !== undefined && room[fieldKey] !== null && room[fieldKey] !== '') {
+        const label = fieldConfig.label || fieldKey;
+        let value = room[fieldKey];
+        
+        // Format value based on field type
+        if (fieldKey === 'hourlyRate') {
+          value = `$${value}/hr`;
+        } else if (fieldKey === 'capacity') {
+          value = `${value} max`;
+        } else if (fieldKey === 'isBookable') {
+          value = value ? 'Available' : 'Unavailable';
+        } else if (fieldKey === 'color') {
+          // Don't show color code in the main info line, only the visual indicator
+          return;
+        } else if (fieldKey === 'amenities' && Array.isArray(value)) {
+          // Handle amenities specially - don't show in the main info line
+          return;
+        }
+        
+        visibleFields.push({ label, value, fieldKey });
+      }
+    });
+
+    // Check custom fields
+    customRoomFields.forEach((customField) => {
+      if (customField.visible && room[customField.name] !== undefined && room[customField.name] !== null && room[customField.name] !== '') {
+        const label = customField.label || customField.name;
+        visibleFields.push({ label, value: room[customField.name], fieldKey: customField.name });
+      }
+    });
+
+    return visibleFields;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -206,49 +252,79 @@ const RoomManagement = () => {
 
       {/* Rooms List (vertical) */}
       <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 overflow-hidden">
-        {filteredRooms.map(room => (
-          <div key={room._id || room.id} className="flex items-start justify-between p-4">
-            <div className="flex items-start space-x-3 min-w-0">
-              <div
-                className="w-4 h-4 rounded-full flex-shrink-0 mt-1"
-                style={{ backgroundColor: room.color }}
-              />
-              <div className="min-w-0">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium truncate">{room.name}</span>
-                  <Badge className={getStatusColor(room.status)}>
-                    <div className="flex items-center space-x-1">
-                      {getStatusIcon(room.status)}
-                      <span className="capitalize">{room.status}</span>
-                    </div>
-                  </Badge>
-                </div>
-                <div className="text-sm text-gray-600 truncate">{room.category} • {room.capacity} pax • ${room.hourlyRate}/hr</div>
-                {room.description && (
-                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{room.description}</p>
+        {filteredRooms.map(room => {
+          const visibleFields = renderRoomInfo(room);
+          const mainInfoFields = visibleFields.filter(field => 
+            !['description', 'amenities', 'color'].includes(field.fieldKey)
+          );
+          const descriptionField = visibleFields.find(field => field.fieldKey === 'description');
+          const amenitiesField = room.amenities && room.amenities.length > 0 && roomFormFields.amenities?.visible;
+          
+          return (
+            <div key={room._id || room.id} className="flex items-start justify-between p-4">
+              <div className="flex items-start space-x-3 min-w-0">
+                {/* Color indicator - only show if color field is visible */}
+                {roomFormFields.color?.visible && (
+                  <div
+                    className="w-4 h-4 rounded-full flex-shrink-0 mt-1"
+                    style={{ backgroundColor: room.color }}
+                  />
                 )}
-                {room.amenities && room.amenities.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {room.amenities.slice(0, 4).map((amenity, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">{amenity}</Badge>
-                    ))}
-                    {room.amenities.length > 4 && (
-                      <Badge variant="outline" className="text-xs">+{room.amenities.length - 4} more</Badge>
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-medium truncate">{room.name}</span>
+                    {/* Status badge - only show if status field is visible */}
+                    {roomFormFields.status?.visible && (
+                      <Badge className={getStatusColor(room.status)}>
+                        <div className="flex items-center space-x-1">
+                          {getStatusIcon(room.status)}
+                          <span className="capitalize">{room.status}</span>
+                        </div>
+                      </Badge>
                     )}
                   </div>
-                )}
+                  
+                  {/* Main info line - only show visible fields */}
+                  {mainInfoFields.length > 0 && (
+                    <div className="text-sm text-gray-600 truncate">
+                      {mainInfoFields.map((field, index) => (
+                        <span key={field.fieldKey}>
+                          {field.value}
+                          {index < mainInfoFields.length - 1 && ' • '}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Description - only show if visible */}
+                  {descriptionField && (
+                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">{descriptionField.value}</p>
+                  )}
+                  
+                  {/* Amenities - only show if visible */}
+                  {amenitiesField && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {room.amenities.slice(0, 4).map((amenity, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">{amenity}</Badge>
+                      ))}
+                      {room.amenities.length > 4 && (
+                        <Badge variant="outline" className="text-xs">+{room.amenities.length - 4} more</Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 ml-4">
+                <Button variant="outline" size="sm" onClick={() => handleEdit(room)}>
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleDelete(room._id || room.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center space-x-2 ml-4">
-              <Button variant="outline" size="sm" onClick={() => handleEdit(room)}>
-                <Edit className="w-4 h-4 mr-1" /> Edit
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handleDelete(room._id || room.id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Empty State */}
@@ -298,6 +374,7 @@ const RoomManagement = () => {
 
 // Room Form Component
 const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false }) => {
+  const { settings } = useSettings();
   const [formData, setFormData] = useState({
     name: room?.name || '',
     capacity: room?.capacity || 8,
@@ -313,6 +390,10 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
   });
 
   const [newAmenity, setNewAmenity] = useState('');
+
+  // Get room form fields configuration
+  const roomFormFields = settings.roomFormFields || {};
+  const customRoomFields = settings.customRoomFields || [];
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -341,6 +422,151 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
     }));
   };
 
+  // Helper function to render form field based on configuration
+  const renderFormField = (fieldKey, fieldConfig) => {
+    if (!fieldConfig?.visible) return null;
+
+    const value = formData[fieldKey];
+    const label = fieldConfig.label || fieldKey;
+    const placeholder = fieldConfig.placeholder || '';
+    const required = fieldConfig.required || false;
+    const fieldType = fieldConfig.type || 'text';
+
+    const handleChange = (newValue) => {
+      setFormData(prev => ({ ...prev, [fieldKey]: newValue }));
+    };
+
+    switch (fieldType) {
+      case 'text':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <Input
+              value={value || ''}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              required={required}
+            />
+          </div>
+        );
+
+      case 'number':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <Input
+              type="number"
+              value={value || ''}
+              onChange={(e) => handleChange(parseInt(e.target.value) || 0)}
+              placeholder={placeholder}
+              min="0"
+              required={required}
+            />
+          </div>
+        );
+
+      case 'select':
+        let options = [];
+        if (fieldKey === 'type') {
+          options = [
+            { value: 'medium', label: 'Medium (up to 8 people)' },
+            { value: 'large', label: 'Large (up to 15 people)' },
+            { value: 'party', label: 'Party (up to 25 people)' }
+          ];
+        } else if (fieldKey === 'category') {
+          options = [
+            { value: 'Standard', label: 'Standard' },
+            { value: 'Premium', label: 'Premium' },
+            { value: 'VIP', label: 'VIP' },
+            ...categories.filter(cat => !['Standard', 'Premium', 'VIP'].includes(cat))
+              .map(category => ({ value: category, label: category }))
+          ];
+        } else if (fieldKey === 'status') {
+          options = [
+            { value: 'active', label: 'Active' },
+            { value: 'inactive', label: 'Inactive' },
+            { value: 'maintenance', label: 'Maintenance' }
+          ];
+        }
+
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <CustomSelect
+              value={value || ''}
+              onChange={handleChange}
+              options={options}
+              placeholder={placeholder}
+            />
+          </div>
+        );
+
+      case 'checkbox':
+        return (
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id={fieldKey}
+              checked={value || false}
+              onChange={(e) => handleChange(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded"
+            />
+            <label htmlFor={fieldKey} className="text-sm font-medium">
+              {label}
+            </label>
+          </div>
+        );
+
+      case 'color':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <div className="flex items-center space-x-2">
+              <Input
+                type="color"
+                value={value || '#3B82F6'}
+                onChange={(e) => handleChange(e.target.value)}
+                className="w-12 h-10 p-1"
+              />
+              <Input
+                value={value || ''}
+                onChange={(e) => handleChange(e.target.value)}
+                placeholder={placeholder}
+                className="flex-1"
+              />
+            </div>
+          </div>
+        );
+
+      case 'textarea':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <textarea
+              value={value || ''}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              rows="3"
+            />
+          </div>
+        );
+
+      default:
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label}</label>
+            <Input
+              value={value || ''}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              required={required}
+            />
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
@@ -361,170 +587,81 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
+            {/* Basic Information Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Room Name</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter room name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Capacity</label>
-                <Input
-                  type="number"
-                  value={formData.capacity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) }))}
-                  min="1"
-                  max="100"
-                  required
-                />
-              </div>
+              {renderFormField('name', roomFormFields.name)}
+              {renderFormField('capacity', roomFormFields.capacity)}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Type</label>
-                <CustomSelect
-                  value={formData.type}
-                  onChange={(value) => setFormData(prev => ({ ...prev, type: value }))}
-                  options={[
-                    { value: 'medium', label: 'Medium (up to 8 people)' },
-                    { value: 'large', label: 'Large (up to 15 people)' },
-                    { value: 'party', label: 'Party (up to 25 people)' }
-                  ]}
-                  placeholder="Select room type"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Category</label>
-                <CustomSelect
-                  value={formData.category}
-                  onChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                  options={[
-                    { value: 'Standard', label: 'Standard' },
-                    { value: 'Premium', label: 'Premium' },
-                    { value: 'VIP', label: 'VIP' },
-                    ...categories.filter(cat => !['Standard', 'Premium', 'VIP'].includes(cat))
-                      .map(category => ({ value: category, label: category }))
-                  ]}
-                  placeholder="Select category"
-                />
-              </div>
+              {renderFormField('type', roomFormFields.type)}
+              {renderFormField('category', roomFormFields.category)}
+            </div>
+
+            {/* Status & Availability Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderFormField('status', roomFormFields.status)}
+              {renderFormField('color', roomFormFields.color)}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {renderFormField('hourlyRate', roomFormFields.hourlyRate)}
+              {renderFormField('sortOrder', roomFormFields.sortOrder)}
+            </div>
+
+            {/* Description Field */}
+            {renderFormField('description', roomFormFields.description)}
+
+            {/* Amenities Field - Special handling */}
+            {roomFormFields.amenities?.visible && (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <CustomSelect
-                  value={formData.status}
-                  onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
-                  options={[
-                    { value: 'active', label: 'Active' },
-                    { value: 'inactive', label: 'Inactive' },
-                    { value: 'maintenance', label: 'Maintenance' }
-                  ]}
-                  placeholder="Select status"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Color</label>
-                <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium">{roomFormFields.amenities.label || 'Amenities'}</label>
+                <div className="flex space-x-2">
                   <Input
-                    type="color"
-                    value={formData.color}
-                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                    className="w-12 h-10 p-1"
+                    value={newAmenity}
+                    onChange={(e) => setNewAmenity(e.target.value)}
+                    placeholder={roomFormFields.amenities.placeholder || 'Add amenity'}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAmenityAdd())}
                   />
-                  <Input
-                    value={formData.color}
-                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                    placeholder="#3B82F6"
-                    className="flex-1"
-                  />
+                  <Button type="button" onClick={handleAmenityAdd}>
+                    Add
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {formData.amenities.map((amenity, index) => (
+                    <Badge key={index} variant="outline" className="flex items-center space-x-1">
+                      <span>{amenity}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAmenityRemove(amenity)}
+                        className="ml-1 text-red-500 hover:text-red-700"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Hourly Rate ($)</label>
-                <Input
-                  type="number"
-                  value={formData.hourlyRate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) }))}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sort Order</label>
-                <Input
-                  type="number"
-                  value={formData.sortOrder}
-                  onChange={(e) => setFormData(prev => ({ ...prev, sortOrder: parseInt(e.target.value) }))}
-                  min="0"
-                />
-              </div>
-            </div>
+            {/* Checkbox Fields */}
+            {renderFormField('isBookable', roomFormFields.isBookable)}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Enter room description"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                rows="3"
-              />
-            </div>
+            {/* Custom Fields */}
+            {customRoomFields.map((customField) => {
+              if (!customField.visible) return null;
+              
+              // Initialize custom field value if not exists
+              if (formData[customField.name] === undefined) {
+                setFormData(prev => ({ ...prev, [customField.name]: '' }));
+              }
 
-            {/* Amenities */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Amenities</label>
-              <div className="flex space-x-2">
-                <Input
-                  value={newAmenity}
-                  onChange={(e) => setNewAmenity(e.target.value)}
-                  placeholder="Add amenity"
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAmenityAdd())}
-                />
-                <Button type="button" onClick={handleAmenityAdd}>
-                  Add
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.amenities.map((amenity, index) => (
-                  <Badge key={index} variant="outline" className="flex items-center space-x-1">
-                    <span>{amenity}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleAmenityRemove(amenity)}
-                      className="ml-1 text-red-500 hover:text-red-700"
-                    >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Checkbox */}
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isBookable"
-                checked={formData.isBookable}
-                onChange={(e) => setFormData(prev => ({ ...prev, isBookable: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 rounded"
-              />
-              <label htmlFor="isBookable" className="text-sm font-medium">
-                Available for booking
-              </label>
-            </div>
+              return (
+                <div key={customField.id}>
+                  {renderFormField(customField.name, customField)}
+                </div>
+              );
+            })}
 
             {/* Actions */}
             <div className="flex justify-end space-x-3 pt-4 border-t">

@@ -17,7 +17,9 @@ import {
   Menu,
   Plus,
   Calendar as CalendarIcon,
-  HelpCircle
+  HelpCircle,
+  BarChart3,
+  Users
 } from 'lucide-react';
 import BookingModal from './BookingModal';
 import InstructionsModal from './InstructionsModal';
@@ -500,6 +502,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   const [activeId, setActiveId] = useState(null);
   const [draggedBooking, setDraggedBooking] = useState(null);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [showCustomerBase, setShowCustomerBase] = useState(false);
   const queryClient = useQueryClient();
 
   // Current time tracking with high frequency updates for smooth movement
@@ -1838,10 +1842,26 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           </div>
         </div>
 
-        {/* Bottom Sticky Actions: Instructions + Settings */}
+        {/* Bottom Sticky Actions: Analytics + Customer Base + Instructions + Settings */}
         <div className="mt-auto border-t border-gray-200 p-2 space-y-2">
           {sidebarOpen ? (
             <>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => setShowAnalytics(true)}
+              >
+                <BarChart3 className="w-4 h-4 mr-3" />
+                Analytics
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => setShowCustomerBase(true)}
+              >
+                <Users className="w-4 h-4 mr-3" />
+                Customer Base
+              </Button>
               <Button 
                 variant="ghost" 
                 className="w-full justify-start"
@@ -1861,6 +1881,24 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
             </>
           ) : (
             <div className="flex flex-col items-center space-y-2">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-12 w-12"
+                onClick={() => setShowAnalytics(true)}
+                title="Analytics"
+              >
+                <BarChart3 className="w-6 h-6" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-12 w-12"
+                onClick={() => setShowCustomerBase(true)}
+                title="Customer Base"
+              >
+                <Users className="w-6 h-6" />
+              </Button>
               <Button 
                 variant="ghost" 
                 size="icon"
@@ -1922,20 +1960,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
                 <thead>
                   <tr>
                     {timeSlots.map((slot, index) => {
-                      // Check if this is the current time slot - use 30-minute threshold logic
+                      // Check if this is the current time slot - synchronized with red line
                       const isCurrentTimeSlot = currentTimeData && (() => {
                         const timeInterval = settings.timeInterval || 15;
-                        // Calculate the exact position of the red line
-                        const exactSlotPosition = currentTimeData.minutesFromStart / timeInterval;
-                        
-                        // Get the current minute within the hour to determine threshold behavior
-                        const currentMinute = moment().minute();
-                        
-                        // If we're past 30 minutes of the hour, highlight the next hour's slot
-                        // Otherwise, highlight the current hour's slot
-                        const targetSlotIndex = currentMinute >= 30 ? Math.ceil(exactSlotPosition) : Math.floor(exactSlotPosition);
-                        
-                        return index === targetSlotIndex;
+                        // Use exact same calculation as red line positioning
+                        const slotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
+                        return index === slotIndex;
                       })();
                       
                       return (
@@ -2025,12 +2055,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
 
             {/* Timeline Content Area - No Scroll */}
             <div ref={gridScrollRef} className="flex-1 overflow-hidden relative z-60" style={{ marginLeft: '0px' }}>
-              {/* Current time vertical line - clean without labels, smooth movement */}
+              {/* Current time vertical line - synchronized with slot highlighting */}
               {currentTimeData && (() => {
                 const timeInterval = settings.timeInterval || 15;
-                // Use precise calculation for smooth movement within time slots
-                const exactSlotPosition = currentTimeData.minutesFromStart / timeInterval;
-                const leftPixels = exactSlotPosition * SLOT_WIDTH;
+                // Use same calculation as slot highlighting for perfect synchronization
+                const slotIndex = Math.round(currentTimeData.minutesFromStart / timeInterval);
+                const leftPixels = slotIndex * SLOT_WIDTH;
                 return (
                   <div
                     className="absolute top-0 bottom-0 z-30 pointer-events-none transition-all duration-1000 ease-linear"
@@ -2248,6 +2278,38 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       onClose={handleConfirmationClose}
       booking={selectedBooking}
     />
+    
+    {/* Analytics Modal - placeholder */}
+    {showAnalytics && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <BarChart3 className="w-5 h-5 mr-2" />
+            Analytics
+          </h2>
+          <p className="text-gray-600 mb-4">Analytics dashboard coming soon...</p>
+          <Button onClick={() => setShowAnalytics(false)} className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    )}
+    
+    {/* Customer Base Modal - placeholder */}
+    {showCustomerBase && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Customer Base
+          </h2>
+          <p className="text-gray-600 mb-4">Customer management dashboard coming soon...</p>
+          <Button onClick={() => setShowCustomerBase(false)} className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    )}
     </>
   );
 };

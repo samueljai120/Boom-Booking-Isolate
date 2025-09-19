@@ -25,6 +25,37 @@ export const SettingsProvider = ({ children }) => {
           parsed.layoutOrientation = 'rooms-y-time-x';
           parsed.defaultLayoutOrientation = 'rooms-y-time-x';
         }
+        
+        // Force update field labels to new standardized format
+        if (parsed.bookingFormFields) {
+          parsed.bookingFormFields = {
+            ...parsed.bookingFormFields,
+            customerName: { ...parsed.bookingFormFields.customerName, label: 'Customer name' },
+            phone: { ...parsed.bookingFormFields.phone, label: 'Phone number' },
+            email: { ...parsed.bookingFormFields.email, label: 'Email address' },
+            partySize: { ...parsed.bookingFormFields.partySize, label: 'Party size' },
+            room: { ...parsed.bookingFormFields.room, label: 'Room selection' },
+            source: { ...parsed.bookingFormFields.source, label: 'Booking source' },
+            timeIn: { ...parsed.bookingFormFields.timeIn, label: 'Start time' },
+            timeOut: { ...parsed.bookingFormFields.timeOut, label: 'End time' },
+            basePrice: { ...parsed.bookingFormFields.basePrice, label: 'Base price' },
+            additionalFees: { ...parsed.bookingFormFields.additionalFees, label: 'Additional fees' },
+            totalPrice: { ...parsed.bookingFormFields.totalPrice, label: 'Total price' },
+            specialRequests: { ...parsed.bookingFormFields.specialRequests, label: 'Special requests' },
+          };
+        }
+        
+        if (parsed.roomFormFields) {
+          parsed.roomFormFields = {
+            ...parsed.roomFormFields,
+            name: { ...parsed.roomFormFields.name, label: 'Room name' },
+            type: { ...parsed.roomFormFields.type, label: 'Room type' },
+            isBookable: { ...parsed.roomFormFields.isBookable, label: 'Available for booking' },
+            sortOrder: { ...parsed.roomFormFields.sortOrder, label: 'Sort order' },
+            hourlyRate: { ...parsed.roomFormFields.hourlyRate, label: 'Hourly rate' },
+            color: { ...parsed.roomFormFields.color, label: 'Room color' },
+          };
+        }
         return {
           layoutOrientation: 'rooms-y-time-x',
           defaultLayoutOrientation: 'rooms-y-time-x',
@@ -56,24 +87,39 @@ export const SettingsProvider = ({ children }) => {
             slotHeight: 'medium',
           },
           bookingFormFields: {
-            customerName: { visible: true, required: true, label: 'Customer Name', placeholder: 'Enter customer name', validation: 'required' },
-            phone: { visible: true, required: true, label: 'Phone Number', placeholder: 'Enter phone number', validation: 'phone' },
-            email: { visible: true, required: false, label: 'Email Address', placeholder: 'Enter email address', validation: 'email' },
-            partySize: { visible: true, required: false, label: 'Party Size', placeholder: 'Number of people', validation: 'number' },
-            room: { visible: true, required: true, label: 'Room Selection', placeholder: 'Select a room', validation: 'required' },
-            source: { visible: true, required: false, label: 'Booking Source', placeholder: 'How did they book?', validation: 'none' },
-            timeIn: { visible: true, required: true, label: 'Start Time', placeholder: 'Select start time', validation: 'required' },
-            timeOut: { visible: true, required: true, label: 'End Time', placeholder: 'Select end time', validation: 'required' },
+            customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
+            phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
+            email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+            partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
+            room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
+            source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+            timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
+            timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
             status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
             priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
-            basePrice: { visible: true, required: false, label: 'Base Price', placeholder: 'Base price amount', validation: 'currency' },
-            additionalFees: { visible: true, required: false, label: 'Additional Fees', placeholder: 'Extra charges', validation: 'currency' },
+            basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+            additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
             discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
-            totalPrice: { visible: true, required: false, label: 'Total Price', placeholder: 'Total amount', validation: 'currency' },
+            totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
             notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
-            specialRequests: { visible: true, required: false, label: 'Special Requests', placeholder: 'Special requirements', validation: 'none' },
+            specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
           },
           customBookingFields: [],
+          // Room form fields configuration
+          roomFormFields: {
+            name: { visible: true, required: true, label: 'Room name', placeholder: 'Enter room name', type: 'text', validation: 'required' },
+            capacity: { visible: true, required: true, label: 'Capacity', placeholder: 'Number of people', type: 'number', validation: 'required' },
+            type: { visible: true, required: true, label: 'Room type', placeholder: 'Select room type', type: 'select', validation: 'required' },
+            category: { visible: true, required: true, label: 'Category', placeholder: 'Select category', type: 'select', validation: 'required' },
+            status: { visible: true, required: true, label: 'Status', placeholder: 'Select status', type: 'select', validation: 'required' },
+            isBookable: { visible: true, required: false, label: 'Available for booking', placeholder: '', type: 'checkbox', validation: 'none' },
+            sortOrder: { visible: true, required: false, label: 'Sort order', placeholder: 'Display order', type: 'number', validation: 'number' },
+            hourlyRate: { visible: true, required: false, label: 'Hourly rate', placeholder: 'Price per hour', type: 'number', validation: 'currency' },
+            color: { visible: true, required: false, label: 'Room color', placeholder: '', type: 'color', validation: 'none' },
+            description: { visible: true, required: false, label: 'Description', placeholder: 'Room description', type: 'textarea', validation: 'none' },
+            amenities: { visible: true, required: false, label: 'Amenities', placeholder: 'Add amenities', type: 'text', validation: 'none' },
+          },
+          customRoomFields: [],
           // Confirmation template settings
           confirmationTemplate: {
             template: '🎤 BOOKING CONFIRMATION\n\n' +
@@ -193,6 +239,47 @@ export const SettingsProvider = ({ children }) => {
 
   // Settings are now initialized from localStorage on mount
 
+  // Force save updated field labels on first load
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('karaoke-settings');
+    if (savedSettings) {
+      const parsed = JSON.parse(savedSettings);
+      // Check if we need to update field labels
+      if (parsed.bookingFormFields?.customerName?.label === 'Customer Name') {
+        // Update and save the settings with new labels
+        const updatedSettings = {
+          ...parsed,
+          bookingFormFields: {
+            ...parsed.bookingFormFields,
+            customerName: { ...parsed.bookingFormFields.customerName, label: 'Customer name' },
+            phone: { ...parsed.bookingFormFields.phone, label: 'Phone number' },
+            email: { ...parsed.bookingFormFields.email, label: 'Email address' },
+            partySize: { ...parsed.bookingFormFields.partySize, label: 'Party size' },
+            room: { ...parsed.bookingFormFields.room, label: 'Room selection' },
+            source: { ...parsed.bookingFormFields.source, label: 'Booking source' },
+            timeIn: { ...parsed.bookingFormFields.timeIn, label: 'Start time' },
+            timeOut: { ...parsed.bookingFormFields.timeOut, label: 'End time' },
+            basePrice: { ...parsed.bookingFormFields.basePrice, label: 'Base price' },
+            additionalFees: { ...parsed.bookingFormFields.additionalFees, label: 'Additional fees' },
+            totalPrice: { ...parsed.bookingFormFields.totalPrice, label: 'Total price' },
+            specialRequests: { ...parsed.bookingFormFields.specialRequests, label: 'Special requests' },
+          },
+          roomFormFields: {
+            ...parsed.roomFormFields,
+            name: { ...parsed.roomFormFields.name, label: 'Room name' },
+            type: { ...parsed.roomFormFields.type, label: 'Room type' },
+            isBookable: { ...parsed.roomFormFields.isBookable, label: 'Available for booking' },
+            sortOrder: { ...parsed.roomFormFields.sortOrder, label: 'Sort order' },
+            hourlyRate: { ...parsed.roomFormFields.hourlyRate, label: 'Hourly rate' },
+            color: { ...parsed.roomFormFields.color, label: 'Room color' },
+          }
+        };
+        localStorage.setItem('karaoke-settings', JSON.stringify(updatedSettings));
+        setSettings(updatedSettings);
+      }
+    }
+  }, []);
+
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('karaoke-settings', JSON.stringify(settings));
@@ -256,6 +343,42 @@ export const SettingsProvider = ({ children }) => {
     setSettings(prev => ({
       ...prev,
       customBookingFields: prev.customBookingFields.filter(field => field.id !== fieldId)
+    }));
+  };
+
+  const updateRoomFormField = (fieldName, property, value) => {
+    setSettings(prev => ({
+      ...prev,
+      roomFormFields: {
+        ...prev.roomFormFields,
+        [fieldName]: {
+          ...prev.roomFormFields[fieldName],
+          [property]: value
+        }
+      }
+    }));
+  };
+
+  const addCustomRoomField = (field) => {
+    setSettings(prev => ({
+      ...prev,
+      customRoomFields: [...prev.customRoomFields, field]
+    }));
+  };
+
+  const updateCustomRoomField = (fieldId, property, value) => {
+    setSettings(prev => ({
+      ...prev,
+      customRoomFields: prev.customRoomFields.map(field => 
+        field.id === fieldId ? { ...field, [property]: value } : field
+      )
+    }));
+  };
+
+  const removeCustomRoomField = (fieldId) => {
+    setSettings(prev => ({
+      ...prev,
+      customRoomFields: prev.customRoomFields.filter(field => field.id !== fieldId)
     }));
   };
 
@@ -339,6 +462,21 @@ export const SettingsProvider = ({ children }) => {
         notes: true,
         specialRequests: true,
       },
+      // Room form fields configuration
+      roomFormFields: {
+        name: { visible: true, required: true, label: 'Room name', placeholder: 'Enter room name', type: 'text', validation: 'required' },
+        capacity: { visible: true, required: true, label: 'Capacity', placeholder: 'Number of people', type: 'number', validation: 'required' },
+        type: { visible: true, required: true, label: 'Room type', placeholder: 'Select room type', type: 'select', validation: 'required' },
+        category: { visible: true, required: true, label: 'Category', placeholder: 'Select category', type: 'select', validation: 'required' },
+        status: { visible: true, required: true, label: 'Status', placeholder: 'Select status', type: 'select', validation: 'required' },
+        isBookable: { visible: true, required: false, label: 'Available for booking', placeholder: '', type: 'checkbox', validation: 'none' },
+        sortOrder: { visible: true, required: false, label: 'Sort order', placeholder: 'Display order', type: 'number', validation: 'number' },
+        hourlyRate: { visible: true, required: false, label: 'Hourly rate', placeholder: 'Price per hour', type: 'number', validation: 'currency' },
+        color: { visible: true, required: false, label: 'Room color', placeholder: '', type: 'color', validation: 'none' },
+        description: { visible: true, required: false, label: 'Description', placeholder: 'Room description', type: 'textarea', validation: 'none' },
+        amenities: { visible: true, required: false, label: 'Amenities', placeholder: 'Add amenities', type: 'text', validation: 'none' },
+      },
+      customRoomFields: [],
       // Confirmation template settings
       confirmationTemplate: {
         template: '🎤 BOOKING CONFIRMATION\n\n' +
@@ -372,6 +510,47 @@ export const SettingsProvider = ({ children }) => {
     setSettings(defaultSettings);
   };
 
+  // Save current form field configurations as defaults
+  const saveAsDefaultFormFields = () => {
+    setSettings(prev => ({
+      ...prev,
+      defaultBookingFormFields: JSON.parse(JSON.stringify(prev.bookingFormFields)),
+      defaultCustomBookingFields: JSON.parse(JSON.stringify(prev.customBookingFields || [])),
+      defaultRoomFormFields: JSON.parse(JSON.stringify(prev.roomFormFields || {})),
+      defaultCustomRoomFields: JSON.parse(JSON.stringify(prev.customRoomFields || [])),
+      formFieldsSavedAt: new Date().toISOString()
+    }));
+  };
+
+  // Reset form fields to saved defaults
+  const resetToDefaultFormFields = () => {
+    setSettings(prev => {
+      const newSettings = { ...prev };
+      
+      // Reset booking form fields if defaults exist
+      if (prev.defaultBookingFormFields) {
+        newSettings.bookingFormFields = JSON.parse(JSON.stringify(prev.defaultBookingFormFields));
+      }
+      
+      // Reset custom booking fields if defaults exist
+      if (prev.defaultCustomBookingFields) {
+        newSettings.customBookingFields = JSON.parse(JSON.stringify(prev.defaultCustomBookingFields));
+      }
+      
+      // Reset room form fields if defaults exist
+      if (prev.defaultRoomFormFields) {
+        newSettings.roomFormFields = JSON.parse(JSON.stringify(prev.defaultRoomFormFields));
+      }
+      
+      // Reset custom room fields if defaults exist
+      if (prev.defaultCustomRoomFields) {
+        newSettings.customRoomFields = JSON.parse(JSON.stringify(prev.defaultCustomRoomFields));
+      }
+      
+      return newSettings;
+    });
+  };
+
   const value = {
     settings,
     updateSetting,
@@ -380,11 +559,17 @@ export const SettingsProvider = ({ children }) => {
     addCustomBookingField,
     updateCustomBookingField,
     removeCustomBookingField,
+    updateRoomFormField,
+    addCustomRoomField,
+    updateCustomRoomField,
+    removeCustomRoomField,
     updateLayoutSlotSetting,
     updateBookingSourceColor,
     updateConfirmationTemplate,
     updateConfirmationCustomFields,
     resetSettings,
+    saveAsDefaultFormFields,
+    resetToDefaultFormFields,
   };
 
   return (
