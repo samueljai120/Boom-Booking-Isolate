@@ -63,7 +63,7 @@ router.post('/login', [
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    // console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -135,7 +135,7 @@ router.post('/register', [
       }
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    // console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

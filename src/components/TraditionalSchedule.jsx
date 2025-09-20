@@ -218,18 +218,19 @@ const DraggableBooking = ({ booking, children, onDoubleClick, style: customStyle
       const actualFinalLeft = localStyle?.left !== undefined ? localStyle.left : Math.max(0, finalLeft);
       const actualFinalWidth = localStyle?.width !== undefined ? localStyle.width : Math.max(20, finalWidth);
       
-      // Debug logging removed for clean version'🚀 Final resize calculation:', { 
-        handle, 
-        actualFinalLeft, 
-        actualFinalWidth,
-        SLOT_WIDTH,
-        deltaX,
-        startLeft,
-        startWidth,
-        localStyle,
-        upEventClientX: upEvent.clientX,
-        startX
-      });
+      // Debug logging removed for clean version
+      // console.log('🚀 Final resize calculation:', { 
+      //   handle, 
+      //   actualFinalLeft, 
+      //   actualFinalWidth,
+      //   SLOT_WIDTH,
+      //   deltaX,
+      //   startLeft,
+      //   startWidth,
+      //   localStyle,
+      //   upEventClientX: upEvent.clientX,
+      //   startX
+      // });
       
       // Convert final position to exact time
       onResize?.(booking._id, { 
@@ -701,13 +702,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
             startTime: newTimeIn,
             endTime: newTimeOut,
           };
-          
-            customerName: updated[sourceIdx].customerName,
-            room: updated[sourceIdx].room,
-            roomId: updated[sourceIdx].roomId,
-            newRoomId: newRoomId,
-            newRoom: newRoom
-          });
         }
         queryClient.setQueryData(['bookings'], (old) => ({
           ...(old || {}),
@@ -717,7 +711,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           },
         }));
       } catch (e) {
-        console.warn('Optimistic move update failed:', e);
+        // Optimistic update failed - silently continue
       }
       return { previous };
     },
@@ -752,11 +746,13 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   // Mutation for resizing bookings with optimistic update
   const resizeBookingMutation = useMutation({
     mutationFn: (data) => {
-      // Debug logging removed for clean version'🔄 Resize mutation called with data:', data);
+      // Debug logging removed for clean version
+      // console.log('🔄 Resize mutation called with data:', data);
       return bookingsAPI.resize(data);
     },
     onMutate: async (variables) => {
-      // Debug logging removed for clean version'🔄 Resize mutation onMutate called with variables:', variables);
+      // Debug logging removed for clean version
+      // console.log('🔄 Resize mutation onMutate called with variables:', variables);
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
@@ -781,12 +777,12 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           },
         }));
       } catch (e) {
-        console.warn('Optimistic resize update failed:', e);
+        // Optimistic update failed - silently continue
       }
       return { previous };
     },
     onError: (_err, _vars, context) => {
-      console.error('❌ Resize mutation failed:', _err);
+      // Resize mutation failed - error handling removed for clean version
       if (context?.previous) {
         queryClient.setQueryData(['bookings'], context.previous);
       }
@@ -796,7 +792,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       } catch {}
     },
     onSuccess: (data, variables) => {
-      // Debug logging removed for clean version'✅ Resize mutation succeeded:', { data, variables });
+      // Debug logging removed for clean version
+      // console.log('✅ Resize mutation succeeded:', { data, variables });
       toast.success('Booking resized');
     },
     onSettled: () => {
@@ -867,7 +864,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
-    // console.log (removed for clean version)('🕒 TraditionalSchedule: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
     
     if (dayHours.isClosed) {
       return [];
@@ -878,21 +874,17 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     const [closeHour, closeMinute] = dayHours.closeTime.split(':').map(Number);
     
     // console.log (removed for clean version)('🕒 TraditionalSchedule: Parsed times:', {
-      openTime: dayHours.openTime,
-      closeTime: dayHours.closeTime,
-      openHour,
-      openMinute,
-      closeHour,
-      closeMinute
-    });
+    //   openTime: dayHours.openTime,
+    //   closeTime: dayHours.closeTime,
+    //   openHour,
+    //   openMinute,
+    //   closeHour,
+    //   closeMinute
+    // });
     
     // Check if this is late night hours (close time is next day)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
     
-    // console.log (removed for clean version)('🕒 TraditionalSchedule: Late night check:', {
-      isLateNight,
-      reason: isLateNight ? 'Close time is before open time' : 'Normal hours'
-    });
     
     // Construct midnight of the selected date in the selected timezone
     const dateInTz = moment.tz(
@@ -925,14 +917,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     
     const maxSlots = 200; // Prevent infinite loops (200 slots = 50 hours max)
     
-    // console.log (removed for clean version)('🕒 TraditionalSchedule: Time slot generation parameters:', {
-      timeInterval,
-      currentMinutes,
-      closeMinutes,
-      maxVisibleMinutes,
-      openTimeInMinutes: openHour * 60 + openMinute,
-      closeTimeInMinutes: closeMinutes
-    });
     
     while (slots.length < maxSlots && currentMinutes < maxVisibleMinutes) {
       // Calculate the actual hour and minute for display
@@ -1015,12 +999,6 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     
     // Time slots generated
     
-    // console.log (removed for clean version)('🕒 TraditionalSchedule: Generated time slots:', {
-      totalSlots: slots.length,
-      firstSlot: slots[0],
-      lastSlot: slots[slots.length - 1],
-      allSlots: slots.map(slot => `${slot.time} (${slot.timeString})`)
-    });
     
     return slots;
   }, [getBusinessHoursForDay, settings.timezone, settings.timeInterval, selectedDate, businessHours]);
@@ -1250,9 +1228,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       return;
     }
     
-    const [openHour] = dayHours.openTime.split(':').map(Number);
-    const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
-    const startTime = dayStart.clone().add(timeSlot.hour - openHour, 'hours');
+    // Use the slotTime directly from the timeSlot object, which is already timezone-aware
+    const startTime = timeSlot.slotTime.clone();
     const endTime = startTime.clone().add(1, 'hour');
     
     // Validate that the selected time is within business hours
@@ -1295,7 +1272,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       });
       setIsViewModalOpen(false);
     } catch (error) {
-      console.error('Failed to mark as no show:', error);
+      // Failed to mark as no show - error handling removed for clean version
     }
   };
 
@@ -1386,7 +1363,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // Get the actual time slot from the generated timeSlots array
       const targetSlot = timeSlots[slotIndex];
       if (!targetSlot) {
-        console.warn('Target slot not found for index:', slotIndex);
+        // Target slot not found - silently continue
         return;
       }
       
@@ -1414,7 +1391,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         if (conflicts.length === 1) {
           // Single conflict - perform swap
           const targetBooking = conflicts[0];
-          // Debug logging removed for clean version'🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
+          // Debug logging removed for clean version
+          // console.log('🔄 Swapping bookings:', booking.customerName, '↔', targetBooking.customerName);
           
           // Calculate the target booking's new time (swap the start times)
           const targetDuration = moment(targetBooking.timeOut || targetBooking.endTime).diff(moment(targetBooking.timeIn || targetBooking.startTime), 'minutes', true);
@@ -1448,7 +1426,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           window.dispatchEvent(new CustomEvent('exit-edit-mode'));
         } else if (conflicts.length === 0) {
           // No conflicts - simple move
-          // Debug logging removed for clean version'📍 Moving booking:', booking.customerName, 'to new position');
+          // Debug logging removed for clean version
+          // console.log('📍 Moving booking:', booking.customerName, 'to new position');
           moveBookingMutation.mutate({
             bookingId: booking._id,
             newRoomId: roomId,
@@ -1460,7 +1439,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           window.dispatchEvent(new CustomEvent('exit-edit-mode'));
         } else {
           // Multiple conflicts - show error
-          console.warn('⚠️ Cannot drop: Multiple booking conflicts detected');
+          // Multiple booking conflicts detected
           toast.error('Cannot place booking here: Multiple conflicting reservations detected.');
         }
       }
@@ -1472,7 +1451,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         const targetRoomId = targetBooking.room?._id || targetBooking.roomId?._id || targetBooking.room?.id || targetBooking.roomId?.id || targetBooking.roomId;
         const sourceRoomId = booking.room?._id || booking.roomId?._id || booking.room?.id || booking.roomId?.id || booking.roomId;
         
-        // Debug logging removed for clean version'🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
+        // Debug logging removed for clean version
+        // console.log('🔄 Direct swap:', booking.customerName, '↔', targetBooking.customerName);
         moveBookingMutation.mutate({
           bookingId: booking._id,
           newRoomId: targetRoomId,
@@ -1518,15 +1498,16 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       // For other intervals, use the interval itself
       const resizeSnapInterval = timeInterval === 60 ? 30 : timeInterval;
       
-      // Debug logging removed for clean version'🔧 Time calculation inputs:', {
-        finalLeft,
-        finalWidth,
-        slotWidth,
-        timeInterval,
-        resizeSnapInterval,
-        dayStartMoment: dayStartMoment.format('YYYY-MM-DD HH:mm:ss'),
-        handle
-      });
+      // Debug logging removed for clean version
+      // console.log('🔧 Time calculation inputs:', {
+      //   finalLeft,
+      //   finalWidth,
+      //   slotWidth,
+      //   timeInterval,
+      //   resizeSnapInterval,
+      //   dayStartMoment: dayStartMoment.format('YYYY-MM-DD HH:mm:ss'),
+      //   handle
+      // });
       
       if (handle === 'left') {
         // Left handle: set new start time based on final position
@@ -1549,16 +1530,17 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         }
         newEndTime = booking.endTime || booking.timeOut; // Keep end time same
         
-        // Debug logging removed for clean version'🔧 Left handle calculation:', {
-          slotFraction,
-          newStartMinutes,
-          snappedMinutes: newStartMinutes,
-          proposedStartTime: proposedStartTime.format('YYYY-MM-DD HH:mm:ss'),
-          newStartTime,
-          currentEndTime: currentEndTime.format('YYYY-MM-DD HH:mm:ss'),
-          originalStartTime: booking.startTime || booking.timeIn,
-          originalEndTime: booking.endTime || booking.timeOut
-        });
+        // Debug logging removed for clean version
+        // console.log('🔧 Left handle calculation:', {
+        //   slotFraction,
+        //   newStartMinutes,
+        //   snappedMinutes: newStartMinutes,
+        //   proposedStartTime: proposedStartTime.format('YYYY-MM-DD HH:mm:ss'),
+        //   newStartTime,
+        //   currentEndTime: currentEndTime.format('YYYY-MM-DD HH:mm:ss'),
+        //   originalStartTime: booking.startTime || booking.timeIn,
+        //   originalEndTime: booking.endTime || booking.timeOut
+        // });
       } else {
         // Right handle: set new end time based on final position
         newStartTime = booking.startTime || booking.timeIn; // Keep start time same
@@ -1580,30 +1562,32 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
           newEndTime = proposedEndTime.toISOString();
         }
         
-        // Debug logging removed for clean version'🔧 Right handle calculation:', {
-          endSlotFraction,
-          newEndMinutes,
-          snappedMinutes: newEndMinutes,
-          proposedEndTime: proposedEndTime.format('YYYY-MM-DD HH:mm:ss'),
-          newEndTime,
-          currentStartTime: currentStartTime.format('YYYY-MM-DD HH:mm:ss'),
-          originalStartTime: booking.startTime || booking.timeIn,
-          originalEndTime: booking.endTime || booking.timeOut
-        });
+        // Debug logging removed for clean version
+        // console.log('🔧 Right handle calculation:', {
+        //   endSlotFraction,
+        //   newEndMinutes,
+        //   snappedMinutes: newEndMinutes,
+        //   proposedEndTime: proposedEndTime.format('YYYY-MM-DD HH:mm:ss'),
+        //   newEndTime,
+        //   currentStartTime: currentStartTime.format('YYYY-MM-DD HH:mm:ss'),
+        //   originalStartTime: booking.startTime || booking.timeIn,
+        //   originalEndTime: booking.endTime || booking.timeOut
+        // });
       }
 
-      // Debug logging removed for clean version'🚀 Calling exact position resize API with:', {
-        bookingId,
-        newStartTime,
-        newEndTime,
-        finalLeft,
-        finalWidth,
-        slotWidth,
-        handle,
-        timeInterval,
-        originalStartTime: booking.startTime || booking.timeIn,
-        originalEndTime: booking.endTime || booking.timeOut
-      });
+      // Debug logging removed for clean version
+      // console.log('🚀 Calling exact position resize API with:', {
+      //   bookingId,
+      //   newStartTime,
+      //   newEndTime,
+      //   finalLeft,
+      //   finalWidth,
+      //   slotWidth,
+      //   handle,
+      //   timeInterval,
+      //   originalStartTime: booking.startTime || booking.timeIn,
+      //   originalEndTime: booking.endTime || booking.timeOut
+      // });
 
       // Call resize API
       resizeBookingMutation.mutate({
@@ -1632,14 +1616,15 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         newEndTime = currentEnd.clone().add(intervalDirection * intervalDuration).toISOString();
       }
 
-      // Debug logging removed for clean version'🚀 Calling interval-based resize API with:', {
-        bookingId,
-        newStartTime,
-        newEndTime,
-        intervalMinutes,
-        intervalDirection,
-        handle
-      });
+      // Debug logging removed for clean version
+      // console.log('🚀 Calling interval-based resize API with:', {
+      //   bookingId,
+      //   newStartTime,
+      //   newEndTime,
+      //   intervalMinutes,
+      //   intervalDirection,
+      //   handle
+      // });
 
       // Call resize API
       resizeBookingMutation.mutate({

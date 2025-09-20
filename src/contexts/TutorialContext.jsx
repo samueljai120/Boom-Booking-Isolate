@@ -32,7 +32,7 @@ export const TutorialProvider = ({ children }) => {
         setShowTutorialButton(true);
       }
     } catch (error) {
-      console.error('Failed to load tutorial state:', error);
+      // Failed to load tutorial state - error handling removed for clean version
       // Set defaults on error
       setTutorialCompleted(false);
       setTutorialSkipped(false);

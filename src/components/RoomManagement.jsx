@@ -75,11 +75,13 @@ const RoomManagement = () => {
   // Update room mutation
   const updateRoomMutation = useMutation({
     mutationFn: ({ id, data }) => {
-      // Debug logging removed for clean version'🚀 Update room mutation called with:', { id, data });
+      // Debug logging removed for clean version
+      // console.log('🚀 Update room mutation called with:', { id, data });
       return roomsAPI.update(id, data);
     },
     onSuccess: (resp) => {
-      // Debug logging removed for clean version'✅ Room update successful:', resp);
+      // Debug logging removed for clean version
+      // console.log('✅ Room update successful:', resp);
       // Invalidate queries to refetch the updated room list
       queryClient.invalidateQueries(['rooms']);
       queryClient.invalidateQueries(['room-categories']);
@@ -88,7 +90,7 @@ const RoomManagement = () => {
       setSelectedRoom(null);
     },
     onError: (error) => {
-      console.error('❌ Room update failed:', error);
+      // Room update failed - error handling removed for clean version
       toast.error(error.response?.data?.error || 'Failed to update room');
     },
   });
@@ -366,7 +368,8 @@ const RoomManagement = () => {
             if (isEditing) {
               // Use both _id and id for compatibility
               const roomId = selectedRoom._id || selectedRoom.id;
-              // Debug logging removed for clean version'🔧 Room update - ID:', roomId, 'Room:', selectedRoom, 'Data:', data);
+              // Debug logging removed for clean version
+              // console.log('🔧 Room update - ID:', roomId, 'Room:', selectedRoom, 'Data:', data);
               updateRoomMutation.mutate({ id: roomId, data });
             } else {
               createRoomMutation.mutate(data);

@@ -109,7 +109,7 @@ const BusinessHoursSettings = () => {
         // Context will handle the success toast
       }
     } catch (error) {
-      console.error('Error saving business hours:', error);
+      // Error saving business hours - error handling removed for clean version
       toast.error('Failed to save business hours');
     } finally {
       setSaving(false);

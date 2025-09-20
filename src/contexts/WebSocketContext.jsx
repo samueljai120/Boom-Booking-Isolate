@@ -22,7 +22,8 @@ export const WebSocketProvider = ({ children }) => {
     
     // Skip WebSocket connection in mock mode
     if (isMockMode) {
-      // Debug logging removed for clean version'🔧 Skipping WebSocket connection in mock mode');
+      // Debug logging removed for clean version
+      // console.log('🔧 Skipping WebSocket connection in mock mode');
       setConnected(false);
       return;
     }

@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
     [],
     (err, rows) => {
       if (err) {
-        console.error('Error fetching business hours:', err);
+        // console.error('Error fetching business hours:', err);
         return res.status(500).json({ error: 'Failed to fetch business hours' });
       }
       res.json({ success: true, data: rows });
@@ -46,7 +46,7 @@ router.put('/', [
     // Clear existing hours
     db.run('DELETE FROM business_hours', (err) => {
       if (err) {
-        console.error('Error clearing business hours:', err);
+        // console.error('Error clearing business hours:', err);
         db.run('ROLLBACK');
         return res.status(500).json({ error: 'Failed to update business hours' });
       }
@@ -62,7 +62,7 @@ router.put('/', [
           (err) => {
             if (err && !hasError) {
               hasError = true;
-              console.error('Error inserting business hours:', err);
+              // console.error('Error inserting business hours:', err);
               db.run('ROLLBACK');
               return res.status(500).json({ error: 'Failed to update business hours' });
             }
@@ -71,7 +71,7 @@ router.put('/', [
             if (completed === hours.length && !hasError) {
               db.run('COMMIT', (err) => {
                 if (err) {
-                  console.error('Error committing transaction:', err);
+                  // console.error('Error committing transaction:', err);
                   return res.status(500).json({ error: 'Failed to update business hours' });
                 }
 
@@ -81,7 +81,7 @@ router.put('/', [
                   [],
                   (err, rows) => {
                     if (err) {
-                      console.error('Error fetching updated business hours:', err);
+                      // console.error('Error fetching updated business hours:', err);
                       return res.status(500).json({ error: 'Failed to fetch updated business hours' });
                     }
 
@@ -111,7 +111,7 @@ router.get('/:day', (req, res) => {
     [dayOfWeek],
     (err, row) => {
       if (err) {
-        console.error('Error fetching business hours for day:', err);
+        // console.error('Error fetching business hours for day:', err);
         return res.status(500).json({ error: 'Failed to fetch business hours' });
       }
 
@@ -149,7 +149,7 @@ router.put('/:day', [
     [open_time, close_time, is_closed || false, dayOfWeek],
     function(err) {
       if (err) {
-        console.error('Error updating business hours:', err);
+        // console.error('Error updating business hours:', err);
         return res.status(500).json({ error: 'Failed to update business hours' });
       }
 
@@ -163,7 +163,7 @@ router.put('/:day', [
         [dayOfWeek],
         (err, row) => {
           if (err) {
-            console.error('Error fetching updated business hours:', err);
+            // console.error('Error fetching updated business hours:', err);
             return res.status(500).json({ error: 'Failed to fetch updated business hours' });
           }
 

@@ -46,10 +46,12 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   // Reset form when booking changes
   useEffect(() => {
     if (booking) {
-      // Debug logging removed for clean version'🔍 BookingModal: Booking object received:', booking);
+      // Debug logging removed for clean version
+      // console.log('🔍 BookingModal: Booking object received:', booking);
       if (booking.id || booking._id) {
         // Editing existing booking
-        // Debug logging removed for clean version'🔍 BookingModal: Editing existing booking, resetting form');
+        // Debug logging removed for clean version
+        // console.log('🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
         reset({
           customerName: booking.title || booking.customerName || '',
@@ -69,14 +71,15 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           specialRequests: booking.resource?.specialRequests || booking.specialRequests || '',
           roomId: booking.resource?.roomId || booking.room?._id || booking.roomId || '',
         });
-        // Debug logging removed for clean version'🔍 BookingModal: Form reset with values:', {
-          customerName: booking.title || booking.customerName || '',
-          phone: booking.resource?.phone || booking.phone || '',
-          email: booking.resource?.email || booking.email || '',
-          source: booking.resource?.source || booking.source || 'walk_in',
-          startTime: moment(booking.startTime || booking.start).format('YYYY-MM-DDTHH:mm'),
-          endTime: moment(booking.endTime || booking.end).format('YYYY-MM-DDTHH:mm'),
-        });
+        // Debug logging removed for clean version
+        // console.log('🔍 BookingModal: Form reset with values:', {
+        //   customerName: booking.title || booking.customerName || '',
+        //   phone: booking.resource?.phone || booking.phone || '',
+        //   email: booking.resource?.email || booking.email || '',
+        //   source: booking.resource?.source || booking.source || 'walk_in',
+        //   startTime: moment(booking.startTime || booking.start).format('YYYY-MM-DDTHH:mm'),
+        //   endTime: moment(booking.endTime || booking.end).format('YYYY-MM-DDTHH:mm'),
+        // });
       } else {
         // Creating new booking
         setIsEditing(false);

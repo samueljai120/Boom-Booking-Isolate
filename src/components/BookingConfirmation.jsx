@@ -173,7 +173,7 @@ const BookingConfirmation = ({ booking, onClose, isOpen, onTemplateUpdate }) => 
       
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy:', error);
+      // Failed to copy - error handling removed for clean version
       toast.error('Failed to copy to clipboard');
     }
   };

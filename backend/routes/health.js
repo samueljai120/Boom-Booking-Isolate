@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
   // Check database connection
   db.get('SELECT 1 as health', [], (err, row) => {
     if (err) {
-      console.error('Database health check failed:', err);
+      // console.error('Database health check failed:', err);
       return res.status(503).json({
         success: false,
         status: 'unhealthy',

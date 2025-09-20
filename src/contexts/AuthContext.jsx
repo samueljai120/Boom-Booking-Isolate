@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
           const response = await authAPI.getSession();
           setUser(response.data.user);
         } catch (error) {
-          console.error('Auth check failed:', error);
+          // Auth check failed - error handling removed for clean version
           localStorage.removeItem('authToken');
           setToken(null);
         }
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+      // Login error - error handling removed for clean version
       return {
         success: false,
         error: error.response?.data?.error || 'Login failed'
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await authAPI.logout();
     } catch (error) {
-      console.error('Logout error:', error);
+      // Logout error - error handling removed for clean version
     } finally {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');

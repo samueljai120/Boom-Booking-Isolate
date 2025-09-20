@@ -44,7 +44,7 @@ router.get('/', (req, res) => {
 
   db.all(query, params, (err, rows) => {
     if (err) {
-      console.error('Error fetching bookings:', err);
+      // console.error('Error fetching bookings:', err);
       return res.status(500).json({ error: 'Failed to fetch bookings' });
     }
     res.json({ success: true, data: rows });
@@ -64,7 +64,7 @@ router.get('/:id', (req, res) => {
 
   db.get(query, [id], (err, row) => {
     if (err) {
-      console.error('Error fetching booking:', err);
+      // console.error('Error fetching booking:', err);
       return res.status(500).json({ error: 'Failed to fetch booking' });
     }
 
@@ -102,7 +102,7 @@ router.post('/', [
 
   db.get(conflictQuery, [room_id, end_time, start_time, start_time, end_time], (err, row) => {
     if (err) {
-      console.error('Error checking conflicts:', err);
+      // console.error('Error checking conflicts:', err);
       return res.status(500).json({ error: 'Failed to check booking conflicts' });
     }
 
@@ -113,7 +113,7 @@ router.post('/', [
     // Get room price
     db.get('SELECT price_per_hour FROM rooms WHERE id = ?', [room_id], (err, room) => {
       if (err) {
-        console.error('Error fetching room price:', err);
+        // console.error('Error fetching room price:', err);
         return res.status(500).json({ error: 'Failed to fetch room information' });
       }
 
@@ -135,7 +135,7 @@ router.post('/', [
         [room_id, customer_name, customer_email, customer_phone, start_time, end_time, notes, totalPrice],
         function(err) {
           if (err) {
-            console.error('Error creating booking:', err);
+            // console.error('Error creating booking:', err);
             return res.status(500).json({ error: 'Failed to create booking' });
           }
 
@@ -149,7 +149,7 @@ router.post('/', [
 
           db.get(fetchQuery, [this.lastID], (err, booking) => {
             if (err) {
-              console.error('Error fetching created booking:', err);
+              // console.error('Error fetching created booking:', err);
               return res.status(500).json({ error: 'Failed to fetch created booking' });
             }
 
@@ -201,7 +201,7 @@ router.put('/:id', [
 
   db.run(query, values, function(err) {
     if (err) {
-      console.error('Error updating booking:', err);
+      // console.error('Error updating booking:', err);
       return res.status(500).json({ error: 'Failed to update booking' });
     }
 
@@ -219,7 +219,7 @@ router.put('/:id', [
 
     db.get(fetchQuery, [id], (err, row) => {
       if (err) {
-        console.error('Error fetching updated booking:', err);
+        // console.error('Error fetching updated booking:', err);
         return res.status(500).json({ error: 'Failed to fetch updated booking' });
       }
 
@@ -237,7 +237,7 @@ router.put('/:id/cancel', (req, res) => {
     [id],
     function(err) {
       if (err) {
-        console.error('Error cancelling booking:', err);
+        // console.error('Error cancelling booking:', err);
         return res.status(500).json({ error: 'Failed to cancel booking' });
       }
 
@@ -256,7 +256,7 @@ router.delete('/:id', (req, res) => {
 
   db.run('DELETE FROM bookings WHERE id = ?', [id], function(err) {
     if (err) {
-      console.error('Error deleting booking:', err);
+      // console.error('Error deleting booking:', err);
       return res.status(500).json({ error: 'Failed to delete booking' });
     }
 
@@ -291,7 +291,7 @@ router.put('/:id/move', [
 
   db.get(conflictQuery, [new_room_id, id, new_end_time, new_start_time, new_start_time, new_end_time], (err, row) => {
     if (err) {
-      console.error('Error checking conflicts:', err);
+      // console.error('Error checking conflicts:', err);
       return res.status(500).json({ error: 'Failed to check booking conflicts' });
     }
 
@@ -305,7 +305,7 @@ router.put('/:id/move', [
       [new_room_id, new_start_time, new_end_time, id],
       function(err) {
         if (err) {
-          console.error('Error moving booking:', err);
+          // console.error('Error moving booking:', err);
           return res.status(500).json({ error: 'Failed to move booking' });
         }
 
@@ -323,7 +323,7 @@ router.put('/:id/move', [
 
         db.get(fetchQuery, [id], (err, row) => {
           if (err) {
-            console.error('Error fetching moved booking:', err);
+            // console.error('Error fetching moved booking:', err);
             return res.status(500).json({ error: 'Failed to fetch moved booking' });
           }
 

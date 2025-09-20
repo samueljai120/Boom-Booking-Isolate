@@ -28,7 +28,7 @@ export const BusinessInfoProvider = ({ children }) => {
       try {
         setBusinessInfo(JSON.parse(saved));
       } catch (error) {
-        console.error('Failed to load business info:', error);
+        // Failed to load business info - error handling removed for clean version
       }
     }
   }, []);

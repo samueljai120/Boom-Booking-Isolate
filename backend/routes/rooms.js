@@ -30,7 +30,7 @@ router.get('/', (req, res) => {
 
   db.all(query, params, (err, rows) => {
     if (err) {
-      console.error('Error fetching rooms:', err);
+      // console.error('Error fetching rooms:', err);
       return res.status(500).json({ error: 'Failed to fetch rooms' });
     }
     res.json({ success: true, data: rows });
@@ -43,7 +43,7 @@ router.get('/:id', (req, res) => {
 
   db.get('SELECT * FROM rooms WHERE id = ?', [id], (err, row) => {
     if (err) {
-      console.error('Error fetching room:', err);
+      // console.error('Error fetching room:', err);
       return res.status(500).json({ error: 'Failed to fetch room' });
     }
 
@@ -74,7 +74,7 @@ router.post('/', [
     [name, capacity, category, description || null, price_per_hour || 0],
     function(err) {
       if (err) {
-        console.error('Error creating room:', err);
+        // console.error('Error creating room:', err);
         return res.status(500).json({ error: 'Failed to create room' });
       }
 
@@ -131,7 +131,7 @@ router.put('/:id', [
 
   db.run(query, values, function(err) {
     if (err) {
-      console.error('Error updating room:', err);
+      // console.error('Error updating room:', err);
       return res.status(500).json({ error: 'Failed to update room' });
     }
 
@@ -142,7 +142,7 @@ router.put('/:id', [
     // Fetch updated room
     db.get('SELECT * FROM rooms WHERE id = ?', [id], (err, row) => {
       if (err) {
-        console.error('Error fetching updated room:', err);
+        // console.error('Error fetching updated room:', err);
         return res.status(500).json({ error: 'Failed to fetch updated room' });
       }
 
@@ -161,7 +161,7 @@ router.delete('/:id', (req, res) => {
     [id],
     (err, row) => {
       if (err) {
-        console.error('Error checking room bookings:', err);
+        // console.error('Error checking room bookings:', err);
         return res.status(500).json({ error: 'Failed to check room bookings' });
       }
 
@@ -177,7 +177,7 @@ router.delete('/:id', (req, res) => {
         [id],
         function(err) {
           if (err) {
-            console.error('Error deleting room:', err);
+            // console.error('Error deleting room:', err);
             return res.status(500).json({ error: 'Failed to delete room' });
           }
 
@@ -199,7 +199,7 @@ router.get('/categories/list', (req, res) => {
     [],
     (err, rows) => {
       if (err) {
-        console.error('Error fetching categories:', err);
+        // console.error('Error fetching categories:', err);
         return res.status(500).json({ error: 'Failed to fetch categories' });
       }
 

@@ -62,7 +62,7 @@ export const SettingsProvider = ({ children }) => {
           businessHours: { openHour: 16, closeHour: 23 },
           timezone: 'America/New_York', // Default to Eastern Time
           timeFormat: '12h',
-          timeInterval: 60, // Default to 60 minutes (1 hour)
+          timeInterval: 15, // Default to 15 minutes
           showBusinessHours: true,
           // Coloring options
           colorByRoomType: true,
@@ -153,7 +153,7 @@ export const SettingsProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      console.error('Failed to parse saved settings during initialization:', error);
+      // Failed to parse saved settings - error handling removed for clean version
     }
     
     return {
@@ -186,22 +186,22 @@ export const SettingsProvider = ({ children }) => {
         slotHeight: 'medium',
       },
       bookingFormFields: {
-        customerName: true,
-        phone: true,
-        email: true,
-        partySize: true,
-        room: true,
-        source: true,
-        timeIn: true,
-        timeOut: true,
-        status: true,
-        priority: true,
-        basePrice: true,
-        additionalFees: true,
-        discount: true,
-        totalPrice: true,
-        notes: true,
-        specialRequests: true,
+        customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
+        phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
+        email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+        partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
+        room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
+        source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+        timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
+        timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
+        status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+        priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+        basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+        additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
+        discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+        totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
+        notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
+        specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
       },
       // Confirmation template settings
       confirmationTemplate: {
@@ -445,22 +445,22 @@ export const SettingsProvider = ({ children }) => {
         slotHeight: 'medium',
       },
       bookingFormFields: {
-        customerName: true,
-        phone: true,
-        email: true,
-        partySize: true,
-        room: true,
-        source: true,
-        timeIn: true,
-        timeOut: true,
-        status: true,
-        priority: true,
-        basePrice: true,
-        additionalFees: true,
-        discount: true,
-        totalPrice: true,
-        notes: true,
-        specialRequests: true,
+        customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
+        phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
+        email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+        partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
+        room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
+        source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+        timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
+        timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
+        status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+        priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+        basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+        additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
+        discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+        totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
+        notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
+        specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
       },
       // Room form fields configuration
       roomFormFields: {

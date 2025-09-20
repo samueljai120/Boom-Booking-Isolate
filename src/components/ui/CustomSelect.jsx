@@ -10,6 +10,12 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
   const selectRef = useRef(null);
   const dropdownRef = useRef(null);
 
+  // Debug logging for development
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+    }
+  }, [value, options, placeholder]);
+
   const selectedOption = (options && Array.isArray(options) ? options.find(opt => opt.value === value) : null);
 
   useEffect(() => {
@@ -69,8 +75,10 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
   }, [isOpen]);
 
   const handleSelect = (option, event) => {
-    event?.preventDefault();
-    event?.stopPropagation();
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     onChange(option.value);
     setIsOpen(false);
   };
@@ -103,16 +111,22 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
             zIndex: 10000,
           }}
         >
-          {options.map((option, index) => (
-            <button
-              key={option.key || option.value || index}
-              type="button"
-              className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none first:rounded-t-md last:rounded-b-md"
-              onClick={(event) => handleSelect(option, event)}
-            >
-              {option.label}
-            </button>
-          ))}
+          {options && options.length > 0 ? (
+            options.map((option, index) => (
+              <button
+                key={option.key || option.value || index}
+                type="button"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none first:rounded-t-md last:rounded-b-md"
+                onClick={(event) => handleSelect(option, event)}
+              >
+                {option.label}
+              </button>
+            ))
+          ) : (
+            <div className="w-full px-3 py-2 text-sm text-gray-500 text-center">
+              No options available
+            </div>
+          )}
         </div>,
         document.body
       )}
@@ -120,4 +134,5 @@ const CustomSelect = ({ value, onChange, options, className = '', placeholder = 
   );
 };
 
+export { CustomSelect };
 export default CustomSelect;

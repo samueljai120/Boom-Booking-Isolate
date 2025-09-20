@@ -56,7 +56,7 @@ export const authAPI = {
       const response = await apiClient.post('/auth/login', credentials);
       return response.data;
     } catch (error) {
-      console.error('Error logging in:', error);
+      // console.error('Error logging in:', error);
       throw error;
     }
   },
@@ -70,7 +70,7 @@ export const authAPI = {
       const response = await apiClient.post('/auth/logout');
       return response.data;
     } catch (error) {
-      console.error('Error logging out:', error);
+      // console.error('Error logging out:', error);
       throw error;
     }
   },
@@ -84,7 +84,7 @@ export const authAPI = {
       const response = await apiClient.get('/auth/me');
       return response.data;
     } catch (error) {
-      console.error('Error getting session:', error);
+      // console.error('Error getting session:', error);
       throw error;
     }
   },
@@ -189,11 +189,11 @@ export const businessHoursAPI = {
         }
       };
     } catch (error) {
-      console.error('❌ Error fetching business hours:', error);
+      // console.error('❌ Error fetching business hours:', error);
       
       // Enhanced error logging
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        console.error('🌐 Network Error Details:', {
+        // console.error('🌐 Network Error Details:', {
           message: error.message,
           code: error.code,
           url: `${API_BASE_URL}/business-hours`,
@@ -232,11 +232,11 @@ export const businessHoursAPI = {
         }
       };
     } catch (error) {
-      console.error('❌ Error updating business hours:', error);
+      // console.error('❌ Error updating business hours:', error);
       
       // Enhanced error logging
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        console.error('🌐 Network Error Details:', {
+        // console.error('🌐 Network Error Details:', {
           message: error.message,
           code: error.code,
           url: `${API_BASE_URL}/business-hours`,
@@ -267,7 +267,7 @@ export const settingsAPI = {
       const response = await apiClient.get('/settings');
       return response.data;
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      // console.error('Error fetching settings:', error);
       throw error;
     }
   },
@@ -281,7 +281,7 @@ export const settingsAPI = {
       const response = await apiClient.put('/settings', data);
       return response.data;
     } catch (error) {
-      console.error('Error updating settings:', error);
+      // console.error('Error updating settings:', error);
       throw error;
     }
   },

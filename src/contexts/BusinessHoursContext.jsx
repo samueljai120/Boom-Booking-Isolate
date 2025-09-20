@@ -31,7 +31,7 @@ export const BusinessHoursProvider = ({ children }) => {
         throw new Error('Failed to fetch business hours');
       }
     } catch (err) {
-      console.error('Error fetching business hours:', err);
+      // Error fetching business hours - error handling removed for clean version
       setError(err.message);
       // Only show error toast if user is authenticated (not just a 401 error)
       if (err.response?.status !== 401) {
@@ -54,8 +54,7 @@ export const BusinessHoursProvider = ({ children }) => {
         throw new Error('Failed to update business hours');
       }
     } catch (err) {
-      console.error('Error updating business hours:', err);
-      console.error('Error response:', err.response?.data);
+      // Error updating business hours - error handling removed for clean version
       setError(err.message);
       toast.error(`Failed to update business hours: ${err.response?.data?.error || err.message}`);
       return false;
@@ -89,7 +88,6 @@ export const BusinessHoursProvider = ({ children }) => {
 
     const start = new Date(startTime);
     const end = new Date(endTime);
-    const dateStr = date.toISOString().split('T')[0];
     
     // Parse business hours
     const [openHour, openMinute] = dayHours.openTime.split(':').map(Number);
@@ -98,15 +96,27 @@ export const BusinessHoursProvider = ({ children }) => {
     // Check if this is late night hours (close time is next day)
     const isLateNight = closeHour < openHour || (closeHour === openHour && closeMinute < openMinute);
     
-    const openTime = new Date(`${dateStr}T${dayHours.openTime}:00`);
-    let closeTime = new Date(`${dateStr}T${dayHours.closeTime}:00`);
+    // Extract time components from start and end times for comparison
+    const startHour = start.getHours();
+    const startMinute = start.getMinutes();
+    const endHour = end.getHours();
+    const endMinute = end.getMinutes();
     
-    // For late night hours, close time is next day
+    // Convert to minutes for easier comparison
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+    const openMinutes = openHour * 60 + openMinute;
+    const closeMinutes = closeHour * 60 + closeMinute;
+    
     if (isLateNight) {
-      closeTime.setDate(closeTime.getDate() + 1);
+      // For late night hours, business is open from openMinutes to closeMinutes next day
+      // So we need to check if the booking is within this range
+      return (startMinutes >= openMinutes || startMinutes < closeMinutes) &&
+             (endMinutes >= openMinutes || endMinutes <= closeMinutes + 24 * 60);
+    } else {
+      // For normal hours, business is open from openMinutes to closeMinutes same day
+      return startMinutes >= openMinutes && endMinutes <= closeMinutes;
     }
-    
-    return start >= openTime && end <= closeTime;
   }, [getBusinessHoursForDay]);
 
   const getTimeSlotsForDay = useCallback((date, timezone = 'America/New_York') => {

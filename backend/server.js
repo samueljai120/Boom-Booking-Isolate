@@ -86,7 +86,7 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  // Error logging removed for clean version
   res.status(500).json({ 
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
@@ -106,7 +106,7 @@ async function startServer() {
       // console.log (removed for clean version)(`🌐 Socket.IO: http://localhost:${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    // Failed to start server - error handling removed for clean version
     process.exit(1);
   }
 }

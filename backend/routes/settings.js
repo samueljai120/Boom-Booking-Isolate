@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
     [],
     (err, rows) => {
       if (err) {
-        console.error('Error fetching settings:', err);
+        // console.error('Error fetching settings:', err);
         return res.status(500).json({ error: 'Failed to fetch settings' });
       }
 
@@ -35,7 +35,7 @@ router.get('/:key', (req, res) => {
     [key],
     (err, row) => {
       if (err) {
-        console.error('Error fetching setting:', err);
+        // console.error('Error fetching setting:', err);
         return res.status(500).json({ error: 'Failed to fetch setting' });
       }
 
@@ -78,7 +78,7 @@ router.put('/', [
         (err) => {
           if (err && !hasError) {
             hasError = true;
-            console.error('Error updating settings:', err);
+            // console.error('Error updating settings:', err);
             db.run('ROLLBACK');
             return res.status(500).json({ error: 'Failed to update settings' });
           }
@@ -87,7 +87,7 @@ router.put('/', [
           if (completed === keys.length && !hasError) {
             db.run('COMMIT', (err) => {
               if (err) {
-                console.error('Error committing transaction:', err);
+                // console.error('Error committing transaction:', err);
                 return res.status(500).json({ error: 'Failed to update settings' });
               }
 
@@ -117,7 +117,7 @@ router.put('/:key', [
     [key, value],
     function(err) {
       if (err) {
-        console.error('Error updating setting:', err);
+        // console.error('Error updating setting:', err);
         return res.status(500).json({ error: 'Failed to update setting' });
       }
 
@@ -139,7 +139,7 @@ router.delete('/:key', (req, res) => {
     [key],
     function(err) {
       if (err) {
-        console.error('Error deleting setting:', err);
+        // console.error('Error deleting setting:', err);
         return res.status(500).json({ error: 'Failed to delete setting' });
       }
 

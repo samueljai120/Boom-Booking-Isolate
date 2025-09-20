@@ -342,7 +342,7 @@ const AppleCalendarDashboard = () => {
         const { healthAPI } = await import('../lib/api.js');
         await healthAPI.check();
       } catch (error) {
-        console.error('Health check failed:', error);
+        // Health check failed - error handling removed for clean version
       }
     };
     
@@ -495,7 +495,7 @@ const AppleCalendarDashboard = () => {
     const timeSlotsCount = timeSlots.length;
     
     if (timeSlotsCount === 0) {
-      console.warn('⚠️ No time slots available, using minimum height');
+      // No time slots available, using minimum height
       return minHeight;
     }
     
@@ -514,7 +514,7 @@ const AppleCalendarDashboard = () => {
     
     // Safety check for valid height
     if (isNaN(finalHeight) || finalHeight <= 0) {
-      console.warn('⚠️ Invalid slot height calculated, using minimum height:', finalHeight);
+      // Invalid slot height calculated, using minimum height
       return minHeight;
     }
     
@@ -667,7 +667,7 @@ const AppleCalendarDashboard = () => {
         const targetIdx = targetBookingId ? oldBookings.findIndex(b => b._id === targetBookingId) : -1;
         
         if (sourceIdx === -1) {
-          console.error('❌ Source booking not found!', { bookingId });
+          // Source booking not found
           return { previous };
         }
 
@@ -741,7 +741,7 @@ const AppleCalendarDashboard = () => {
         
         // Optimistic update completed
       } catch (e) {
-        console.warn('Optimistic move update failed:', e);
+        // Optimistic move update failed - silently continue
       }
 
       return { previous };
@@ -818,7 +818,7 @@ const AppleCalendarDashboard = () => {
         }));
         // // console.log (removed for clean version)('✅ Optimistic resize update applied');
       } catch (e) {
-        console.warn('Optimistic resize update failed:', e);
+        // Optimistic resize update failed - silently continue
       }
       return { previous };
     },
@@ -938,7 +938,8 @@ const AppleCalendarDashboard = () => {
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
     
-      // Debug logging removed for clean version'🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
+      // Debug logging removed for clean version
+      // console.log('🍎 AppleCalendarDashboard: Generating time slots for weekday', weekday, 'with business hours:', dayHours);
     
     if (dayHours.isClosed) {
       return [];
@@ -1063,11 +1064,11 @@ const AppleCalendarDashboard = () => {
           
           // Validate booking has required time data
           if (!booking.startTime && !booking.timeIn) {
-            console.warn(`⚠️ Booking missing start time for ${booking.customerName || 'Unknown'}:`, booking);
+            // Booking missing start time
             return null;
           }
           if (!booking.endTime && !booking.timeOut) {
-            console.warn(`⚠️ Booking missing end time for ${booking.customerName || 'Unknown'}:`, booking);
+            // Booking missing end time
             return null;
           }
           
@@ -1076,11 +1077,11 @@ const AppleCalendarDashboard = () => {
           
           // Validate moment parsing
           if (!start.isValid()) {
-            console.warn(`⚠️ Invalid start time for ${booking.customerName || 'Unknown'}:`, booking.startTime || booking.timeIn);
+            // Invalid start time
             return null;
           }
           if (!end.isValid()) {
-            console.warn(`⚠️ Invalid end time for ${booking.customerName || 'Unknown'}:`, booking.endTime || booking.timeOut);
+            // Invalid end time
             return null;
           }
           
@@ -1100,18 +1101,11 @@ const AppleCalendarDashboard = () => {
           
           // Only filter out if duration is negative (invalid booking)
           if (clampedDuration <= 0) {
-            console.warn(`⚠️ Invalid booking duration for ${booking.customerName || 'Unknown'}: ${clampedDuration} minutes`, {
-              startTime: booking.startTime || booking.timeIn,
-              endTime: booking.endTime || booking.timeOut,
-              startMinutes,
-              endMinutes,
-              durationMinutes,
-              booking
-            });
+            // Invalid booking duration
             
             // For debugging: try to fix the booking by adding 1 hour to end time
             if (clampedDuration === 0 && booking.startTime && booking.endTime) {
-              console.warn(`🔧 Attempting to fix booking with 0 duration by adjusting end time`);
+              // Attempting to fix booking with 0 duration
               // This is just for debugging - we don't actually modify the booking here
               // The real fix should be in the form validation
             }
@@ -1183,10 +1177,22 @@ const AppleCalendarDashboard = () => {
   const handleRoomSlotClick = (room, timeSlot) => {
     const weekday = selectedDate.getDay();
     const dayHours = getBusinessHoursForDay(weekday);
-    const [openHour] = dayHours.openTime.split(':').map(Number);
-    const dayStart = moment(selectedDate).startOf('day').add(openHour, 'hours');
-    const startTime = dayStart.clone().add(timeSlot.hour - openHour, 'hours');
+    
+    // Check if business is closed
+    if (dayHours.isClosed) {
+      toast.error('Business is closed on this date. Please choose a different date.');
+      return;
+    }
+    
+    // Use the slotTime directly from the timeSlot object, which is already timezone-aware
+    const startTime = timeSlot.slotTime.clone();
     const endTime = startTime.clone().add(1, 'hour');
+    
+    // Validate that the selected time is within business hours
+    if (!isWithinBusinessHours(selectedDate, startTime.toDate(), endTime.toDate())) {
+      toast.error('Selected time is outside business hours. Please choose a different time.');
+      return;
+    }
     
     setSelectedBooking({
       start: startTime.toDate(),
@@ -1216,7 +1222,7 @@ const AppleCalendarDashboard = () => {
       });
       setIsViewModalOpen(false);
     } catch (error) {
-      console.error('Failed to mark as no show:', error);
+      // Failed to mark as no show - error handling removed for clean version
     }
   };
 
@@ -1336,7 +1342,7 @@ const AppleCalendarDashboard = () => {
       // Get the actual time slot from the generated timeSlots array
       const targetSlot = timeSlots[slotIndex];
       if (!targetSlot) {
-        console.warn('Target slot not found for index:', slotIndex);
+        // Target slot not found - silently continue
         return;
       }
       
