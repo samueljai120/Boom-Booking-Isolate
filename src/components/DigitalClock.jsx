@@ -41,7 +41,7 @@ const DigitalClock = ({
   };
 
   return (
-    <div className={`bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-xl border-2 border-blue-300 relative z-[9999] ${containerClasses[size]} ${className}`}>
+    <div className={`bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-xl border-2 border-blue-300 fixed top-4 right-4 z-[9999] digital-clock-mobile ${containerClasses[size]} ${className}`}>
       <div className={`font-mono font-bold text-blue-900 ${sizeClasses[size]}`}>
         {timeString}
       </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import moment from 'moment';
 import { useSettings } from '../contexts/SettingsContext';
+import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import { roomsAPI, bookingsAPI } from '../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -42,6 +44,7 @@ import toast from 'react-hot-toast';
 const SettingsModal = ({ isOpen, onClose }) => {
   // Always call hooks in the same order
   const { settings, updateSetting, toggleLayoutOrientation, resetSettings } = useSettings();
+  const { getBusinessHoursForDay } = useBusinessHours();
   const [activeTab, setActiveTab] = useState('layout');
   const [isDraggingSlider, setIsDraggingSlider] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -381,6 +384,45 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <Upload className="w-4 h-4" />
                         <span>Import Settings</span>
                       </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const today = new Date();
+                          const todayWeekday = today.getDay();
+                          const todayBusinessHours = getBusinessHoursForDay(todayWeekday);
+                          
+                          if (todayBusinessHours.isClosed) {
+                            toast.error('Business is closed today. Cannot create example bookings.');
+                            return;
+                          }
+                          
+                          const confirmMessage = `This will create 12 sample rooms with bookings for today (${todayBusinessHours.openTime} - ${todayBusinessHours.closeTime}). This action cannot be undone. Continue?`;
+                          
+                          if (window.confirm(confirmMessage)) {
+                            createExampleData(getBusinessHoursForDay);
+                          }
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        <span>Show Example</span>
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (window.confirm('This will clear all example data (rooms and bookings) and reset to default. This action cannot be undone. Continue?')) {
+                            clearExampleData();
+                          }
+                        }}
+                        className="w-full flex items-center justify-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>Clear Example Data</span>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -412,6 +454,182 @@ const SettingsModal = ({ isOpen, onClose }) => {
       </Card>
     </div>
   );
+};
+
+// Function to create example data that respects business hours settings
+const createExampleData = async (getBusinessHoursForDay) => {
+  try {
+    toast.loading('Creating example data...', { id: 'example-data' });
+    
+    // Get today's date
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    const todayWeekday = today.getDay();
+    
+    // Get business hours for today
+    const todayBusinessHours = getBusinessHoursForDay(todayWeekday);
+    
+    // Check if business is closed today
+    if (todayBusinessHours.isClosed) {
+      toast.error('Business is closed today. Cannot create example bookings.', { id: 'example-data' });
+      return;
+    }
+    
+    // Parse business hours
+    const [openHour, openMinute] = todayBusinessHours.openTime.split(':').map(Number);
+    const [closeHour, closeMinute] = todayBusinessHours.closeTime.split(':').map(Number);
+    
+    // Convert to minutes for easier calculation
+    const openMinutes = openHour * 60 + openMinute;
+    const closeMinutes = closeHour * 60 + closeMinute;
+    
+    // Calculate available time window (leave some buffer at the end)
+    const availableMinutes = closeMinutes - openMinutes - 60; // 1 hour buffer
+    if (availableMinutes <= 0) {
+      toast.error('Business hours are too short to create example bookings.', { id: 'example-data' });
+      return;
+    }
+    
+    // Create 12 sample rooms
+    const sampleRooms = [
+      { name: 'Karaoke Room 1', capacity: 4, category: 'Standard', type: 'small', color: '#3B82F6', hourlyRate: 25, amenities: ['Microphone', 'TV', 'Sound System'] },
+      { name: 'Karaoke Room 2', capacity: 6, category: 'Standard', type: 'medium', color: '#10B981', hourlyRate: 30, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting'] },
+      { name: 'Karaoke Room 3', capacity: 8, category: 'Premium', type: 'large', color: '#F59E0B', hourlyRate: 40, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar'] },
+      { name: 'Karaoke Room 4', capacity: 10, category: 'Premium', type: 'large', color: '#8B5CF6', hourlyRate: 45, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar', 'Dance Floor'] },
+      { name: 'Karaoke Room 5', capacity: 12, category: 'VIP', type: 'party', color: '#EF4444', hourlyRate: 60, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar', 'Dance Floor', 'Private Entrance'] },
+      { name: 'Karaoke Room 6', capacity: 15, category: 'VIP', type: 'party', color: '#EC4899', hourlyRate: 70, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar', 'Dance Floor', 'Private Entrance', 'Catering'] },
+      { name: 'Karaoke Room 7', capacity: 6, category: 'Standard', type: 'medium', color: '#06B6D4', hourlyRate: 35, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting'] },
+      { name: 'Karaoke Room 8', capacity: 8, category: 'Premium', type: 'large', color: '#84CC16', hourlyRate: 45, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar'] },
+      { name: 'Karaoke Room 9', capacity: 10, category: 'Premium', type: 'large', color: '#F97316', hourlyRate: 50, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar', 'Dance Floor'] },
+      { name: 'Karaoke Room 10', capacity: 12, category: 'VIP', type: 'party', color: '#6366F1', hourlyRate: 65, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar', 'Dance Floor', 'Private Entrance'] },
+      { name: 'Karaoke Room 11', capacity: 4, category: 'Standard', type: 'small', color: '#14B8A6', hourlyRate: 28, amenities: ['Microphone', 'TV', 'Sound System'] },
+      { name: 'Karaoke Room 12', capacity: 6, category: 'Standard', type: 'medium', color: '#A855F7', hourlyRate: 32, amenities: ['Microphone', 'TV', 'Sound System', 'Lighting'] }
+    ];
+    
+    // Create rooms first
+    const createdRooms = [];
+    for (const roomData of sampleRooms) {
+      try {
+        const roomResponse = await roomsAPI.create(roomData);
+        const room = roomResponse.data?.room || roomResponse.data;
+        if (room) {
+          createdRooms.push(room);
+        }
+      } catch (error) {
+        console.error('Error creating room:', error);
+      }
+    }
+    
+    // Helper function to generate time within business hours
+    const generateTimeWithinHours = (startOffsetMinutes, durationMinutes = 120) => {
+      const startMinutes = openMinutes + startOffsetMinutes;
+      const endMinutes = startMinutes + durationMinutes;
+      
+      // Ensure we don't exceed business hours
+      if (endMinutes >= closeMinutes) {
+        const adjustedDuration = closeMinutes - startMinutes - 30; // 30 min buffer
+        return {
+          startMinutes: startMinutes,
+          durationMinutes: Math.max(60, adjustedDuration) // minimum 1 hour
+        };
+      }
+      
+      return { startMinutes, durationMinutes };
+    };
+    
+    // Helper function to format time to HH:MM
+    const formatTime = (minutes) => {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+    
+    // Generate sample bookings with dynamic times based on business hours
+    // Distribute bookings evenly across available time
+    const bookingCount = 12;
+    const timeInterval = Math.floor(availableMinutes / bookingCount);
+    const bookingOffsets = Array.from({ length: bookingCount }, (_, i) => i * timeInterval);
+    
+    const sampleBookings = [
+      { customerName: 'John Smith', phone: '+1234567890', email: 'john@example.com', partySize: 4, source: 'walk_in', status: 'confirmed', notes: 'Birthday celebration', roomIndex: 0 },
+      { customerName: 'Sarah Johnson', phone: '+1234567891', email: 'sarah@example.com', partySize: 6, source: 'phone', status: 'confirmed', notes: 'Corporate team building', roomIndex: 1 },
+      { customerName: 'Mike Chen', phone: '+1234567892', email: 'mike@example.com', partySize: 8, source: 'online', status: 'confirmed', notes: 'Wedding reception', roomIndex: 2 },
+      { customerName: 'Emily Davis', phone: '+1234567893', email: 'emily@example.com', partySize: 10, source: 'walk_in', status: 'confirmed', notes: 'Anniversary party', roomIndex: 3 },
+      { customerName: 'David Wilson', phone: '+1234567894', email: 'david@example.com', partySize: 12, source: 'phone', status: 'confirmed', notes: 'Graduation celebration', roomIndex: 4 },
+      { customerName: 'Lisa Brown', phone: '+1234567895', email: 'lisa@example.com', partySize: 15, source: 'online', status: 'confirmed', notes: 'Company party', roomIndex: 5 },
+      { customerName: 'Robert Taylor', phone: '+1234567896', email: 'robert@example.com', partySize: 6, source: 'walk_in', status: 'confirmed', notes: 'Friend gathering', roomIndex: 6 },
+      { customerName: 'Jennifer Garcia', phone: '+1234567897', email: 'jennifer@example.com', partySize: 8, source: 'phone', status: 'confirmed', notes: 'Bachelorette party', roomIndex: 7 },
+      { customerName: 'Michael Martinez', phone: '+1234567898', email: 'michael@example.com', partySize: 10, source: 'online', status: 'confirmed', notes: 'Retirement celebration', roomIndex: 8 },
+      { customerName: 'Amanda Anderson', phone: '+1234567899', email: 'amanda@example.com', partySize: 12, source: 'walk_in', status: 'confirmed', notes: 'Holiday party', roomIndex: 9 },
+      { customerName: 'Christopher Lee', phone: '+1234567800', email: 'christopher@example.com', partySize: 4, source: 'phone', status: 'confirmed', notes: 'Date night', roomIndex: 10 },
+      { customerName: 'Jessica White', phone: '+1234567801', email: 'jessica@example.com', partySize: 6, source: 'online', status: 'confirmed', notes: 'Girls night out', roomIndex: 11 }
+    ];
+    
+    // Add dynamic times to each booking
+    const bookingsWithTimes = sampleBookings.map((booking, index) => {
+      const offset = bookingOffsets[index] || (index * 30);
+      const { startMinutes, durationMinutes } = generateTimeWithinHours(offset);
+      const endMinutes = startMinutes + durationMinutes;
+      
+      return {
+        ...booking,
+        startTime: `${todayStr}T${formatTime(startMinutes)}:00`,
+        endTime: `${todayStr}T${formatTime(endMinutes)}:00`
+      };
+    });
+    
+    // Create bookings
+    for (const bookingData of bookingsWithTimes) {
+      if (createdRooms[bookingData.roomIndex]) {
+        try {
+          const roomId = createdRooms[bookingData.roomIndex]._id || createdRooms[bookingData.roomIndex].id;
+          const bookingPayload = {
+            ...bookingData,
+            roomId: roomId,
+            basePrice: (bookingData.partySize * 5) + Math.floor(Math.random() * 20),
+            additionalFees: Math.floor(Math.random() * 10),
+            discount: Math.floor(Math.random() * 5),
+            totalPrice: 0 // Will be calculated
+          };
+          
+          // Calculate total price
+          bookingPayload.totalPrice = bookingPayload.basePrice + bookingPayload.additionalFees - bookingPayload.discount;
+          
+          await bookingsAPI.create(bookingPayload);
+        } catch (error) {
+          console.error('Error creating booking:', error);
+        }
+      }
+    }
+    
+    toast.success(`Example data created successfully! 12 rooms and bookings have been added for today (${todayBusinessHours.openTime} - ${todayBusinessHours.closeTime}). The data is now saved and will persist after page refresh.`, { id: 'example-data' });
+    
+  } catch (error) {
+    console.error('Error creating example data:', error);
+    toast.error('Failed to create example data. Please try again.', { id: 'example-data' });
+  }
+};
+
+// Function to clear example data and reset to defaults
+const clearExampleData = async () => {
+  try {
+    toast.loading('Clearing example data...', { id: 'clear-data' });
+    
+    // Clear localStorage for rooms and bookings
+    localStorage.removeItem('boom-karaoke-mock-rooms');
+    localStorage.removeItem('boom-karaoke-mock-bookings');
+    
+    toast.success('Example data cleared successfully! The application will now use default data.', { id: 'clear-data' });
+    
+    // Refresh the page after a short delay to show the reset data
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Error clearing example data:', error);
+    toast.error('Failed to clear example data. Please try again.', { id: 'clear-data' });
+  }
 };
 
 // Layout Settings Component

@@ -1,4 +1,32 @@
-// Mock data for standalone frontend
+// Helper functions for localStorage persistence
+const STORAGE_KEYS = {
+  ROOMS: 'boom-karaoke-mock-rooms',
+  BOOKINGS: 'boom-karaoke-mock-bookings',
+  BUSINESS_HOURS: 'boom-karaoke-mock-business-hours',
+  SETTINGS: 'boom-karaoke-mock-settings'
+};
+
+// Load data from localStorage or use defaults
+const loadFromStorage = (key, defaultValue) => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch (error) {
+    console.warn(`Failed to load ${key} from localStorage:`, error);
+    return defaultValue;
+  }
+};
+
+// Save data to localStorage
+const saveToStorage = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (error) {
+    console.warn(`Failed to save ${key} to localStorage:`, error);
+  }
+};
+
+// Mock data for standalone frontend with localStorage persistence
 export const mockData = {
   // Mock user data
   user: {
@@ -8,51 +36,58 @@ export const mockData = {
     role: 'admin'
   },
 
-  // Mock rooms data
-  rooms: [
-    {
-      _id: 1,
-      id: 1,
-      name: 'Room A',
-      capacity: 4,
-      category: 'Standard',
-      amenities: ['Microphone', 'TV', 'Sound System'],
-      isActive: true,
-      isBookable: true,
-      status: 'active',
-      color: '#3B82F6',
-      hourlyRate: 25
-    },
-    {
-      _id: 2,
-      id: 2,
-      name: 'Room B',
-      capacity: 6,
-      category: 'Premium',
-      amenities: ['Microphone', 'TV', 'Sound System', 'Lighting'],
-      isActive: true,
-      isBookable: true,
-      status: 'active',
-      color: '#10B981',
-      hourlyRate: 35
-    },
-    {
-      _id: 3,
-      id: 3,
-      name: 'Room C',
-      capacity: 8,
-      category: 'VIP',
-      amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar'],
-      isActive: true,
-      isBookable: true,
-      status: 'active',
-      color: '#F59E0B',
-      hourlyRate: 50
-    }
-  ],
+  // Mock rooms data with localStorage persistence
+  get rooms() {
+    return loadFromStorage(STORAGE_KEYS.ROOMS, [
+      {
+        _id: 1,
+        id: 1,
+        name: 'Room A',
+        capacity: 4,
+        category: 'Standard',
+        amenities: ['Microphone', 'TV', 'Sound System'],
+        isActive: true,
+        isBookable: true,
+        status: 'active',
+        color: '#3B82F6',
+        hourlyRate: 25
+      },
+      {
+        _id: 2,
+        id: 2,
+        name: 'Room B',
+        capacity: 6,
+        category: 'Premium',
+        amenities: ['Microphone', 'TV', 'Sound System', 'Lighting'],
+        isActive: true,
+        isBookable: true,
+        status: 'active',
+        color: '#10B981',
+        hourlyRate: 35
+      },
+      {
+        _id: 3,
+        id: 3,
+        name: 'Room C',
+        capacity: 8,
+        category: 'VIP',
+        amenities: ['Microphone', 'TV', 'Sound System', 'Lighting', 'Bar'],
+        isActive: true,
+        isBookable: true,
+        status: 'active',
+        color: '#F59E0B',
+        hourlyRate: 50
+      }
+    ]);
+  },
+  
+  set rooms(newRooms) {
+    saveToStorage(STORAGE_KEYS.ROOMS, newRooms);
+  },
 
-  // Mock bookings data
-  bookings: [
+  // Mock bookings data with localStorage persistence
+  get bookings() {
+    return loadFromStorage(STORAGE_KEYS.BOOKINGS, [
     {
       _id: 1,
       id: 1,
@@ -183,18 +218,29 @@ export const mockData = {
       createdAt: new Date(),
       updatedAt: new Date()
     }
-  ],
+    ]);
+  },
+  
+  set bookings(newBookings) {
+    saveToStorage(STORAGE_KEYS.BOOKINGS, newBookings);
+  },
 
-  // Mock business hours
-  businessHours: [
-    { weekday: 1, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Monday
-    { weekday: 2, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Tuesday
-    { weekday: 3, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Wednesday
-    { weekday: 4, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Thursday
-    { weekday: 5, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Friday
-    { weekday: 6, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Saturday
-    { weekday: 0, openTime: '16:00', closeTime: '23:00', isClosed: false }  // Sunday
-  ],
+  // Mock business hours with localStorage persistence
+  get businessHours() {
+    return loadFromStorage(STORAGE_KEYS.BUSINESS_HOURS, [
+      { weekday: 1, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Monday
+      { weekday: 2, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Tuesday
+      { weekday: 3, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Wednesday
+      { weekday: 4, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Thursday
+      { weekday: 5, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Friday
+      { weekday: 6, openTime: '16:00', closeTime: '23:00', isClosed: false }, // Saturday
+      { weekday: 0, openTime: '16:00', closeTime: '23:00', isClosed: false }  // Sunday
+    ]);
+  },
+  
+  set businessHours(newBusinessHours) {
+    saveToStorage(STORAGE_KEYS.BUSINESS_HOURS, newBusinessHours);
+  },
 
   // Mock settings
   settings: {
@@ -261,9 +307,11 @@ export const mockAPI = {
     return new Promise((resolve) => {
       setTimeout(() => {
         // Generate unique ID by finding the highest existing ID and adding 1
-        const maxId = mockData.rooms.length > 0 ? Math.max(...mockData.rooms.map(r => r.id)) : 0;
+        const currentRooms = mockData.rooms;
+        const maxId = currentRooms.length > 0 ? Math.max(...currentRooms.map(r => r.id)) : 0;
         const newRoom = {
           id: maxId + 1,
+          _id: maxId + 1,
           name: data.name,
           capacity: data.capacity,
           category: data.category,
@@ -276,7 +324,8 @@ export const mockAPI = {
           isBookable: data.isBookable !== false,
           sortOrder: data.sortOrder || 0
         };
-        mockData.rooms.push(newRoom);
+        const updatedRooms = [...currentRooms, newRoom];
+        mockData.rooms = updatedRooms;
         resolve({ data: newRoom });
       }, 1000);
     });
@@ -286,11 +335,14 @@ export const mockAPI = {
     return new Promise((resolve) => {
       setTimeout(() => {
         // Look for room by both _id and id to handle different ID formats
-        const index = mockData.rooms.findIndex(r => r.id === id || r._id === id);
+        const currentRooms = mockData.rooms;
+        const index = currentRooms.findIndex(r => r.id === id || r._id === id);
         
         if (index !== -1) {
-          mockData.rooms[index] = { ...mockData.rooms[index], ...data };
-          resolve({ data: mockData.rooms[index] });
+          const updatedRooms = [...currentRooms];
+          updatedRooms[index] = { ...updatedRooms[index], ...data };
+          mockData.rooms = updatedRooms;
+          resolve({ data: updatedRooms[index] });
         } else {
           throw new Error('Room not found');
         }
@@ -302,9 +354,12 @@ export const mockAPI = {
     return new Promise((resolve) => {
       setTimeout(() => {
         // Look for room by both _id and id to handle different ID formats
-        const index = mockData.rooms.findIndex(r => r.id === id || r._id === id);
+        const currentRooms = mockData.rooms;
+        const index = currentRooms.findIndex(r => r.id === id || r._id === id);
         if (index !== -1) {
-          mockData.rooms.splice(index, 1);
+          const updatedRooms = [...currentRooms];
+          updatedRooms.splice(index, 1);
+          mockData.rooms = updatedRooms;
           resolve({ data: { message: 'Room deleted successfully' } });
         } else {
           throw new Error('Room not found');
@@ -393,7 +448,8 @@ export const mockAPI = {
   createBooking: (data) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const newId = mockData.bookings.length > 0 ? Math.max(...mockData.bookings.map(b => b.id)) + 1 : 1;
+        const currentBookings = mockData.bookings;
+        const newId = currentBookings.length > 0 ? Math.max(...currentBookings.map(b => b.id)) + 1 : 1;
         const newBooking = {
           _id: newId,
           id: newId,
@@ -402,7 +458,8 @@ export const mockAPI = {
           createdAt: new Date(),
           updatedAt: new Date()
         };
-        mockData.bookings.push(newBooking);
+        const updatedBookings = [...currentBookings, newBooking];
+        mockData.bookings = updatedBookings;
         resolve({ data: { booking: newBooking } });
       }, 1000);
     });
@@ -411,11 +468,13 @@ export const mockAPI = {
   updateBooking: (id, data) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const index = mockData.bookings.findIndex(b => b.id === id || b._id === id);
+        const currentBookings = mockData.bookings;
+        const index = currentBookings.findIndex(b => b.id === id || b._id === id);
         if (index !== -1) {
-          const oldBooking = mockData.bookings[index];
-          mockData.bookings[index] = { ...mockData.bookings[index], ...data, updatedAt: new Date() };
-          resolve({ data: { booking: mockData.bookings[index] } });
+          const updatedBookings = [...currentBookings];
+          updatedBookings[index] = { ...updatedBookings[index], ...data, updatedAt: new Date() };
+          mockData.bookings = updatedBookings;
+          resolve({ data: { booking: updatedBookings[index] } });
         } else {
           throw new Error('Booking not found');
         }
@@ -426,9 +485,12 @@ export const mockAPI = {
   deleteBooking: (id) => {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const index = mockData.bookings.findIndex(b => b.id === id || b._id === id);
+        const currentBookings = mockData.bookings;
+        const index = currentBookings.findIndex(b => b.id === id || b._id === id);
         if (index !== -1) {
-          mockData.bookings.splice(index, 1);
+          const updatedBookings = [...currentBookings];
+          updatedBookings.splice(index, 1);
+          mockData.bookings = updatedBookings;
           resolve({ data: { message: 'Booking deleted successfully' } });
         } else {
           throw new Error('Booking not found');
@@ -455,11 +517,12 @@ export const mockAPI = {
     return new Promise((resolve) => {
       setTimeout(() => {
         // Update the business hours array with the new data
-        mockData.businessHours = data.businessHours || mockData.businessHours;
+        const newBusinessHours = data.businessHours || data;
+        mockData.businessHours = newBusinessHours;
         resolve({ 
           data: { 
             success: true, 
-            businessHours: mockData.businessHours 
+            businessHours: newBusinessHours 
           } 
         });
       }, 1000);

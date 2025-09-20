@@ -603,9 +603,28 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
 
   const currentTimelineRoomIndex = getCurrentTimelineRoomIndex();
 
-  // Refs for layout (scrolling disabled)
+  // Refs for layout with scroll synchronization
   const leftColumnRef = React.useRef(null);
   const gridScrollRef = React.useRef(null);
+
+  // Scroll synchronization functions
+  const syncGridFromLeftColumn = React.useCallback(() => {
+    try {
+      if (!leftColumnRef.current || !gridScrollRef.current) return;
+      if (gridScrollRef.current.scrollTop !== leftColumnRef.current.scrollTop) {
+        gridScrollRef.current.scrollTop = leftColumnRef.current.scrollTop;
+      }
+    } catch {}
+  }, []);
+
+  const syncLeftColumnFromGrid = React.useCallback(() => {
+    try {
+      if (!leftColumnRef.current || !gridScrollRef.current) return;
+      if (leftColumnRef.current.scrollTop !== gridScrollRef.current.scrollTop) {
+        leftColumnRef.current.scrollTop = gridScrollRef.current.scrollTop;
+      }
+    } catch {}
+  }, []);
 
   // Configure drag sensors with better activation
   const sensors = useSensors(
@@ -1974,27 +1993,27 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       <div className="flex-1 flex flex-col">
         {/* Top Navigation */}
         <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(-1)}>
-                <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
-              </Button>
-              <h2 className="text-2xl font-semibold text-gray-900">
-                {moment(selectedDate).format('MMMM D, YYYY')}
-              </h2>
-              <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(1)}>
-                <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
-              </Button>
-            </div>
-            <DigitalClock 
-              showSeconds={true} 
-              showDate={false} 
-              showDay={true}
-              size="md"
-              className="shadow-xl border-2 border-blue-200 bg-blue-50"
-            />
+          <div className="flex items-center space-x-4">
+            <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(-1)}>
+              <ChevronLeft className="w-8 h-8" strokeWidth={2.5} />
+            </Button>
+            <h2 className="text-2xl font-semibold text-gray-900">
+              {moment(selectedDate).format('MMMM D, YYYY')}
+            </h2>
+            <Button variant="ghost" size="icon" className="h-12 w-12 [&>svg]:w-8 [&>svg]:h-8" onClick={() => navigateDate(1)}>
+              <ChevronRight className="w-8 h-8" strokeWidth={2.5} />
+            </Button>
           </div>
         </div>
+        
+        {/* Fixed Digital Clock */}
+        <DigitalClock 
+          showSeconds={true} 
+          showDate={false} 
+          showDay={true}
+          size="md"
+          className="shadow-xl border-2 border-blue-200 bg-blue-50"
+        />
 
         {/* Timeline Header - At the Top */}
         <div className="relative z-80">
@@ -2075,7 +2094,7 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
         <div className="flex-1 relative max-h-[calc(100vh-250px)] overflow-hidden">
           <div className="flex h-full">
             {/* Sticky First Column - Name Label Column (No Red Light Effect) */}
-            <div ref={leftColumnRef} className="border-r border-gray-200 flex-shrink-0 z-20 overflow-hidden w-32 sm:w-40 md:w-48">
+            <div ref={leftColumnRef} onScroll={syncGridFromLeftColumn} className="border-r border-gray-200 flex-shrink-0 z-20 overflow-y-auto w-32 sm:w-40 md:w-48">
               {/* Room Info Cells Container - Background Color */}
               <div className="bg-gray-50">
                 {rooms.map((room, roomIndex) => {
@@ -2101,8 +2120,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
               </div>
             </div>
 
-            {/* Timeline Content Area - No Scroll */}
-            <div ref={gridScrollRef} className="flex-1 overflow-hidden relative z-60" style={{ marginLeft: '0px' }}>
+            {/* Timeline Content Area - Synchronized Scroll */}
+            <div ref={gridScrollRef} onScroll={syncLeftColumnFromGrid} className="flex-1 overflow-y-auto relative z-60" style={{ marginLeft: '0px' }}>
               {/* Current time vertical line - synchronized with slot highlighting */}
               {currentTimeData && (() => {
                 const timeInterval = settings.timeInterval || 15;
