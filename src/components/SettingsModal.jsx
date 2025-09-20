@@ -409,20 +409,6 @@ const SettingsModal = ({ isOpen, onClose }) => {
                         <Calendar className="w-4 h-4" />
                         <span>Show Example</span>
                       </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (window.confirm('This will clear all example data (rooms and bookings) and reset to default. This action cannot be undone. Continue?')) {
-                            clearExampleData();
-                          }
-                        }}
-                        className="w-full flex items-center justify-center space-x-2 text-red-600 border-red-200 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span>Clear Example Data</span>
-                      </Button>
                     </div>
                   )}
                 </div>
@@ -602,33 +588,16 @@ const createExampleData = async (getBusinessHoursForDay) => {
       }
     }
     
-    toast.success(`Example data created successfully! 12 rooms and bookings have been added for today (${todayBusinessHours.openTime} - ${todayBusinessHours.closeTime}). The data is now saved and will persist after page refresh.`, { id: 'example-data' });
+    toast.success(`Example data created successfully! 12 rooms and bookings have been added for today (${todayBusinessHours.openTime} - ${todayBusinessHours.closeTime}).`, { id: 'example-data' });
     
-  } catch (error) {
-    console.error('Error creating example data:', error);
-    toast.error('Failed to create example data. Please try again.', { id: 'example-data' });
-  }
-};
-
-// Function to clear example data and reset to defaults
-const clearExampleData = async () => {
-  try {
-    toast.loading('Clearing example data...', { id: 'clear-data' });
-    
-    // Clear localStorage for rooms and bookings
-    localStorage.removeItem('boom-karaoke-mock-rooms');
-    localStorage.removeItem('boom-karaoke-mock-bookings');
-    
-    toast.success('Example data cleared successfully! The application will now use default data.', { id: 'clear-data' });
-    
-    // Refresh the page after a short delay to show the reset data
+    // Refresh the page after a short delay to show the new data
     setTimeout(() => {
       window.location.reload();
     }, 1500);
     
   } catch (error) {
-    console.error('Error clearing example data:', error);
-    toast.error('Failed to clear example data. Please try again.', { id: 'clear-data' });
+    console.error('Error creating example data:', error);
+    toast.error('Failed to create example data. Please try again.', { id: 'example-data' });
   }
 };
 
