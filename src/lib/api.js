@@ -189,16 +189,11 @@ export const businessHoursAPI = {
         }
       };
     } catch (error) {
-      // console.error('❌ Error fetching business hours:', error);
+      // Error fetching business hours - logging removed for clean version
       
       // Enhanced error logging
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        // console.error('🌐 Network Error Details:', {
-          message: error.message,
-          code: error.code,
-          url: `${API_BASE_URL}/business-hours`,
-          timeout: 10000
-        });
+        // Network error details - logging removed for clean version
         
         // Fallback to mock mode for network errors
         return mockAPI.getBusinessHours();
@@ -232,16 +227,11 @@ export const businessHoursAPI = {
         }
       };
     } catch (error) {
-      // console.error('❌ Error updating business hours:', error);
+      // Error updating business hours - logging removed for clean version
       
       // Enhanced error logging
       if (error.code === 'NETWORK_ERROR' || error.message.includes('Network Error')) {
-        // console.error('🌐 Network Error Details:', {
-          message: error.message,
-          code: error.code,
-          url: `${API_BASE_URL}/business-hours`,
-          timeout: 10000
-        });
+        // Network error details - logging removed for clean version
         
         // Fallback to mock mode for network errors
         return mockAPI.updateBusinessHours(data);
