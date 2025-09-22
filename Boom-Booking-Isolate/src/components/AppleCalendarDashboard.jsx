@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import moment from 'moment-timezone';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { roomsAPI, bookingsAPI } from '../lib/api';
+import { roomsAPI, bookingsAPI, healthAPI } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
@@ -341,10 +341,10 @@ const AppleCalendarDashboard = () => {
   
   // Component initialization
   React.useEffect(() => {
-    // Test API call to verify authentication
+    // Test API call to verify authentication - use direct import instead of dynamic
     const testAPI = async () => {
       try {
-        const { healthAPI } = await import('../lib/api.js');
+        // Import healthAPI directly since it's already imported at the top
         await healthAPI.check();
       } catch (error) {
         // Health check failed - error handling removed for clean version
