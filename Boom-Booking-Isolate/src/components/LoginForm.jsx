@@ -49,10 +49,11 @@ const LoginForm = () => {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email or Username</label>
+                <label htmlFor="email" className="text-sm font-medium">Email or Username</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   <Input
+                    id="email"
                     {...register('email', { 
                       required: 'Email is required',
                       pattern: {
@@ -74,10 +75,11 @@ const LoginForm = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                   <Input
+                    id="password"
                     {...register('password', { 
                       required: 'Password is required',
                       minLength: {
@@ -101,9 +103,10 @@ const LoginForm = () => {
               <Button
                 type="submit"
                 className="w-full"
+                loading={isLoading}
                 disabled={isLoading}
               >
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                Sign in
               </Button>
             </form>
 

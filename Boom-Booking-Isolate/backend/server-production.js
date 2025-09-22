@@ -22,6 +22,7 @@ import aiRoutes from './routes/ai.js';
 
 // Import database initialization
 import { initDatabase } from './database/init.js';
+import { initMultiTenantDatabase, createDefaultTenant, testConnection } from './database/postgres.js';
 
 // Load environment variables
 dotenv.config();
@@ -157,8 +158,28 @@ app.use((err, req, res, next) => {
 // Initialize database and start server
 async function startServer() {
   try {
-    await initDatabase();
-    console.log('✅ Database initialized successfully');
+    // Check if we're in production with PostgreSQL
+    if (process.env.NODE_ENV === 'production' && (process.env.DATABASE_URL || process.env.POSTGRES_HOST)) {
+      console.log('🐘 Initializing PostgreSQL database for production...');
+      
+      // Test PostgreSQL connection first
+      const isConnected = await testConnection();
+      if (!isConnected) {
+        throw new Error('Failed to connect to PostgreSQL database');
+      }
+      
+      // Initialize multi-tenant PostgreSQL schema
+      await initMultiTenantDatabase();
+      
+      // Create default tenant and data
+      await createDefaultTenant();
+      
+      console.log('✅ PostgreSQL database initialized successfully');
+    } else {
+      console.log('💾 Initializing SQLite database for development...');
+      await initDatabase();
+      console.log('✅ SQLite database initialized successfully');
+    }
     
     server.listen(PORT, () => {
       console.log(`🚀 Production server running on port ${PORT}`);
@@ -166,6 +187,7 @@ async function startServer() {
       console.log(`🔌 API: http://localhost:${PORT}/api`);
       console.log(`🌐 Socket.IO: http://localhost:${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🗄️ Database: ${process.env.DATABASE_URL ? 'PostgreSQL (Railway)' : 'SQLite'}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

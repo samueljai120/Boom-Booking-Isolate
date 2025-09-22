@@ -310,7 +310,7 @@ export async function createDefaultTenant() {
     const userId = userResult.rows[0].id;
     
     // Link user to tenant
-    await initClient.query(`
+    await tenantClient.query(`
       INSERT INTO tenant_users (tenant_id, user_id, role, permissions)
       VALUES ($1, $2, $3, $4)
     `, [
@@ -328,7 +328,7 @@ export async function createDefaultTenant() {
     ];
     
     for (const room of rooms) {
-      await initClient.query(`
+      await tenantClient.query(`
         INSERT INTO rooms (tenant_id, name, capacity, category, description, price_per_hour)
         VALUES ($1, $2, $3, $4, $5, $6)
       `, [tenantId, ...room]);
@@ -336,7 +336,7 @@ export async function createDefaultTenant() {
     
     // Create default business hours
     for (let day = 0; day < 7; day++) {
-      await initClient.query(`
+      await tenantClient.query(`
         INSERT INTO business_hours (tenant_id, day_of_week, open_time, close_time)
         VALUES ($1, $2, $3, $4)
       `, [tenantId, day, '10:00', '22:00']);
@@ -374,7 +374,7 @@ export async function createDefaultTenant() {
 export async function queryWithTenant(tenantId, query, params = []) {
   const client = await pool.connect();
   try {
-    await initClient.query(setTenantContext(tenantId));
+    await client.query(setTenantContext(tenantId));
     const result = await client.query(query, params);
     return result;
   } finally {

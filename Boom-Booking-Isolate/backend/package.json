@@ -12,6 +12,7 @@
     "init-db": "node scripts/init-db.js",
     "setup-postgres": "node scripts/setup-postgres.js",
     "migrate:up": "node scripts/migrate-sqlite-to-postgres.js",
+    "migrate:railway": "node scripts/migrate-to-railway.js",
     "migrate:down": "node scripts/migrate-down.js",
     "test": "jest",
     "test:watch": "jest --watch",

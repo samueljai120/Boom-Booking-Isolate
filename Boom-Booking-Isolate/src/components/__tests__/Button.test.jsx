@@ -23,7 +23,7 @@ describe('Button Component', () => {
   })
 
   it('applies size classes correctly', () => {
-    render(<Button size="large">Large Button</Button>)
+    render(<Button size="lg">Large Button</Button>)
     const button = screen.getByRole('button')
     expect(button).toHaveClass('px-6', 'py-3')
   })
