@@ -1,0 +1,58 @@
+# Documentation files
+*.md
+Application Overview Documentations/
+Scale Up Plan/
+demo_video/
+
+# Development files
+.env*
+!.env.production.example
+
+# Git files
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Node modules in root (we only need the ones in Boom-Booking-Isolate)
+node_modules/
+
+# Test files
+tests/
+test/
+*.test.js
+*.test.jsx
+*.spec.js
+*.spec.jsx
+
+# Coverage reports
+coverage/
+
+# Build artifacts (except for the ones we need)
+dist/
+build/
+
+# Docker files (not needed for Railway)
+Dockerfile*
+docker-compose*
