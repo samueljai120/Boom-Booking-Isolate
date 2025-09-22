@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "name": "boom-booking-frontend",
+  "builds": [
+    {
+      "src": "dist/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/dist/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/dist/index.html"
+    }
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://your-railway-backend.railway.app/api",
+    "VITE_WS_URL": "https://your-railway-backend.railway.app"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
+}
