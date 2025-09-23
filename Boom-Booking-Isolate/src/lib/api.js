@@ -1,5 +1,5 @@
 import { mockAPI } from './mockData.js';
-import axios from 'axios';
+import FetchClient from './fetchClient.js';
 import { API_CONFIG, FORCE_REAL_API, FALLBACK_TO_MOCK } from '../config/api.js';
 
 // API configuration - smart fallback system
@@ -16,11 +16,12 @@ const checkApiHealth = async () => {
   if (apiHealthChecked) return apiHealthy;
   
   try {
-    const response = await axios.get(`${API_BASE_URL}/health`, { 
-      timeout: 5000,
-      headers: API_CONFIG.HEADERS 
+    const response = await fetch(`${API_BASE_URL}/health`, { 
+      method: 'GET',
+      headers: API_CONFIG.HEADERS,
+      signal: AbortSignal.timeout(5000)
     });
-    apiHealthy = response.status === 200;
+    apiHealthy = response.ok;
     apiHealthChecked = true;
     console.log('🏥 API Health Check:', apiHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY');
     return apiHealthy;
@@ -32,41 +33,21 @@ const checkApiHealth = async () => {
   }
 };
 
-// Create axios instance for real API calls
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: API_CONFIG.TIMEOUT,
-  headers: API_CONFIG.HEADERS,
-});
+// Create fetch client for real API calls
+const apiClient = new FetchClient(API_BASE_URL, API_CONFIG.HEADERS);
 
-// Add request interceptor to include auth token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Add response interceptor to handle token expiration and errors
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 403 && error.response?.data?.code) {
-      // Handle specific token errors
-      const errorCode = error.response.data.code;
-      if (errorCode === 'TOKEN_EXPIRED' || errorCode === 'TOKEN_INVALID' || errorCode === 'TOKEN_MALFORMED') {
-        // Clear invalid token and redirect to login
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        if (import.meta.env.MODE === 'development') {
-          console.log('🔑 Token error detected, clearing auth data:', errorCode);
-        }
-      }
+// Error handler for fetch responses
+const handleApiError = (error) => {
+  if (error.status === 403) {
+    // Handle token errors
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    if (import.meta.env.MODE === 'development') {
+      console.log('🔑 Token error detected, clearing auth data');
     }
-    return Promise.reject(error);
   }
-);
+  throw error;
+};
 
 // Helper function to convert frontend business hours format to backend format
 const convertToBackendFormat = (businessHours) => {
