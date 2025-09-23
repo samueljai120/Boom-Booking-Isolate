@@ -5,18 +5,32 @@ dotenv.config();
 
 const { Client } = pkg;
 
-// Database configuration
-const dbConfig = {
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: process.env.POSTGRES_PORT || 5432,
-  database: process.env.POSTGRES_DB || 'boom_booking',
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD || 'password',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
-};
+// Database configuration with Railway support
+let dbConfig;
+
+if (process.env.DATABASE_URL) {
+  // Railway provides DATABASE_URL - use it directly
+  dbConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 10000, // Increased timeout for Railway
+  };
+} else {
+  // Fallback to individual environment variables for local development
+  dbConfig = {
+    host: process.env.POSTGRES_HOST || 'localhost',
+    port: process.env.POSTGRES_PORT || 5432,
+    database: process.env.POSTGRES_DB || 'boom_booking',
+    user: process.env.POSTGRES_USER || 'postgres',
+    password: process.env.POSTGRES_PASSWORD || 'password',
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  };
+}
 
 // Create connection pool
 export const pool = new Pool(dbConfig);
@@ -24,15 +38,37 @@ export const pool = new Pool(dbConfig);
 // Create client for migrations and admin operations
 export const client = new Client(dbConfig);
 
-// Test database connection
-export async function testConnection() {
-  try {
-    await client.connect();
-    console.log('✅ PostgreSQL connection established successfully');
-    return true;
-  } catch (error) {
-    console.error('❌ PostgreSQL connection failed:', error.message);
-    return false;
+// Test database connection with retry logic
+export async function testConnection(retries = 3, delay = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await client.connect();
+      console.log('✅ PostgreSQL connection established successfully');
+      console.log(`📊 Database: ${process.env.POSTGRES_DB || 'boom_booking'}`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      if (process.env.DATABASE_URL) {
+        console.log('🚀 Using Railway DATABASE_URL');
+      } else {
+        console.log('🏠 Using local database configuration');
+      }
+      return true;
+    } catch (error) {
+      console.error(`❌ PostgreSQL connection attempt ${attempt}/${retries} failed:`, error.message);
+      
+      if (attempt < retries) {
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 1.5; // Exponential backoff
+      } else {
+        console.error('❌ All connection attempts failed');
+        console.error('🔍 Debug info:');
+        console.error(`   - DATABASE_URL: ${process.env.DATABASE_URL ? 'Set' : 'Not set'}`);
+        console.error(`   - NODE_ENV: ${process.env.NODE_ENV}`);
+        console.error(`   - Host: ${dbConfig.host || 'Using connectionString'}`);
+        console.error(`   - Port: ${dbConfig.port || 'Using connectionString'}`);
+        return false;
+      }
+    }
   }
 }
 
