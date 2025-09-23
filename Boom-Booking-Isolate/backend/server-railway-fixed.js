@@ -28,7 +28,8 @@ console.log('🔗 CORS Origin:', process.env.CORS_ORIGIN || '*');
 
 // CORS middleware - must be before other middleware
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = process.env.CORS_ORIGIN || 'https://boom-booking-frontend.vercel.app';
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -45,7 +46,7 @@ app.use((req, res, next) => {
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: true,
+  origin: process.env.CORS_ORIGIN || 'https://boom-booking-frontend.vercel.app',
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
