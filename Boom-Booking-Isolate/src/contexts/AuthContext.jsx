@@ -34,10 +34,12 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
           }
         } catch (error) {
-          console.error('Session check failed:', error);
+          if (import.meta.env.MODE === 'development') {
+            console.error('Session check failed:', error);
+            console.log('Using mock mode due to network error');
+          }
           // For demo purposes, don't clear auth on network errors
           // Just set loading to false so the app can continue
-          console.log('Using mock mode due to network error');
         }
       }
       setLoading(false);

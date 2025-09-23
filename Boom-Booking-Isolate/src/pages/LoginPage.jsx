@@ -44,22 +44,30 @@ const LoginPage = () => {
   const handleDemoLogin = async () => {
     setLoading(true);
     try {
-      console.log('🚀 Starting demo login...');
+      if (import.meta.env.MODE === 'development') {
+        console.log('🚀 Starting demo login...');
+      }
       const result = await login({
         email: 'demo@example.com',
         password: 'demo123'
       });
-      console.log('📋 Demo login result:', result);
+      if (import.meta.env.MODE === 'development') {
+        console.log('📋 Demo login result:', result);
+      }
       
       if (result.success) {
         toast.success('Demo login successful!');
         navigate('/dashboard');
       } else {
-        console.error('❌ Demo login failed:', result.error);
+        if (import.meta.env.MODE === 'development') {
+          console.error('❌ Demo login failed:', result.error);
+        }
         toast.error(result.error || 'Demo login failed');
       }
     } catch (error) {
-      console.error('❌ Demo login error:', error);
+      if (import.meta.env.MODE === 'development') {
+        console.error('❌ Demo login error:', error);
+      }
       toast.error('Demo login error: ' + error.message);
     } finally {
       setLoading(false);
