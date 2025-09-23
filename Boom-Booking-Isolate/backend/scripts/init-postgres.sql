@@ -292,3 +292,4 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON DATABASE boom_booking IS 'Boom Karaoke Booking System - Multi-tenant SaaS Database';
 
+

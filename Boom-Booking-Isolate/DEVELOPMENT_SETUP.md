@@ -291,3 +291,4 @@ For development issues:
 
 *This setup guide is part of the Boom Booking SaaS transformation project. For the complete development plan, see the [Scale Up Plan](../Scale%20Up%20Plan/) directory.*
 
+
