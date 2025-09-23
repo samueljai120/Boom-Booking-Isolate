@@ -15,6 +15,7 @@ import PricingPage from './pages/PricingPage';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import SettingsPage from './pages/SettingsPage';
 import TenantManagement from './pages/TenantManagement';
 import AIAnalyticsDashboard from './components/AIAnalyticsDashboard';
@@ -131,6 +132,7 @@ const AppContent = () => {
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/blog" element={<BlogPage />} />
