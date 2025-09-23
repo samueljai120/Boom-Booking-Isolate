@@ -15,7 +15,9 @@ if (process.env.DATABASE_URL) {
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 10000, // Increased timeout for Railway
+    connectionTimeoutMillis: 15000, // Increased timeout for Railway
+    acquireTimeoutMillis: 10000, // Time to wait for a client from the pool
+    allowExitOnIdle: true, // Allow the pool to close when idle
   };
 } else {
   // Fallback to individual environment variables for local development
@@ -28,9 +30,19 @@ if (process.env.DATABASE_URL) {
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+    connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+    acquireTimeoutMillis: 10000, // Time to wait for a client from the pool
+    allowExitOnIdle: true, // Allow the pool to close when idle
   };
 }
+
+// Log configuration for debugging
+console.log('🔧 Database Configuration:');
+console.log(`   - Using: ${process.env.DATABASE_URL ? 'DATABASE_URL (Railway)' : 'Individual variables (Local)'}`);
+console.log(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`   - SSL: ${dbConfig.ssl ? 'Enabled' : 'Disabled'}`);
+console.log(`   - Max connections: ${dbConfig.max}`);
+console.log(`   - Connection timeout: ${dbConfig.connectionTimeoutMillis}ms`);
 
 // Create connection pool
 export const pool = new Pool(dbConfig);
@@ -41,19 +53,41 @@ export const client = new Client(dbConfig);
 // Test database connection with retry logic
 export async function testConnection(retries = 3, delay = 2000) {
   for (let attempt = 1; attempt <= retries; attempt++) {
+    // Create a new client for each attempt to avoid reuse issues
+    const testClient = new Client(dbConfig);
+    
     try {
-      await client.connect();
+      await testClient.connect();
       console.log('✅ PostgreSQL connection established successfully');
       console.log(`📊 Database: ${process.env.POSTGRES_DB || 'boom_booking'}`);
       console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
       if (process.env.DATABASE_URL) {
         console.log('🚀 Using Railway DATABASE_URL');
+        // Log partial DATABASE_URL for debugging (hide credentials)
+        const url = process.env.DATABASE_URL;
+        const maskedUrl = url.replace(/:\/\/[^@]+@/, '://***:***@');
+        console.log(`🔗 Connection: ${maskedUrl}`);
       } else {
         console.log('🏠 Using local database configuration');
+        console.log(`🔗 Host: ${dbConfig.host}:${dbConfig.port}`);
       }
+      
+      // Test a simple query to ensure connection is working
+      const result = await testClient.query('SELECT NOW() as current_time, version() as pg_version');
+      console.log(`⏰ Database time: ${result.rows[0].current_time}`);
+      console.log(`📋 PostgreSQL version: ${result.rows[0].pg_version.split(' ')[0]}`);
+      
+      await testClient.end();
       return true;
     } catch (error) {
       console.error(`❌ PostgreSQL connection attempt ${attempt}/${retries} failed:`, error.message);
+      
+      // Always end the client connection on error
+      try {
+        await testClient.end();
+      } catch (endError) {
+        // Ignore end errors
+      }
       
       if (attempt < retries) {
         console.log(`⏳ Retrying in ${delay}ms...`);
@@ -66,6 +100,15 @@ export async function testConnection(retries = 3, delay = 2000) {
         console.error(`   - NODE_ENV: ${process.env.NODE_ENV}`);
         console.error(`   - Host: ${dbConfig.host || 'Using connectionString'}`);
         console.error(`   - Port: ${dbConfig.port || 'Using connectionString'}`);
+        
+        // Additional Railway-specific debugging
+        if (process.env.RAILWAY_ENVIRONMENT) {
+          console.error('🚂 Railway Environment Detected');
+          console.error(`   - Railway Environment: ${process.env.RAILWAY_ENVIRONMENT}`);
+          console.error(`   - Railway Project: ${process.env.RAILWAY_PROJECT_ID || 'Not set'}`);
+          console.error(`   - Railway Service: ${process.env.RAILWAY_SERVICE_ID || 'Not set'}`);
+        }
+        
         return false;
       }
     }
