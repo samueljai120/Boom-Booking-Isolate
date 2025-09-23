@@ -297,16 +297,42 @@ async function initDatabase() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
+        tenant_id UUID,
         name VARCHAR(255) NOT NULL,
         capacity INTEGER NOT NULL,
         category VARCHAR(255) NOT NULL,
         description TEXT,
         price_per_hour DECIMAL(10,2) DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
+        metadata JSONB DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // 4.1 Check if tenant_id column exists and handle it
+    console.log('🔧 Checking for tenant_id column...');
+    const tenantIdColumnExists = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'rooms' AND column_name = 'tenant_id'
+    `);
+    
+    if (tenantIdColumnExists.rows.length > 0) {
+      console.log('✅ tenant_id column exists - using existing schema');
+      // Make tenant_id nullable if it's not already
+      try {
+        await pool.query(`
+          ALTER TABLE rooms 
+          ALTER COLUMN tenant_id DROP NOT NULL
+        `);
+        console.log('✅ Made tenant_id nullable');
+      } catch (error) {
+        console.log('ℹ️ tenant_id already nullable or error:', error.message);
+      }
+    } else {
+      console.log('ℹ️ No tenant_id column - using simple schema');
+    }
     
     // 5. Create bookings table if it doesn't exist
     console.log('📅 Creating bookings table...');
@@ -339,10 +365,22 @@ async function initDatabase() {
       ];
       
       for (const room of rooms) {
-        await pool.query(`
-          INSERT INTO rooms (name, capacity, category, description, price_per_hour)
-          VALUES ($1, $2, $3, $4, $5)
-        `, room);
+        // Check if tenant_id column exists to determine insert query
+        const hasTenantId = tenantIdColumnExists.rows.length > 0;
+        
+        if (hasTenantId) {
+          // Insert with NULL tenant_id (for global/default rooms)
+          await pool.query(`
+            INSERT INTO rooms (tenant_id, name, capacity, category, description, price_per_hour)
+            VALUES (NULL, $1, $2, $3, $4, $5)
+          `, room);
+        } else {
+          // Insert without tenant_id
+          await pool.query(`
+            INSERT INTO rooms (name, capacity, category, description, price_per_hour)
+            VALUES ($1, $2, $3, $4, $5)
+          `, room);
+        }
       }
       console.log('✅ Default rooms created successfully');
     } else {
