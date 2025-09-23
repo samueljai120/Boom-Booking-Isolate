@@ -14,6 +14,7 @@ import healthRoutes from './routes/health.js';
 
 // Import database initialization
 import { pool, testConnection } from './database/postgres.js';
+import bcrypt from 'bcryptjs';
 
 // Load environment variables
 dotenv.config();
