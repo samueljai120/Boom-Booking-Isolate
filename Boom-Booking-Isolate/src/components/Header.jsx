@@ -61,6 +61,7 @@ const Header = ({ onSettingsClick }) => {
               size="icon"
               onClick={handleLogout}
               title="Logout"
+              className="hover:bg-red-50 hover:text-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />
             </Button>
@@ -109,6 +110,8 @@ const Header = ({ onSettingsClick }) => {
                 variant="ghost"
                 size="icon"
                 onClick={handleLogout}
+                className="hover:bg-red-50 hover:text-red-600 transition-colors"
+                title="Logout"
               >
                 <LogOut className="w-4 h-4" />
               </Button>

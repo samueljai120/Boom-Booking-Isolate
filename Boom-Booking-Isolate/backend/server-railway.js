@@ -32,6 +32,12 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 5001;
 
+// Railway-specific logging
+console.log('🚀 Starting Boom Booking Backend on Railway');
+console.log('📍 Port:', PORT);
+console.log('🌍 Environment:', process.env.NODE_ENV || 'development');
+console.log('🔗 CORS Origin:', process.env.CORS_ORIGIN || '*');
+
 // Middleware
 app.use(helmet());
 app.use(cors({

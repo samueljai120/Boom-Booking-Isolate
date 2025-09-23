@@ -208,11 +208,15 @@ export const mockData = {
 };
 
 // Mock API functions
+// In-memory storage for registered users
+let registeredUsers = new Map();
+
 export const mockAPI = {
   // Auth mock
   login: (credentials) => {
     return new Promise((resolve) => {
       setTimeout(() => {
+        // Check demo credentials first
         if ((credentials.email === 'demo@example.com' || credentials.username === 'demo@example.com') && credentials.password === 'demo123') {
           resolve({
             success: true,
@@ -221,7 +225,36 @@ export const mockAPI = {
               token: 'mock-jwt-token-' + Date.now()
             }
           });
+        } 
+        // Check registered users
+        else if (registeredUsers.has(credentials.email)) {
+          const user = registeredUsers.get(credentials.email);
+          console.log('🔍 Found registered user:', user.email);
+          if (user.password === credentials.password) {
+            console.log('✅ Login successful for registered user:', user.email);
+            resolve({
+              success: true,
+              data: {
+                user: {
+                  id: user.id,
+                  email: user.email,
+                  name: user.name,
+                  role: user.role,
+                  username: user.email // Add username field for compatibility
+                },
+                token: 'mock-jwt-token-' + Date.now()
+              }
+            });
+          } else {
+            console.log('❌ Wrong password for user:', user.email);
+            resolve({
+              success: false,
+              error: 'Invalid credentials'
+            });
+          }
         } else {
+          console.log('❌ User not found:', credentials.email);
+          console.log('📋 Registered users:', Array.from(registeredUsers.keys()));
           resolve({
             success: false,
             error: 'Invalid credentials'
@@ -242,18 +275,39 @@ export const mockAPI = {
   register: (userData) => {
     return new Promise((resolve) => {
       setTimeout(() => {
+        // Check if user already exists
+        if (registeredUsers.has(userData.email)) {
+          resolve({
+            success: false,
+            error: 'User already exists'
+          });
+          return;
+        }
+
         // Create a new user with the provided data
         const newUser = {
           id: Date.now(),
           email: userData.email,
           name: userData.name,
+          password: userData.password, // Store password for login verification
           role: 'user'
         };
+        
+        // Store the user in memory
+        registeredUsers.set(userData.email, newUser);
+        console.log('✅ User registered successfully:', userData.email);
+        console.log('📋 Total registered users:', registeredUsers.size);
         
         resolve({
           success: true,
           data: {
-            user: newUser,
+            user: {
+              id: newUser.id,
+              email: newUser.email,
+              name: newUser.name,
+              role: newUser.role,
+              username: newUser.email // Add username field for compatibility
+            },
             token: 'mock-jwt-token-' + Date.now()
           }
         });
@@ -265,11 +319,24 @@ export const mockAPI = {
     return new Promise((resolve) => {
       setTimeout(() => {
         const token = localStorage.getItem('authToken');
-        if (token) {
-          resolve({ 
-            success: true,
-            data: { user: mockData.user, token } 
-          });
+        const userData = localStorage.getItem('user');
+        
+        if (token && userData) {
+          try {
+            const user = JSON.parse(userData);
+            resolve({
+              success: true,
+              data: {
+                user: user,
+                token: token
+              }
+            });
+          } catch (error) {
+            resolve({
+              success: false,
+              error: 'Invalid session data'
+            });
+          }
         } else {
           resolve({
             success: false,
@@ -278,6 +345,16 @@ export const mockAPI = {
         }
       }, 500);
     });
+  },
+
+  // Debug function to see registered users
+  getRegisteredUsers: () => {
+    return Array.from(registeredUsers.values());
+  },
+
+  // Clear registered users (useful for testing)
+  clearRegisteredUsers: () => {
+    registeredUsers.clear();
   },
 
   // Rooms mock
