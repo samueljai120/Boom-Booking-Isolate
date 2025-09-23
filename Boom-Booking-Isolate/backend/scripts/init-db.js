@@ -24,6 +24,13 @@ class DatabaseInitializer {
     try {
       console.log('🚀 Initializing database for Railway deployment...');
       
+      // Check if we have database connection details
+      if (!this.hasDatabaseConfig()) {
+        console.log('⚠️ No database configuration found, skipping initialization...');
+        console.log('📋 Database will be initialized when the application starts');
+        return;
+      }
+      
       // Connect to database
       await this.client.connect();
       console.log('✅ Connected to PostgreSQL database');
@@ -46,13 +53,23 @@ class DatabaseInitializer {
       // Don't exit with error code in production to avoid deployment failure
       if (process.env.NODE_ENV === 'production') {
         console.log('⚠️ Continuing deployment despite initialization error...');
+        console.log('📋 Database will be initialized when the application starts');
         return;
       }
       
       throw error;
     } finally {
-      await this.client.end();
+      try {
+        await this.client.end();
+      } catch (err) {
+        // Ignore connection close errors
+      }
     }
+  }
+
+  hasDatabaseConfig() {
+    return !!(process.env.DATABASE_URL || 
+             (process.env.POSTGRES_HOST && process.env.POSTGRES_USER && process.env.POSTGRES_PASSWORD));
   }
 
   async initializeSchema() {
