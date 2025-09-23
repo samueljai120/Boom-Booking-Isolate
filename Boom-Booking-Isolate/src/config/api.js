@@ -9,5 +9,5 @@ export const API_CONFIG = {
   }
 };
 
-// Override the mock API detection
-export const FORCE_REAL_API = true;
+// Override the mock API detection - temporarily using mock for demo
+export const FORCE_REAL_API = false;
