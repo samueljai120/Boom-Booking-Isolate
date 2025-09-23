@@ -17,7 +17,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "db:reset": "npm run migrate:down && npm run migrate:up"
+    "db:reset": "npm run migrate:down && npm run migrate:up",
+    "postinstall": "npm run init-db",
+    "health": "node -e \"require('http').get('http://localhost:5000/api/health', (res) => { console.log('Health check:', res.statusCode); process.exit(res.statusCode === 200 ? 0 : 1) })\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
