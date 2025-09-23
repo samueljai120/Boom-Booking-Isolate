@@ -4,7 +4,7 @@ import { API_CONFIG, FORCE_REAL_API, FALLBACK_TO_MOCK } from '../config/api.js';
 
 // API configuration - smart fallback system
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_CONFIG.BASE_URL;
-let isMockMode = true; // Start with mock mode since Railway has deployment issues
+let isMockMode = false; // Start with real API, fallback to mock
 let apiHealthChecked = false;
 let apiHealthy = false;
 

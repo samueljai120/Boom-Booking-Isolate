@@ -2,10 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "cd Boom-Booking-Isolate/backend && cp package-minimal.json package.json && npm ci --only=production"
+    "buildCommand": "cd Boom-Booking-Isolate/backend && npm ci --only=production"
   },
   "deploy": {
-    "startCommand": "cd Boom-Booking-Isolate/backend && node server-minimal-railway.js",
+    "startCommand": "cd Boom-Booking-Isolate/backend && node server-railway-fixed.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
