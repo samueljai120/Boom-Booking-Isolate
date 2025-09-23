@@ -155,10 +155,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Simple database initialization with better error handling
+// Emergency database initialization with comprehensive fixes
 async function initDatabase() {
   try {
-    console.log('🔍 Testing database connection...');
+    console.log('🚨 EMERGENCY DATABASE INITIALIZATION STARTING...');
     
     // Test connection with timeout
     const connectionPromise = testConnection();
@@ -168,8 +168,8 @@ async function initDatabase() {
     
     await Promise.race([connectionPromise, timeoutPromise]);
     
-    // Create basic tables if they don't exist
-    console.log('📋 Creating database tables...');
+    // 1. Create users table if it doesn't exist
+    console.log('📋 Creating users table...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -182,7 +182,7 @@ async function initDatabase() {
       )
     `);
     
-    // Check if role column exists and add it if missing (migration)
+    // 2. Check if role column exists and add it if missing (migration)
     console.log('🔧 Checking for missing role column...');
     const roleColumnExists = await pool.query(`
       SELECT column_name 
@@ -191,25 +191,83 @@ async function initDatabase() {
     `);
     
     if (roleColumnExists.rows.length === 0) {
-      console.log('➕ Adding missing role column to users table...');
+      console.log('❌ Role column missing! Adding it...');
       await pool.query(`
         ALTER TABLE users 
         ADD COLUMN role VARCHAR(50) DEFAULT 'user'
       `);
       console.log('✅ Role column added successfully');
-      
-      // Update existing users to have 'user' role
-      const updateResult = await pool.query(`
-        UPDATE users 
-        SET role = 'user' 
-        WHERE role IS NULL OR role = ''
-      `);
-      console.log(`✅ Updated ${updateResult.rowCount} users with default role`);
     } else {
       console.log('✅ Role column already exists');
     }
     
-    // Insert demo user if not exists
+    // 3. Update existing users with default role
+    console.log('🔄 Updating existing users...');
+    const updateResult = await pool.query(`
+      UPDATE users 
+      SET role = 'user' 
+      WHERE role IS NULL OR role = ''
+    `);
+    console.log(`✅ Updated ${updateResult.rowCount} users with default role`);
+    
+    // 4. Create rooms table if it doesn't exist
+    console.log('🏠 Creating rooms table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        capacity INTEGER NOT NULL,
+        category VARCHAR(255) NOT NULL,
+        description TEXT,
+        price_per_hour DECIMAL(10,2) DEFAULT 0,
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 5. Create bookings table if it doesn't exist
+    console.log('📅 Creating bookings table...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bookings (
+        id SERIAL PRIMARY KEY,
+        room_id INTEGER NOT NULL,
+        customer_name VARCHAR(255) NOT NULL,
+        customer_email VARCHAR(255),
+        customer_phone VARCHAR(20),
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP NOT NULL,
+        status VARCHAR(20) DEFAULT 'confirmed',
+        notes TEXT,
+        total_price DECIMAL(10,2),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms (id)
+      )
+    `);
+    
+    // 6. Insert default rooms if they don't exist
+    console.log('🏠 Setting up default rooms...');
+    const roomCount = await pool.query('SELECT COUNT(*) as count FROM rooms');
+    if (roomCount.rows[0].count === '0') {
+      const rooms = [
+        ['Room A', 4, 'Standard', 'Standard karaoke room for small groups', 25.00],
+        ['Room B', 6, 'Premium', 'Premium room with better sound system', 35.00],
+        ['Room C', 8, 'VIP', 'VIP room with luxury amenities', 50.00]
+      ];
+      
+      for (const room of rooms) {
+        await pool.query(`
+          INSERT INTO rooms (name, capacity, category, description, price_per_hour)
+          VALUES ($1, $2, $3, $4, $5)
+        `, room);
+      }
+      console.log('✅ Default rooms created successfully');
+    } else {
+      console.log('✅ Rooms already exist');
+    }
+    
+    // 7. Insert demo user if not exists
     console.log('👤 Setting up demo user...');
     const demoUserExists = await pool.query('SELECT id FROM users WHERE email = $1', ['demo@example.com']);
     if (demoUserExists.rows.length === 0) {
@@ -225,7 +283,18 @@ async function initDatabase() {
       console.log('✅ Demo user already exists');
     }
     
-    console.log('✅ Database initialized successfully');
+    // 8. Final verification
+    console.log('🔍 Final verification...');
+    const userCount = await pool.query('SELECT COUNT(*) as count FROM users');
+    const finalRoomCount = await pool.query('SELECT COUNT(*) as count FROM rooms');
+    const bookingCount = await pool.query('SELECT COUNT(*) as count FROM bookings');
+    
+    console.log('📊 Database Summary:');
+    console.log(`   - Users: ${userCount.rows[0].count}`);
+    console.log(`   - Rooms: ${finalRoomCount.rows[0].count}`);
+    console.log(`   - Bookings: ${bookingCount.rows[0].count}`);
+    
+    console.log('🎉 EMERGENCY DATABASE INITIALIZATION COMPLETED SUCCESSFULLY!');
     return true;
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
