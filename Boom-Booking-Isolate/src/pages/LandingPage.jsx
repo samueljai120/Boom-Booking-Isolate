@@ -130,7 +130,9 @@ const LandingPage = () => {
         <div className="space-y-4">
           <Button
             onClick={() => {
-              window.open('https://boom-booking-frontend.vercel.app/login', '_blank', 'noopener,noreferrer');
+              // Use current domain for demo
+              const currentDomain = window.location.origin;
+              window.open(`${currentDomain}/login`, '_blank', 'noopener,noreferrer');
               setShowLiveDemo(false);
             }}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold"
@@ -462,7 +464,9 @@ const LandingPage = () => {
                   size="lg" 
                   className="px-8 py-3 border-2 hover:bg-gray-50"
                   onClick={() => {
-                    window.open('https://boom-booking-frontend.vercel.app/login', '_blank', 'noopener,noreferrer');
+                    // Use current domain for demo
+                    const currentDomain = window.location.origin;
+                    window.open(`${currentDomain}/login`, '_blank', 'noopener,noreferrer');
                   }}
                 >
                   <motion.div

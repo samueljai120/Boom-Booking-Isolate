@@ -9,5 +9,6 @@ export const API_CONFIG = {
   }
 };
 
-// Override the mock API detection - temporarily using mock for demo
-export const FORCE_REAL_API = false;
+// Smart API mode detection - tries real API first, falls back to mock
+export const FORCE_REAL_API = true; // Enable real API attempts
+export const FALLBACK_TO_MOCK = true; // Allow fallback to mock on failure

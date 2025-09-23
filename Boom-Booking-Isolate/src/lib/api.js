@@ -1,13 +1,36 @@
 import { mockAPI } from './mockData.js';
 import axios from 'axios';
-import { API_CONFIG, FORCE_REAL_API } from '../config/api.js';
+import { API_CONFIG, FORCE_REAL_API, FALLBACK_TO_MOCK } from '../config/api.js';
 
-// API configuration - switches between mock and real backend based on environment
+// API configuration - smart fallback system
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_CONFIG.BASE_URL;
-const isMockMode = !FORCE_REAL_API;
+let isMockMode = !FORCE_REAL_API;
+let apiHealthChecked = false;
+let apiHealthy = false;
 
 // API configuration
 console.log('🔧 API Mode:', isMockMode ? 'MOCK' : 'REAL', '| Base URL:', API_BASE_URL);
+
+// Health check function
+const checkApiHealth = async () => {
+  if (apiHealthChecked) return apiHealthy;
+  
+  try {
+    const response = await axios.get(`${API_BASE_URL}/health`, { 
+      timeout: 5000,
+      headers: API_CONFIG.HEADERS 
+    });
+    apiHealthy = response.status === 200;
+    apiHealthChecked = true;
+    console.log('🏥 API Health Check:', apiHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY');
+    return apiHealthy;
+  } catch (error) {
+    apiHealthy = false;
+    apiHealthChecked = true;
+    console.log('🏥 API Health Check: ❌ FAILED -', error.message);
+    return false;
+  }
+};
 
 // Create axios instance for real API calls
 const apiClient = axios.create({
@@ -45,9 +68,18 @@ const convertToFrontendFormat = (backendHours) => {
   }));
 };
 
-// Auth API
+// Auth API with smart fallback
 export const authAPI = {
   login: async (credentials) => {
+    // Check if we should use real API
+    if (FORCE_REAL_API && FALLBACK_TO_MOCK) {
+      const isHealthy = await checkApiHealth();
+      if (!isHealthy) {
+        console.log('🔄 API unhealthy, falling back to mock for login');
+        return mockAPI.login(credentials);
+      }
+    }
+    
     if (isMockMode) {
       return mockAPI.login(credentials);
     }
@@ -56,7 +88,10 @@ export const authAPI = {
       const response = await apiClient.post('/auth/login', credentials);
       return response.data;
     } catch (error) {
-      // console.error('Error logging in:', error);
+      console.log('❌ Real API login failed, falling back to mock:', error.message);
+      if (FALLBACK_TO_MOCK) {
+        return mockAPI.login(credentials);
+      }
       throw error;
     }
   },
@@ -70,7 +105,10 @@ export const authAPI = {
       const response = await apiClient.post('/auth/logout');
       return response.data;
     } catch (error) {
-      // console.error('Error logging out:', error);
+      console.log('❌ Real API logout failed, falling back to mock:', error.message);
+      if (FALLBACK_TO_MOCK) {
+        return mockAPI.logout();
+      }
       throw error;
     }
   },
@@ -84,7 +122,10 @@ export const authAPI = {
       const response = await apiClient.post('/auth/register', userData);
       return response.data;
     } catch (error) {
-      // console.error('Error registering:', error);
+      console.log('❌ Real API register failed, falling back to mock:', error.message);
+      if (FALLBACK_TO_MOCK) {
+        return mockAPI.register(userData);
+      }
       throw error;
     }
   },
@@ -98,9 +139,21 @@ export const authAPI = {
       const response = await apiClient.get('/auth/me');
       return response.data;
     } catch (error) {
-      // console.error('Error getting session:', error);
+      console.log('❌ Real API getSession failed, falling back to mock:', error.message);
+      if (FALLBACK_TO_MOCK) {
+        return mockAPI.getSession();
+      }
       throw error;
     }
+  },
+  
+  // Demo login for easy testing
+  demoLogin: async () => {
+    const demoCredentials = {
+      email: 'demo@example.com',
+      password: 'demo123'
+    };
+    return authAPI.login(demoCredentials);
   },
 };
 
