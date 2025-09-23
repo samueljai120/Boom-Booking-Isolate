@@ -7,8 +7,8 @@ export const getApiBaseUrl = () => {
   
   // Check if we're in production (Vercel deployment)
   if (import.meta.env.PROD) {
-    // Use the actual Railway backend URL
-    return 'https://advanced-calendar-production-02f3.up.railway.app/api';
+    // Use Vercel API routes (same domain)
+    return '/api';
   }
   
   // Development fallback
