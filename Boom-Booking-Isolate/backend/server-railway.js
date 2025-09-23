@@ -64,6 +64,46 @@ app.use('/api/rooms', roomsRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/settings', settingsRoutes);
 
+// Basic business hours endpoint (fallback)
+app.get('/api/business-hours', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      businessHours: [
+        { day: 'monday', open: '09:00', close: '22:00', isOpen: true },
+        { day: 'tuesday', open: '09:00', close: '22:00', isOpen: true },
+        { day: 'wednesday', open: '09:00', close: '22:00', isOpen: true },
+        { day: 'thursday', open: '09:00', close: '22:00', isOpen: true },
+        { day: 'friday', open: '09:00', close: '23:00', isOpen: true },
+        { day: 'saturday', open: '10:00', close: '23:00', isOpen: true },
+        { day: 'sunday', open: '10:00', close: '21:00', isOpen: true }
+      ]
+    }
+  });
+});
+
+// Basic rooms endpoint (fallback)
+app.get('/api/rooms', (req, res) => {
+  res.json({
+    success: true,
+    data: [
+      { id: 1, name: 'Room A', capacity: 4, category: 'Standard', isActive: true },
+      { id: 2, name: 'Room B', capacity: 6, category: 'Premium', isActive: true },
+      { id: 3, name: 'Room C', capacity: 8, category: 'VIP', isActive: true }
+    ]
+  });
+});
+
+// Basic bookings endpoint (fallback)
+app.get('/api/bookings', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      bookings: []
+    }
+  });
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
