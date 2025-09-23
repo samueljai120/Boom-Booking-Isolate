@@ -78,15 +78,24 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
-      const { token, user } = response.data;
       
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      setToken(token);
-      setUser(user);
-      
-      return { success: true };
+      if (response.success) {
+        const { token, user } = response.data;
+        
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setToken(token);
+        setUser(user);
+        
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: response.error || 'Registration failed'
+        };
+      }
     } catch (error) {
+      console.error('Registration error:', error);
       return {
         success: false,
         error: error.response?.data?.error || 'Registration failed'

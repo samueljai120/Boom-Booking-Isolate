@@ -245,12 +245,13 @@ export const mockAPI = {
         // Create a new user with the provided data
         const newUser = {
           id: Date.now(),
-          username: userData.email,
+          email: userData.email,
           name: userData.name,
           role: 'user'
         };
         
         resolve({
+          success: true,
           data: {
             user: newUser,
             token: 'mock-jwt-token-' + Date.now()
