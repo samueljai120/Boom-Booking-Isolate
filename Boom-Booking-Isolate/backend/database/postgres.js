@@ -261,6 +261,9 @@ export async function initMultiTenantDatabase() {
     // Create indexes for performance
     await createIndexes(initClient);
     
+    // Fix any missing columns (migration)
+    await fixMissingColumns(initClient);
+    
     console.log('✅ Multi-tenant database schema created successfully');
     return true;
     
@@ -295,6 +298,44 @@ async function enableRowLevelSecurity(client) {
   }
   
   console.log('✅ Row Level Security enabled for tenant isolation');
+}
+
+// Fix missing columns (migration function)
+async function fixMissingColumns(client) {
+  try {
+    console.log('🔧 Checking for missing columns...');
+    
+    // Check if role column exists in users table
+    const roleColumnExists = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'role'
+    `);
+    
+    if (roleColumnExists.rows.length === 0) {
+      console.log('➕ Adding missing role column to users table...');
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN role VARCHAR(50) DEFAULT 'user'
+      `);
+      console.log('✅ Role column added successfully');
+      
+      // Update existing users to have 'user' role
+      await client.query(`
+        UPDATE users 
+        SET role = 'user' 
+        WHERE role IS NULL OR role = ''
+      `);
+      console.log('✅ Existing users updated with default role');
+    } else {
+      console.log('✅ Role column already exists');
+    }
+    
+    console.log('✅ Column migration completed');
+  } catch (error) {
+    console.error('❌ Column migration failed:', error);
+    // Don't throw error to avoid breaking startup
+  }
 }
 
 // Create indexes for performance
