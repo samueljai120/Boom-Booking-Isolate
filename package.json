@@ -4,7 +4,7 @@
   "description": "Boom Karaoke Booking System - Full Repository",
   "private": true,
   "scripts": {
-    "build": "cd Boom-Booking-Isolate && npm install && npm run build",
+    "build": "cd Boom-Booking-Isolate && npm install && npm run build && cp -r dist ../dist",
     "start": "cd Boom-Booking-Isolate && npm run preview",
     "dev": "cd Boom-Booking-Isolate && npm run dev",
     "install-deps": "cd Boom-Booking-Isolate && npm install"

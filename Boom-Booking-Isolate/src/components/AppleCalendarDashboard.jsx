@@ -9,7 +9,7 @@ import { Button } from './ui/Button';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Grid3x3, 
+  Grid, 
   Settings, 
   Menu,
   Plus,
