@@ -11,6 +11,10 @@ import { fileURLToPath } from 'url';
 // Import routes
 import authRoutes from './routes/auth.js';
 import healthRoutes from './routes/health.js';
+import businessHoursRoutes from './routes/businessHours.js';
+import roomsRoutes from './routes/rooms.js';
+import bookingsRoutes from './routes/bookings.js';
+import settingsRoutes from './routes/settings.js';
 
 // Import database initialization
 import { pool, testConnection } from './database/postgres.js';
@@ -55,6 +59,10 @@ app.set('io', io);
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/business-hours', businessHoursRoutes);
+app.use('/api/rooms', roomsRoutes);
+app.use('/api/bookings', bookingsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
