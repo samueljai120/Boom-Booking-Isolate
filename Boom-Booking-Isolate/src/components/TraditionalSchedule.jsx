@@ -12,7 +12,7 @@ import DigitalClock from './DigitalClock';
 import { 
   ChevronLeft, 
   ChevronRight, 
-  Grid3X3, 
+  Grid3x3, 
   Settings, 
   Menu,
   Plus,
