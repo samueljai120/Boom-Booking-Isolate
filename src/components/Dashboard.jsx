@@ -55,21 +55,21 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <Header onSettingsClick={handleSettingsClick} />
       
-      {/* Top Navigation with Digital Clock */}
+      {/* Top Navigation */}
       <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-          </div>
-          <DigitalClock 
-            showSeconds={true} 
-            showDate={true} 
-            showDay={true}
-            size="md"
-            className="shadow-xl border-2 border-blue-200 bg-blue-50"
-          />
+        <div className="flex items-center space-x-4">
+          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
         </div>
       </div>
+      
+      {/* Fixed Digital Clock */}
+      <DigitalClock 
+        showSeconds={true} 
+        showDate={true} 
+        showDay={true}
+        size="md"
+        className="shadow-xl border-2 border-blue-200 bg-blue-50"
+      />
       
       <div className="flex h-[calc(100vh-140px)]">
         {/* Left Sidebar - Date Picker */}

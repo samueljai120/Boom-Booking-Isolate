@@ -47,24 +47,24 @@ const SimpleDashboard = () => {
       
       <div className="p-6">
         <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Boom Karaoke Booking System
-              </h1>
-              <p className="text-gray-600">
-                {moment(selectedDate).format('dddd, MMMM D, YYYY')}
-              </p>
-            </div>
-            <DigitalClock 
-              showSeconds={true} 
-              showDate={true} 
-              showDay={true}
-              size="lg"
-              className="shadow-xl border-2 border-blue-200 bg-blue-50"
-            />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Boom Karaoke Booking System
+            </h1>
+            <p className="text-gray-600">
+              {moment(selectedDate).format('dddd, MMMM D, YYYY')}
+            </p>
           </div>
         </div>
+        
+        {/* Fixed Digital Clock */}
+        <DigitalClock 
+          showSeconds={true} 
+          showDate={true} 
+          showDay={true}
+          size="lg"
+          className="shadow-xl border-2 border-blue-200 bg-blue-50"
+        />
 
         {/* Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
