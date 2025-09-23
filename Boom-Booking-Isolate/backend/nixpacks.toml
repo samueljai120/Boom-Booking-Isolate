@@ -8,4 +8,7 @@ cmds = ["npm ci --only=production"]
 cmds = ["echo 'Backend build complete'"]
 
 [start]
-cmd = "npm start"
+cmd = "node server-railway.js"
+
+[variables]
+NODE_ENV = "production"

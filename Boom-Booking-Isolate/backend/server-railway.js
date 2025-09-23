@@ -57,12 +57,26 @@ app.get('/', (req, res) => {
     status: 'running',
     environment: process.env.NODE_ENV || 'development',
     port: PORT,
+    railway: {
+      buildId: process.env.RAILWAY_BUILD_ID || 'Not set',
+      deploymentId: process.env.RAILWAY_DEPLOYMENT_ID || 'Not set'
+    },
     endpoints: {
       health: '/api/health',
       auth: '/api/auth',
       login: '/api/auth/login',
       register: '/api/auth/register'
     }
+  });
+});
+
+// Test endpoint
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Backend API is working!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: process.env.DATABASE_URL ? 'Connected' : 'Not connected'
   });
 });
 
@@ -143,6 +157,8 @@ async function startServer() {
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Port: ${PORT}`);
     console.log(`📊 Database URL: ${process.env.DATABASE_URL ? 'Set' : 'Not set'}`);
+    console.log(`🏗️ Railway Build: ${process.env.RAILWAY_BUILD_ID ? 'Yes' : 'No'}`);
+    console.log(`🚀 Railway Deployment: ${process.env.RAILWAY_DEPLOYMENT_ID ? 'Yes' : 'No'}`);
     
     // Initialize database (non-blocking)
     const dbInitialized = await initDatabase();
@@ -153,15 +169,17 @@ async function startServer() {
       console.log('⚠️ Database connection failed - API will work with limited functionality');
     }
     
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Boom Karaoke Backend API running on port ${PORT}`);
-      console.log(`🔌 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
-      console.log(`🌐 Socket.IO: http://localhost:${PORT}`);
+      console.log(`🔌 API Base URL: http://0.0.0.0:${PORT}/api`);
+      console.log(`🏥 Health Check: http://0.0.0.0:${PORT}/api/health`);
+      console.log(`🌐 Socket.IO: http://0.0.0.0:${PORT}`);
       console.log(`✅ Ready to accept requests`);
+      console.log(`🎯 This is a BACKEND API server, not a frontend!`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
+    console.error('🔍 Error details:', error.stack);
     process.exit(1);
   }
 }
