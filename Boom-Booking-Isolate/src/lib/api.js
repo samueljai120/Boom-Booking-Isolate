@@ -4,7 +4,7 @@ import { API_CONFIG, FORCE_REAL_API } from '../config/api.js';
 
 // API configuration - switches between mock and real backend based on environment
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_CONFIG.BASE_URL;
-const isMockMode = !FORCE_REAL_API && (!API_BASE_URL || API_BASE_URL.includes('your-api-server.com'));
+const isMockMode = !FORCE_REAL_API;
 
 // API configuration
 console.log('🔧 API Mode:', isMockMode ? 'MOCK' : 'REAL', '| Base URL:', API_BASE_URL);
