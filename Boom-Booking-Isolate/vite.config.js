@@ -12,6 +12,11 @@ export default defineConfig({
     host: true,
     // No proxy configuration for standalone frontend
   },
+  preview: {
+    port: process.env.PORT || 3000,
+    host: '0.0.0.0',
+    strictPort: true,
+  },
   build: {
     outDir: 'dist',
     sourcemap: false,
