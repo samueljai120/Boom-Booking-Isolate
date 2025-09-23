@@ -38,7 +38,7 @@ router.post('/login', [
       { 
         id: user.id, 
         email: user.email, 
-        role: user.role 
+        role: user.role || 'user' 
       },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '24h' }
@@ -51,7 +51,7 @@ router.post('/login', [
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role || 'user'
       }
     });
   } catch (error) {
@@ -87,8 +87,8 @@ router.post('/register', [
 
     // Create user
     const result = await pool.query(
-      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id',
-      [email, hashedPassword, name]
+      'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING id',
+      [email, hashedPassword, name, 'user']
     );
 
     // Generate JWT token
@@ -107,7 +107,7 @@ router.post('/register', [
       success: true,
       token,
       user: {
-        id: result.id,
+        id: result.rows[0].id,
         email: email,
         name: name,
         role: 'user'
