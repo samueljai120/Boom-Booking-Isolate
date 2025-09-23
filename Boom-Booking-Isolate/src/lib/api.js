@@ -4,7 +4,7 @@ import { API_CONFIG, FORCE_REAL_API, FALLBACK_TO_MOCK } from '../config/api.js';
 
 // API configuration - smart fallback system
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_CONFIG.BASE_URL;
-let isMockMode = true; // Start with mock mode since backend has issues
+let isMockMode = false; // Start with real API, fallback to mock
 let apiHealthChecked = false;
 let apiHealthy = false;
 
@@ -16,15 +16,32 @@ const checkApiHealth = async () => {
   if (apiHealthChecked) return apiHealthy;
   
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, { 
-      method: 'GET',
-      headers: API_CONFIG.HEADERS,
-      signal: AbortSignal.timeout(5000)
-    });
-    apiHealthy = response.ok;
+    // Try both health endpoints
+    const healthUrls = [`${API_BASE_URL}/health`, `${API_BASE_URL}/api/health`];
+    
+    for (const url of healthUrls) {
+      try {
+        const response = await fetch(url, { 
+          method: 'GET',
+          headers: API_CONFIG.HEADERS,
+          signal: AbortSignal.timeout(3000)
+        });
+        
+        if (response.ok) {
+          apiHealthy = true;
+          apiHealthChecked = true;
+          console.log('🏥 API Health Check: ✅ HEALTHY via', url);
+          return true;
+        }
+      } catch (error) {
+        console.log('🏥 API Health Check: ❌ FAILED for', url, '-', error.message);
+      }
+    }
+    
+    apiHealthy = false;
     apiHealthChecked = true;
-    console.log('🏥 API Health Check:', apiHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY');
-    return apiHealthy;
+    console.log('🏥 API Health Check: ❌ ALL ENDPOINTS FAILED');
+    return false;
   } catch (error) {
     apiHealthy = false;
     apiHealthChecked = true;
