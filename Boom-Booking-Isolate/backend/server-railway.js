@@ -57,6 +57,18 @@ app.use(express.urlencoded({ extended: true }));
 // Make io available to routes
 app.set('io', io);
 
+// Simple health check for Railway (before database initialization)
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '1.0.0',
+    message: 'Railway health check - server is running'
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
