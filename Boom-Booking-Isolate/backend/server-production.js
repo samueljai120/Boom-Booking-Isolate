@@ -73,8 +73,16 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "*",
-  credentials: true
+  origin: [
+    'https://boom-booking-frontend.vercel.app',
+    'https://boom-booking-frontend-git-main-samueljai120.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
 }));
 
 app.use(morgan('combined'));

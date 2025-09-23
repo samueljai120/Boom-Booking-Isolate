@@ -48,6 +48,26 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+// Add response interceptor to handle token expiration and errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403 && error.response?.data?.code) {
+      // Handle specific token errors
+      const errorCode = error.response.data.code;
+      if (errorCode === 'TOKEN_EXPIRED' || errorCode === 'TOKEN_INVALID' || errorCode === 'TOKEN_MALFORMED') {
+        // Clear invalid token and redirect to login
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        if (import.meta.env.MODE === 'development') {
+          console.log('🔑 Token error detected, clearing auth data:', errorCode);
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Helper function to convert frontend business hours format to backend format
 const convertToBackendFormat = (businessHours) => {
   return businessHours.map(bh => ({
