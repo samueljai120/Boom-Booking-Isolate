@@ -19,6 +19,7 @@ import stripeRoutes from './routes/stripe.js';
 import subscriptionRoutes from './routes/subscription.js';
 import emailRoutes from './routes/email.js';
 import aiRoutes from './routes/ai.js';
+import migrationRoutes from './routes/migration.js';
 
 // Import database initialization
 import { initDatabase } from './database/init.js';
@@ -91,6 +92,7 @@ app.use('/api/stripe', stripeRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/email', emailRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/migration', migrationRoutes);
 
 // Serve static files from frontend build with proper MIME types
 app.use(express.static(path.join(__dirname, '../dist'), {
