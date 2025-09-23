@@ -16,9 +16,16 @@
     "axios": "^1.3.4",
     "socket.io-client": "^4.6.1",
     "moment": "^2.29.4",
+    "moment-timezone": "^0.5.43",
     "react-hot-toast": "^2.4.0",
     "lucide-react": "^0.263.1",
-    "@tanstack/react-query": "^4.29.0"
+    "@tanstack/react-query": "^4.29.0",
+    "framer-motion": "^10.16.4",
+    "@dnd-kit/core": "^6.1.0",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "clsx": "^2.0.0",
+    "react-hook-form": "^7.48.2"
   },
   "devDependencies": {
     "@types/react": "^18.0.28",
