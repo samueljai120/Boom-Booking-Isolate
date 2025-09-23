@@ -1,5 +1,9 @@
 // Vercel API Route: /api/auth/login
-export default function handler(req, res) {
+import { sql } from './db.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,24 +27,67 @@ export default function handler(req, res) {
     });
   }
 
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  // Simple demo login
-  if (email === 'demo@example.com' && password === 'demo123') {
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email and password are required'
+      });
+    }
+
+    // Find user in database
+    const result = await sql`
+      SELECT id, email, password, name, role
+      FROM users
+      WHERE email = ${email}
+    `;
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid credentials'
+      });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '24h' }
+    );
+
     res.status(200).json({
       success: true,
-      token: 'demo-token-123',
+      token,
       user: {
-        id: 1,
-        email: 'demo@example.com',
-        name: 'Demo User',
-        role: 'admin'
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
       }
     });
-  } else {
-    res.status(401).json({
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
       success: false,
-      error: 'Invalid credentials'
+      error: 'Internal server error'
     });
   }
 }

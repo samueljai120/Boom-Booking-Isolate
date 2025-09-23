@@ -1,5 +1,7 @@
 // Vercel API Route: /api/business-hours
-export default function handler(req, res) {
+import { sql } from './db.js';
+
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,21 +17,48 @@ export default function handler(req, res) {
     return;
   }
 
-  // Business hours data
-  const businessHours = [
-    { day: 'monday', open: '09:00', close: '22:00', isOpen: true },
-    { day: 'tuesday', open: '09:00', close: '22:00', isOpen: true },
-    { day: 'wednesday', open: '09:00', close: '22:00', isOpen: true },
-    { day: 'thursday', open: '09:00', close: '22:00', isOpen: true },
-    { day: 'friday', open: '09:00', close: '23:00', isOpen: true },
-    { day: 'saturday', open: '10:00', close: '23:00', isOpen: true },
-    { day: 'sunday', open: '10:00', close: '21:00', isOpen: true }
-  ];
+  try {
+    // Get business hours from database
+    const result = await sql`
+      SELECT day_of_week, open_time, close_time, is_closed
+      FROM business_hours
+      ORDER BY day_of_week
+    `;
 
-  res.status(200).json({
-    success: true,
-    data: {
-      businessHours
-    }
-  });
+    // Convert to frontend format
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const businessHours = result.rows.map(row => ({
+      day: dayNames[row.day_of_week],
+      open: row.open_time,
+      close: row.close_time,
+      isOpen: !row.is_closed
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        businessHours
+      }
+    });
+  } catch (error) {
+    console.error('Database error:', error);
+    
+    // Fallback to static data
+    const businessHours = [
+      { day: 'monday', open: '09:00', close: '22:00', isOpen: true },
+      { day: 'tuesday', open: '09:00', close: '22:00', isOpen: true },
+      { day: 'wednesday', open: '09:00', close: '22:00', isOpen: true },
+      { day: 'thursday', open: '09:00', close: '22:00', isOpen: true },
+      { day: 'friday', open: '09:00', close: '23:00', isOpen: true },
+      { day: 'saturday', open: '10:00', close: '23:00', isOpen: true },
+      { day: 'sunday', open: '10:00', close: '21:00', isOpen: true }
+    ];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        businessHours
+      }
+    });
+  }
 }
