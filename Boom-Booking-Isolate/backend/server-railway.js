@@ -391,7 +391,6 @@ async function initDatabase() {
     console.log('👤 Setting up demo user...');
     const demoUserExists = await pool.query('SELECT id FROM users WHERE email = $1', ['demo@example.com']);
     if (demoUserExists.rows.length === 0) {
-      const bcrypt = await import('bcryptjs');
       const hashedPassword = await bcrypt.hash('demo123', 10);
       
       await pool.query(
