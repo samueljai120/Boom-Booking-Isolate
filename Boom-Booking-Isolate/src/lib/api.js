@@ -9,9 +9,7 @@ let apiHealthChecked = false;
 let apiHealthy = false;
 
 // API configuration
-if (import.meta.env.MODE === 'development') {
-  console.log('🔧 API Mode:', isMockMode ? 'MOCK' : 'REAL', '| Base URL:', API_BASE_URL);
-}
+console.log('🔧 API Mode:', isMockMode ? 'MOCK' : 'REAL', '| Base URL:', API_BASE_URL);
 
 // Health check function
 const checkApiHealth = async () => {
@@ -24,16 +22,12 @@ const checkApiHealth = async () => {
     });
     apiHealthy = response.status === 200;
     apiHealthChecked = true;
-    if (import.meta.env.MODE === 'development') {
-      console.log('🏥 API Health Check:', apiHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY');
-    }
+    console.log('🏥 API Health Check:', apiHealthy ? '✅ HEALTHY' : '❌ UNHEALTHY');
     return apiHealthy;
   } catch (error) {
     apiHealthy = false;
     apiHealthChecked = true;
-    if (import.meta.env.MODE === 'development') {
-      console.log('🏥 API Health Check: ❌ FAILED -', error.message);
-    }
+    console.log('🏥 API Health Check: ❌ FAILED -', error.message);
     return false;
   }
 };
@@ -53,22 +47,6 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
-
-// Add response interceptor to handle token expiration
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 403 && error.response?.data?.code === 'TOKEN_INVALID') {
-      // Clear invalid token and redirect to login
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      if (import.meta.env.MODE === 'development') {
-        console.log('🔑 Token expired, clearing auth data');
-      }
-    }
-    return Promise.reject(error);
-  }
-);
 
 // Helper function to convert frontend business hours format to backend format
 const convertToBackendFormat = (businessHours) => {
@@ -116,9 +94,7 @@ export const authAPI = {
       const response = await apiClient.post('/auth/login', credentials);
       return response.data;
     } catch (error) {
-      if (import.meta.env.MODE === 'development') {
-        console.log('❌ Real API login failed, falling back to mock:', error.message);
-      }
+      console.log('❌ Real API login failed, falling back to mock:', error.message);
       if (FALLBACK_TO_MOCK) {
         return mockAPI.login(credentials);
       }
@@ -152,9 +128,7 @@ export const authAPI = {
       const response = await apiClient.post('/auth/register', userData);
       return response.data;
     } catch (error) {
-      if (import.meta.env.MODE === 'development') {
-        console.log('❌ Real API register failed, falling back to mock:', error.message);
-      }
+      console.log('❌ Real API register failed, falling back to mock:', error.message);
       if (FALLBACK_TO_MOCK) {
         return mockAPI.register(userData);
       }
@@ -171,9 +145,7 @@ export const authAPI = {
       const response = await apiClient.get('/auth/me');
       return response.data;
     } catch (error) {
-      if (import.meta.env.MODE === 'development') {
-        console.log('❌ Real API getSession failed, falling back to mock:', error.message);
-      }
+      console.log('❌ Real API getSession failed, falling back to mock:', error.message);
       if (FALLBACK_TO_MOCK) {
         return mockAPI.getSession();
       }
