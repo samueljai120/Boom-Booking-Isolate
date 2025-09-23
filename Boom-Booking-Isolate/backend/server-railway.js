@@ -15,6 +15,7 @@ import businessHoursRoutes from './routes/businessHours.js';
 import roomsRoutes from './routes/rooms.js';
 import bookingsRoutes from './routes/bookings.js';
 import settingsRoutes from './routes/settings.js';
+import migrationRoutes from './routes/migration.js';
 
 // Import database initialization
 import { pool, testConnection } from './database/postgres.js';
@@ -63,6 +64,7 @@ app.use('/api/business-hours', businessHoursRoutes);
 app.use('/api/rooms', roomsRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/migration', migrationRoutes);
 
 // Basic business hours endpoint (fallback)
 app.get('/api/business-hours', (req, res) => {
@@ -179,6 +181,33 @@ async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Check if role column exists and add it if missing (migration)
+    console.log('🔧 Checking for missing role column...');
+    const roleColumnExists = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' AND column_name = 'role'
+    `);
+    
+    if (roleColumnExists.rows.length === 0) {
+      console.log('➕ Adding missing role column to users table...');
+      await pool.query(`
+        ALTER TABLE users 
+        ADD COLUMN role VARCHAR(50) DEFAULT 'user'
+      `);
+      console.log('✅ Role column added successfully');
+      
+      // Update existing users to have 'user' role
+      const updateResult = await pool.query(`
+        UPDATE users 
+        SET role = 'user' 
+        WHERE role IS NULL OR role = ''
+      `);
+      console.log(`✅ Updated ${updateResult.rowCount} users with default role`);
+    } else {
+      console.log('✅ Role column already exists');
+    }
     
     // Insert demo user if not exists
     console.log('👤 Setting up demo user...');
