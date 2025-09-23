@@ -21,6 +21,10 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     minify: 'terser',
+    target: 'es2015',
+    commonjsOptions: {
+      include: [/node_modules/]
+    },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -111,5 +115,8 @@ export default defineConfig({
   },
   define: {
     global: 'globalThis',
+  },
+  optimizeDeps: {
+    include: ['axios', 'react', 'react-dom']
   }
 })
