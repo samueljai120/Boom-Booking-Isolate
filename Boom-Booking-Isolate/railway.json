@@ -5,7 +5,7 @@
     "buildCommand": "cd backend && npm ci --only=production"
   },
   "deploy": {
-    "startCommand": "cd backend && npm start",
+    "startCommand": "cd backend && node server-simple-railway.js",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
