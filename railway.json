@@ -5,7 +5,7 @@
     "buildCommand": "cd Boom-Booking-Isolate/backend && npm ci --only=production"
   },
   "deploy": {
-    "startCommand": "cd Boom-Booking-Isolate/backend && node server-railway-fixed.js",
+    "startCommand": "cd Boom-Booking-Isolate/backend && npm start",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 60,
     "restartPolicyType": "ON_FAILURE",
