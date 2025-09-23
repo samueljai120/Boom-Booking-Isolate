@@ -50,7 +50,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 
 // Railway-specific logging
 console.log('🚀 Starting Boom Booking Backend on Railway');
@@ -126,7 +126,25 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     version: '1.0.0',
-    message: 'Railway health check - server is running'
+    message: 'Railway health check - server is running',
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT,
+    cors_origin: process.env.CORS_ORIGIN || 'not set'
+  });
+});
+
+// Additional health check endpoint for Railway
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '1.0.0',
+    message: 'API health check - server is running',
+    environment: process.env.NODE_ENV || 'development',
+    port: PORT,
+    cors_origin: process.env.CORS_ORIGIN || 'not set'
   });
 });
 
@@ -417,7 +435,10 @@ async function initDatabase() {
     return true;
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
+    console.error('🔍 Error details:', error.message);
+    console.error('🔍 Error stack:', error.stack);
     console.log('🔄 Continuing without database - using fallback mode');
+    console.log('⚠️ Some features may not work properly without database');
     return false;
   }
 }
@@ -470,6 +491,28 @@ process.on('SIGINT', () => {
   server.close(() => {
     console.log('✅ Process terminated');
     process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  console.error('🔍 Error details:', error.message);
+  console.error('🔍 Error stack:', error.stack);
+  console.log('🔄 Attempting graceful shutdown...');
+  server.close(() => {
+    console.log('✅ Server closed due to uncaught exception');
+    process.exit(1);
+  });
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  console.log('🔄 Attempting graceful shutdown...');
+  server.close(() => {
+    console.log('✅ Server closed due to unhandled rejection');
+    process.exit(1);
   });
 });
 

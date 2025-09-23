@@ -14,7 +14,12 @@
   "environments": {
     "production": {
       "variables": {
-        "NODE_ENV": "production"
+        "NODE_ENV": "production",
+        "PORT": "5000",
+        "CORS_ORIGIN": "https://boom-booking-frontend.vercel.app",
+        "JWT_SECRET": "your-super-secure-jwt-secret-change-this-now",
+        "JWT_EXPIRES_IN": "7d",
+        "JWT_REFRESH_EXPIRES_IN": "30d"
       }
     }
   }
