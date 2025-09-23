@@ -45,9 +45,10 @@ async function initDatabase() {
     console.log('🔍 Testing database connection...');
     const client = await pool.connect();
     
-    // Create users table if it doesn't exist
+    // Drop and recreate users table to fix schema
+    await client.query('DROP TABLE IF EXISTS users CASCADE');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
