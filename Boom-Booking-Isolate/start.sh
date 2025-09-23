@@ -43,7 +43,8 @@ echo "🔑 Demo credentials: demo@example.com / demo123"
 echo "🏥 Health check endpoint: http://0.0.0.0:$PORT/health"
 echo ""
 
-# Start the Express server
-echo "🔧 Starting Express server..."
+# Start the Backend Express server
+echo "🔧 Starting Backend Express server..."
+cd backend
 exec node server.js
 

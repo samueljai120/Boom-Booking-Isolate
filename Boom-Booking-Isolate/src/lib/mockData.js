@@ -215,13 +215,17 @@ export const mockAPI = {
       setTimeout(() => {
         if ((credentials.email === 'demo@example.com' || credentials.username === 'demo@example.com') && credentials.password === 'demo123') {
           resolve({
+            success: true,
             data: {
               user: mockData.user,
               token: 'mock-jwt-token-' + Date.now()
             }
           });
         } else {
-          throw new Error('Invalid credentials');
+          resolve({
+            success: false,
+            error: 'Invalid credentials'
+          });
         }
       }, 1000);
     });
@@ -261,9 +265,15 @@ export const mockAPI = {
       setTimeout(() => {
         const token = localStorage.getItem('authToken');
         if (token) {
-          resolve({ data: { user: mockData.user, token } });
+          resolve({ 
+            success: true,
+            data: { user: mockData.user, token } 
+          });
         } else {
-          throw new Error('No active session');
+          resolve({
+            success: false,
+            error: 'No active session'
+          });
         }
       }, 500);
     });

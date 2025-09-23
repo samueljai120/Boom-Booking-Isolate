@@ -7,8 +7,8 @@ export const getApiBaseUrl = () => {
   
   // Check if we're in production (Vercel deployment)
   if (import.meta.env.PROD) {
-    // Try Railway backend URL (you'll need to update this with your actual Railway URL)
-    return 'https://boom-booking-backend-production.up.railway.app/api';
+    // Use the actual Railway backend URL
+    return 'https://advanced-calendar-production-02f3.up.railway.app/api';
   }
   
   // Development fallback
@@ -22,7 +22,7 @@ export const getWebSocketUrl = () => {
   }
   
   if (import.meta.env.PROD) {
-    return 'https://boom-booking-backend-production.up.railway.app';
+    return 'https://advanced-calendar-production-02f3.up.railway.app';
   }
   
   return 'http://localhost:5001';

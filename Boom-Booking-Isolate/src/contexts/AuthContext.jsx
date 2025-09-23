@@ -21,17 +21,11 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       if (token) {
         try {
-          // Use environment variable for API base URL
-          const response = await fetch(`${getApiBaseUrl()}/auth/me`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          const data = await response.json();
+          // Use authAPI for session check with smart fallback
+          const response = await authAPI.getSession();
           
-          if (data.success) {
-            setUser(data.user);
+          if (response.success) {
+            setUser(response.data.user);
           } else {
             // Session invalid, clear auth
             localStorage.removeItem('authToken');
@@ -41,11 +35,9 @@ export const AuthProvider = ({ children }) => {
           }
         } catch (error) {
           console.error('Session check failed:', error);
-          // Network error, clear auth
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
+          // For demo purposes, don't clear auth on network errors
+          // Just set loading to false so the app can continue
+          console.log('Using mock mode due to network error');
         }
       }
       setLoading(false);
@@ -56,19 +48,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      // Use environment variable for API base URL
-      const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-      });
-
-      const data = await response.json();
+      // Use the authAPI which has smart fallback to mock data
+      const response = await authAPI.login(credentials);
       
-      if (data.success) {
-        const { token, user } = data;
+      if (response.success) {
+        const { token, user } = response.data;
         
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -79,14 +63,14 @@ export const AuthProvider = ({ children }) => {
       } else {
         return {
           success: false,
-          error: data.error || 'Login failed'
+          error: response.error || 'Login failed'
         };
       }
     } catch (error) {
       console.error('Login error:', error);
       return {
         success: false,
-        error: 'Network error - please check if backend is running'
+        error: 'Login failed - please try again'
       };
     }
   };

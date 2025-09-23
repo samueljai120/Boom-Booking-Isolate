@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import { db } from '../database/init.js';
+import { pool } from '../database/postgres.js';
 
 const router = express.Router();
 
@@ -20,16 +20,8 @@ router.post('/login', [
     const { email, password } = req.body;
 
     // Find user by email
-    const user = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT * FROM users WHERE email = ?',
-        [email],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -83,16 +75,8 @@ router.post('/register', [
     const { email, password, name } = req.body;
 
     // Check if user already exists
-    const existingUser = await new Promise((resolve, reject) => {
-      db.get(
-        'SELECT id FROM users WHERE email = ?',
-        [email],
-        (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        }
-      );
-    });
+    const existingResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const existingUser = existingResult.rows[0];
 
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
@@ -102,21 +86,16 @@ router.post('/register', [
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const result = await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO users (email, password, name) VALUES (?, ?, ?)',
-        [email, hashedPassword, name],
-        function(err) {
-          if (err) reject(err);
-          else resolve({ id: this.lastID });
-        }
-      );
-    });
+    const result = await pool.query(
+      'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id',
+      [email, hashedPassword, name]
+    );
 
     // Generate JWT token
+    const userId = result.rows[0].id;
     const token = jwt.sign(
       { 
-        id: result.id, 
+        id: userId, 
         email: email, 
         role: 'user' 
       },

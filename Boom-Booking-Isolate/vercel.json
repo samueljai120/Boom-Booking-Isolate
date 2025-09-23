@@ -53,6 +53,6 @@
     }
   ],
   "trailingSlash": false,
-  "cleanUrls": true,
+  "cleanUrls": false,
   "regions": ["iad1"]
 }

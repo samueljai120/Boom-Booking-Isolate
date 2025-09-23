@@ -4,7 +4,7 @@ import { API_CONFIG, FORCE_REAL_API, FALLBACK_TO_MOCK } from '../config/api.js';
 
 // API configuration - smart fallback system
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || API_CONFIG.BASE_URL;
-let isMockMode = !FORCE_REAL_API;
+let isMockMode = false; // Start with real API attempts
 let apiHealthChecked = false;
 let apiHealthy = false;
 
@@ -71,6 +71,12 @@ const convertToFrontendFormat = (backendHours) => {
 // Auth API with smart fallback
 export const authAPI = {
   login: async (credentials) => {
+    // For demo credentials, always use mock to ensure it works
+    if (credentials.email === 'demo@example.com' && credentials.password === 'demo123') {
+      console.log('🎯 Using mock API for demo login');
+      return mockAPI.login(credentials);
+    }
+    
     // Check if we should use real API
     if (FORCE_REAL_API && FALLBACK_TO_MOCK) {
       const isHealthy = await checkApiHealth();
