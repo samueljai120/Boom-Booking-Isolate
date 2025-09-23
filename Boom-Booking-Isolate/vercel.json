@@ -1,15 +1,9 @@
 {
   "version": 2,
-  "name": "boom-booking-frontend",
   "buildCommand": "npm ci && npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm ci",
   "framework": "vite",
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
