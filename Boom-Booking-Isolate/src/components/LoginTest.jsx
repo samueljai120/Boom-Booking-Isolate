@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const LoginTest = () => {
   const [testResult, setTestResult] = useState('');
@@ -43,7 +44,7 @@ const LoginTest = () => {
     setTestResult('Testing direct API call...');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
+      const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

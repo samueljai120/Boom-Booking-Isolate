@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
+import { getApiBaseUrl } from '../utils/apiConfig';
 import { 
   Database, 
   Download, 
@@ -38,7 +39,7 @@ const DatabaseManagement = () => {
 
   const fetchDatabaseStats = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/database/stats');
+      const response = await fetch(`${getApiBaseUrl()}/database/stats`);
       const data = await response.json();
       if (data.success) {
         setDbStats(data.data);

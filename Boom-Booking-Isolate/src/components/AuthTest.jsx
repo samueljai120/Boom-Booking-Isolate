@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const AuthTest = () => {
   const [testResult, setTestResult] = useState(null);
@@ -11,7 +12,7 @@ const AuthTest = () => {
     setTestResult('Testing...');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
+      const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,7 +51,7 @@ const AuthTest = () => {
         return;
       }
 
-      const response = await fetch('http://localhost:5001/api/auth/session', {
+      const response = await fetch(`${getApiBaseUrl()}/auth/session`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

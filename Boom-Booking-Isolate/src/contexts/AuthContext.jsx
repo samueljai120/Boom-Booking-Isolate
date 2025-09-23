@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI } from '../lib/api';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const AuthContext = createContext();
 
@@ -20,8 +21,8 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       if (token) {
         try {
-          // Use direct fetch to check session
-          const response = await fetch('http://localhost:5001/api/auth/me', {
+          // Use environment variable for API base URL
+          const response = await fetch(`${getApiBaseUrl()}/auth/me`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -55,8 +56,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      // Use direct fetch to ensure we're using the real API
-      const response = await fetch('http://localhost:5001/api/auth/login', {
+      // Use environment variable for API base URL
+      const response = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
+import { getApiBaseUrl } from '../utils/apiConfig';
 
 const ApiTest = () => {
   const [apiStatus, setApiStatus] = useState('testing');
@@ -16,7 +17,7 @@ const ApiTest = () => {
   const testApiConnections = async () => {
     // Test health endpoint
     try {
-      const healthResponse = await fetch('http://localhost:5001/api/health');
+      const healthResponse = await fetch(`${getApiBaseUrl()}/health`);
       const healthData = await healthResponse.json();
       setApiStatus(healthData.success ? 'success' : 'error');
     } catch (error) {
@@ -25,7 +26,7 @@ const ApiTest = () => {
 
     // Test email endpoint
     try {
-      const emailResponse = await fetch('http://localhost:5001/api/email/config');
+      const emailResponse = await fetch(`${getApiBaseUrl()}/email/config`);
       const emailData = await emailResponse.json();
       setEmailStatus(emailData.success ? 'success' : 'error');
     } catch (error) {
@@ -34,7 +35,7 @@ const ApiTest = () => {
 
     // Test settings endpoint
     try {
-      const settingsResponse = await fetch('http://localhost:5001/api/settings');
+      const settingsResponse = await fetch(`${getApiBaseUrl()}/settings`);
       const settingsData = await settingsResponse.json();
       setSettingsStatus(settingsData.success ? 'success' : 'error');
     } catch (error) {
@@ -43,7 +44,7 @@ const ApiTest = () => {
 
     // Test auth endpoint
     try {
-      const authResponse = await fetch('http://localhost:5001/api/auth/login', {
+      const authResponse = await fetch(`${getApiBaseUrl()}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: 'demo@example.com', password: 'demo123' })

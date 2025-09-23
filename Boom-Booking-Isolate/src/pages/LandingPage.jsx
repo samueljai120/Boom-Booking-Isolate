@@ -113,34 +113,43 @@ const LandingPage = () => {
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.8, opacity: 0 }}
-        className={`bg-white rounded-lg shadow-2xl ${isFullscreen ? 'w-full h-full' : 'w-full max-w-6xl h-[80vh]'}`}
+        className="bg-white rounded-lg shadow-2xl w-full max-w-md p-8 text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-xl font-semibold">Live Demo - Boom Booking Dashboard</h3>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-            >
-              <Maximize2 className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowLiveDemo(false)}
-            >
-              <X className="w-4 h-4" />
-            </Button>
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Play className="w-8 h-8 text-blue-600" />
           </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Live Demo</h3>
+          <p className="text-gray-600 mb-6">
+            Experience the full Boom Booking system with our interactive demo. 
+            Click below to open the application in a new window.
+          </p>
         </div>
-        <div className="h-full overflow-hidden">
-          <iframe
-            src="/dashboard"
-            className="w-full h-full border-0"
-            title="Live Demo"
-          />
+        
+        <div className="space-y-4">
+          <Button
+            onClick={() => {
+              window.open('https://boom-booking-frontend.vercel.app/login', '_blank', 'noopener,noreferrer');
+              setShowLiveDemo(false);
+            }}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold"
+          >
+            <Play className="w-5 h-5 mr-2" />
+            Open Live Demo
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => setShowLiveDemo(false)}
+            className="w-full py-3 px-6 rounded-lg"
+          >
+            Cancel
+          </Button>
+        </div>
+        
+        <div className="mt-6 text-sm text-gray-500">
+          <p>Demo credentials: demo@example.com / demo123</p>
         </div>
       </motion.div>
     </motion.div>
@@ -452,7 +461,9 @@ const LandingPage = () => {
                   variant="outline" 
                   size="lg" 
                   className="px-8 py-3 border-2 hover:bg-gray-50"
-                  onClick={() => setShowLiveDemo(true)}
+                  onClick={() => {
+                    window.open('https://boom-booking-frontend.vercel.app/login', '_blank', 'noopener,noreferrer');
+                  }}
                 >
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
