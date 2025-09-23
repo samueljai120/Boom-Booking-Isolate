@@ -107,9 +107,27 @@ io.on('connection', (socket) => {
 // Make io available to routes
 app.set('io', io);
 
-// Serve React app for all non-API routes
+// API-only mode - don't serve frontend files
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Boom Karaoke Booking API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      bookings: '/api/bookings',
+      rooms: '/api/rooms'
+    }
+  });
+});
+
+// Catch-all for non-API routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.status(404).json({
+    error: 'Not Found',
+    message: 'This is a backend API. Frontend is deployed separately.'
+  });
 });
 
 // Error handling middleware
@@ -136,12 +154,11 @@ async function startServer() {
     console.log('✅ PostgreSQL database initialized successfully');
     
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📱 Frontend: http://localhost:${PORT}`);
-      console.log(`🔌 API: http://localhost:${PORT}/api`);
+      console.log(`🚀 Boom Karaoke Backend API running on port ${PORT}`);
+      console.log(`🔌 API Base URL: http://localhost:${PORT}/api`);
+      console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);
       console.log(`🌐 Socket.IO: http://localhost:${PORT}`);
-      console.log(`🗄️  PgAdmin: http://localhost:5050`);
-      console.log(`📊 Redis Commander: http://localhost:8081`);
+      console.log(`✅ Ready to accept requests`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
