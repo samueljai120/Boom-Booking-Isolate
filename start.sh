@@ -19,28 +19,33 @@ if ! command -v npm &> /dev/null; then
     exit 1
 fi
 
-# Install dependencies if needed
-if [ ! -d "node_modules" ]; then
-    echo "📦 Installing dependencies..."
-    npm install
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to install dependencies"
-        exit 1
-    fi
-fi
-
-# Build the application
-echo "🔨 Building application..."
-npm run build
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to build application"
+# Check if dist directory exists (build should already be done by Railway)
+if [ ! -d "dist" ]; then
+    echo "❌ Build directory not found. Application may not have been built properly."
     exit 1
 fi
 
-# Start the preview server
-echo "🚀 Starting production server..."
-echo "📍 Application will be available at the Railway URL"
+# Set PORT environment variable if not set
+if [ -z "$PORT" ]; then
+    export PORT=3000
+    echo "⚠️ PORT not set, using default: $PORT"
+else
+    echo "✅ Using PORT: $PORT"
+fi
+
+# Log Railway environment variables for debugging
+echo "🔍 Railway Environment:"
+echo "   PORT: $PORT"
+echo "   NODE_ENV: ${NODE_ENV:-not set}"
+echo "   RAILWAY_ENVIRONMENT: ${RAILWAY_ENVIRONMENT:-not set}"
 echo ""
 
-# Use Railway's PORT environment variable
-npm run preview
+echo "🚀 Starting production server..."
+echo "📍 Server will be available at: http://0.0.0.0:$PORT"
+echo "🔑 Demo credentials: demo@example.com / demo123"
+echo "🏥 Health check endpoint: http://0.0.0.0:$PORT/health"
+echo ""
+
+# Start the Express server
+echo "🔧 Starting Express server..."
+exec node server.js
