@@ -1,0 +1,276 @@
+{
+  "features": [
+    {
+      "name": "smart-booking-system",
+      "title": "Smart Booking System",
+      "description": "Intuitive calendar interface with real-time availability and conflict detection",
+      "priority": 1,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"calendar-view\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"new-booking\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "fill",
+          "selector": "[data-testid=\"customer-name\"]",
+          "value": "John Smith"
+        },
+        {
+          "type": "select",
+          "selector": "[data-testid=\"room-select\"]",
+          "value": "Room A"
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"save-booking\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 3000
+        }
+      ]
+    },
+    {
+      "name": "multi-user-management",
+      "title": "Multi-User Management",
+      "description": "Role-based access control for staff, managers, and administrators",
+      "priority": 2,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"users-menu\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"add-user\"]"
+        },
+        {
+          "type": "fill",
+          "selector": "[data-testid=\"user-name\"]",
+          "value": "Sarah Manager"
+        },
+        {
+          "type": "select",
+          "selector": "[data-testid=\"user-role\"]",
+          "value": "manager"
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"save-user\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        }
+      ]
+    },
+    {
+      "name": "analytics-reports",
+      "title": "Analytics & Reports",
+      "description": "Comprehensive insights into booking patterns and revenue optimization",
+      "priority": 3,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"analytics-tab\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"revenue-chart\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1500
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"booking-trends\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        }
+      ]
+    },
+    {
+      "name": "mobile-optimized",
+      "title": "Mobile Optimized",
+      "description": "Responsive design that works perfectly on all devices and screen sizes",
+      "priority": 4,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "setViewport",
+          "width": 375,
+          "height": 667
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"mobile-menu\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"mobile-bookings\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        }
+      ]
+    },
+    {
+      "name": "enterprise-security",
+      "title": "Enterprise Security",
+      "description": "Bank-level security with data encryption and secure authentication",
+      "priority": 5,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"settings-menu\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"security-tab\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 2000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"two-factor-auth\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 1500
+        }
+      ]
+    },
+    {
+      "name": "lightning-fast",
+      "title": "Lightning Fast",
+      "description": "Optimized performance with sub-second response times and real-time updates",
+      "priority": 6,
+      "actions": [
+        {
+          "type": "navigate",
+          "url": "/dashboard"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"refresh-data\"]"
+        },
+        {
+          "type": "wait",
+          "duration": 500
+        },
+        {
+          "type": "click",
+          "selector": "[data-testid=\"search-bookings\"]"
+        },
+        {
+          "type": "type",
+          "selector": "[data-testid=\"search-input\"]",
+          "value": "test"
+        },
+        {
+          "type": "wait",
+          "duration": 1000
+        }
+      ]
+    }
+  ],
+  "videoSettings": {
+    "resolution": "1920x1080",
+    "fps": 30,
+    "duration": 30,
+    "format": "mp4",
+    "quality": "high",
+    "compression": "medium"
+  },
+  "aiServices": {
+    "primary": "veed",
+    "fallback": "kapwing",
+    "settings": {
+      "highlightDuration": 15,
+      "autoTransitions": true,
+      "backgroundMusic": true,
+      "subtitles": true
+    }
+  }
+}

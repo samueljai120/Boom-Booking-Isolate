@@ -1,0 +1,42 @@
+{
+  "name": "boom-booking-video-generator",
+  "version": "1.0.0",
+  "description": "Automated video generation system for Boom Booking calendar features",
+  "main": "automated-video-generator.js",
+  "scripts": {
+    "generate": "node automated-video-generator.js generate",
+    "cleanup": "node automated-video-generator.js cleanup",
+    "test": "node automated-video-generator.js test",
+    "install-deps": "npm install",
+    "setup": "npm run install-deps && npm run test",
+    "dev": "nodemon automated-video-generator.js generate"
+  },
+  "dependencies": {
+    "puppeteer": "^21.0.0",
+    "axios": "^1.6.0",
+    "form-data": "^4.0.0",
+    "ffmpeg-static": "^5.2.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "dotenv": "^16.3.0",
+    "node-cron": "^3.0.3",
+    "sharp": "^0.32.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0",
+    "jest": "^29.7.0"
+  },
+  "keywords": [
+    "video-generation",
+    "automation",
+    "calendar",
+    "booking",
+    "ai",
+    "puppeteer",
+    "screen-recording"
+  ],
+  "author": "Boom Booking Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
