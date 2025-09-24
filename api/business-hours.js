@@ -1,6 +1,4 @@
 // Vercel API Route: /api/business-hours
-import { sql, initDatabase } from '../lib/neon-db.js';
-
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -18,35 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Initialize database if needed
-    await initDatabase();
-    
-    // Get business hours from database
-    const result = await sql`
-      SELECT day_of_week, open_time, close_time, is_closed
-      FROM business_hours
-      ORDER BY day_of_week
-    `;
-
-    // Convert to frontend format
-    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const businessHours = result.map(row => ({
-      day: dayNames[row.day_of_week],
-      open: row.open_time,
-      close: row.close_time,
-      isOpen: !row.is_closed
-    }));
-
-    res.status(200).json({
-      success: true,
-      data: {
-        businessHours
-      }
-    });
-  } catch (error) {
-    console.error('Database error:', error);
-    
-    // Fallback to static data
+    // For now, return static data (we'll add database later)
     const businessHours = [
       { day: 'monday', open: '09:00', close: '22:00', isOpen: true },
       { day: 'tuesday', open: '09:00', close: '22:00', isOpen: true },
@@ -62,6 +32,13 @@ export default async function handler(req, res) {
       data: {
         businessHours
       }
+    });
+  } catch (error) {
+    console.error('Business hours error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch business hours',
+      error: error.message
     });
   }
 }

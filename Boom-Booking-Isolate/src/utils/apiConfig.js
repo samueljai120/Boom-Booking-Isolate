@@ -22,7 +22,8 @@ export const getWebSocketUrl = () => {
   }
   
   if (import.meta.env.PROD) {
-    return 'https://advanced-calendar-production-02f3.up.railway.app';
+    // Use same domain for WebSocket (Vercel doesn't support WebSocket, so disable for now)
+    return '';
   }
   
   return 'http://localhost:5001';

@@ -1,10 +1,15 @@
-// Vercel Postgres Database Connection
-import { sql } from '@vercel/postgres';
+// Neon PostgreSQL connection for Vercel Functions
+import { neon } from '@neondatabase/serverless';
+
+// Neon configuration
+const sql = neon(process.env.DATABASE_URL);
 
 // Database initialization
 export async function initDatabase() {
   try {
-    // Create users table
+    console.log('🗄️ Initializing Neon database...');
+    
+    // Create tables if they don't exist
     await sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -17,7 +22,6 @@ export async function initDatabase() {
       )
     `;
 
-    // Create rooms table
     await sql`
       CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
@@ -32,7 +36,19 @@ export async function initDatabase() {
       )
     `;
 
-    // Create bookings table
+    await sql`
+      CREATE TABLE IF NOT EXISTS business_hours (
+        id SERIAL PRIMARY KEY,
+        day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+        open_time TIME,
+        close_time TIME,
+        is_closed BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(day_of_week)
+      )
+    `;
+
     await sql`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
@@ -51,26 +67,13 @@ export async function initDatabase() {
       )
     `;
 
-    // Create business_hours table
-    await sql`
-      CREATE TABLE IF NOT EXISTS business_hours (
-        id SERIAL PRIMARY KEY,
-        day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
-        open_time TIME,
-        close_time TIME,
-        is_closed BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
     // Insert default data
     await insertDefaultData();
-
-    console.log('✅ Database initialized successfully');
+    
+    console.log('✅ Neon database initialized successfully');
     return true;
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error('❌ Neon database initialization failed:', error);
     return false;
   }
 }
@@ -80,10 +83,16 @@ async function insertDefaultData() {
   try {
     // Check if data already exists
     const userCount = await sql`SELECT COUNT(*) as count FROM users`;
-    if (userCount.rows[0].count > 0) {
+    if (userCount[0].count > 0) {
       console.log('✅ Default data already exists');
       return;
     }
+
+    // Insert default user (password: demo123)
+    await sql`
+      INSERT INTO users (email, password, name, role)
+      VALUES ('demo@example.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Demo User', 'admin')
+    `;
 
     // Insert default rooms
     await sql`
@@ -95,26 +104,22 @@ async function insertDefaultData() {
     `;
 
     // Insert default business hours
-    await sql`
-      INSERT INTO business_hours (day_of_week, open_time, close_time, is_closed)
-      VALUES 
-        (0, '10:00', '21:00', false),
-        (1, '09:00', '22:00', false),
-        (2, '09:00', '22:00', false),
-        (3, '09:00', '22:00', false),
-        (4, '09:00', '23:00', false),
-        (5, '10:00', '23:00', false),
-        (6, '10:00', '21:00', false)
-    `;
+    const businessHours = [
+      { day: 1, open: '09:00', close: '22:00', closed: false },
+      { day: 2, open: '09:00', close: '22:00', closed: false },
+      { day: 3, open: '09:00', close: '22:00', closed: false },
+      { day: 4, open: '09:00', close: '22:00', closed: false },
+      { day: 5, open: '09:00', close: '23:00', closed: false },
+      { day: 6, open: '10:00', close: '23:00', closed: false },
+      { day: 0, open: '10:00', close: '21:00', closed: false }
+    ];
 
-    // Insert demo user
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash('demo123', 10);
-    
-    await sql`
-      INSERT INTO users (email, password, name, role)
-      VALUES ('demo@example.com', ${hashedPassword}, 'Demo User', 'admin')
-    `;
+    for (const hour of businessHours) {
+      await sql`
+        INSERT INTO business_hours (day_of_week, open_time, close_time, is_closed)
+        VALUES (${hour.day}, ${hour.open}, ${hour.close}, ${hour.closed})
+      `;
+    }
 
     console.log('✅ Default data inserted successfully');
   } catch (error) {
@@ -122,5 +127,5 @@ async function insertDefaultData() {
   }
 }
 
-// Export database functions
+// Export sql for use in API routes
 export { sql };

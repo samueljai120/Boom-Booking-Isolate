@@ -1,5 +1,5 @@
 // Vercel API Route: /api/rooms
-import { sql } from './db.js';
+import { sql, initDatabase } from '../lib/neon-db.js';
 
 export default async function handler(req, res) {
   // Set CORS headers
@@ -18,6 +18,9 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Initialize database if needed
+    await initDatabase();
+    
     // Get rooms from database
     const result = await sql`
       SELECT id, name, capacity, category, description, price_per_hour, is_active
@@ -26,7 +29,7 @@ export default async function handler(req, res) {
       ORDER BY id
     `;
 
-    const rooms = result.rows.map(row => ({
+    const rooms = result.map(row => ({
       id: row.id,
       name: row.name,
       capacity: row.capacity,
