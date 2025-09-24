@@ -1,217 +1,293 @@
-# Boom Karaoke Frontend - Standalone Version
+# 🎤 Boom Karaoke Booking System - Frontend
 
-This is a clean, isolated frontend version of the Boom Karaoke booking system that runs independently with mock data. Perfect for demonstrations, development, or as a starting point for new projects.
+> **Modern React application for karaoke room booking and management**
 
-## 🚀 Features
+[![React](https://img.shields.io/badge/React-18.0+-blue?style=for-the-badge&logo=react)](https://reactjs.org)
+[![Vite](https://img.shields.io/badge/Vite-5.0+-purple?style=for-the-badge&logo=vite)](https://vitejs.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=for-the-badge&logo=typescript)](https://typescriptlang.org)
 
-- **Complete UI/UX**: Full karaoke room booking interface
-- **Mock Data**: Pre-configured with sample rooms, bookings, and settings
-- **No Backend Required**: Runs entirely in the browser
-- **Modern Stack**: React 18, Vite, Tailwind CSS, React Query
-- **Responsive Design**: Works on desktop, tablet, and mobile
-- **Interactive Calendar**: Drag-and-drop booking management
-- **Real-time Simulation**: WebSocket-like behavior with mock data
+## 🚀 **Quick Start**
 
-## 📋 Prerequisites
+### **Prerequisites**
+- Node.js 18.0 or higher
+- npm or yarn package manager
 
-- Node.js 16+ 
-- npm or yarn
-
-## 🛠️ Quick Start
-
-1. **Install Dependencies**
-   ```bash
-   cd isolate
-   npm install
-   ```
-
-2. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-3. **Open in Browser**
-   - Navigate to `http://localhost:3000`
-   - Use demo credentials: `demo@example.com` / `demo123`
-
-## 🎯 Demo Credentials
-
-- **Email**: `demo@example.com`
-- **Password**: `demo123`
-
-## 📁 Project Structure
-
-```
-isolate/
-├── src/
-│   ├── components/          # React components
-│   │   ├── AppleCalendarDashboard.jsx
-│   │   ├── BookingManagement.jsx
-│   │   ├── LoginForm.jsx
-│   │   └── ...
-│   ├── contexts/           # React contexts
-│   │   ├── AuthContext.jsx
-│   │   ├── SettingsContext.jsx
-│   │   └── ...
-│   ├── lib/
-│   │   ├── api.js          # Mock API layer
-│   │   └── mockData.js     # Sample data
-│   ├── hooks/              # Custom React hooks
-│   ├── utils/              # Utility functions
-│   └── main.jsx           # App entry point
-├── public/                 # Static assets
-├── package.json           # Dependencies and scripts
-├── vite.config.js         # Vite configuration
-└── tailwind.config.js     # Tailwind CSS config
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Copy `env.example` to `.env.local` to customize:
-
+### **Installation**
 ```bash
-cp env.example .env.local
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# OR use Vercel CLI for production-like environment
+vercel dev
 ```
 
-Available options:
-- `VITE_API_BASE_URL`: Override mock API with real backend
-- `VITE_APP_NAME`: Customize app name
-- `VITE_DEV_MODE`: Enable/disable development features
+### **Access the Application**
+- **Development**: http://localhost:3000
+- **Vercel Dev**: http://localhost:3000 (with API routes)
 
-### Mock Data Customization
+## 📁 **Project Structure**
 
-Edit `src/lib/mockData.js` to customize:
-- Room configurations
-- Sample bookings
-- Business hours
-- User settings
+```
+Boom-Booking-Isolate/
+├── src/                          # Source code
+│   ├── components/               # Reusable UI components
+│   │   ├── calendar/             # Calendar components
+│   │   ├── booking/              # Booking components
+│   │   ├── auth/                 # Authentication components
+│   │   └── ui/                   # Base UI components
+│   ├── pages/                    # Application pages
+│   │   ├── Dashboard.jsx         # Main dashboard
+│   │   ├── Login.jsx             # Login page
+│   │   ├── Booking.jsx           # Booking page
+│   │   └── Rooms.jsx             # Rooms page
+│   ├── hooks/                    # Custom React hooks
+│   │   ├── useAuth.js            # Authentication hook
+│   │   ├── useBooking.js         # Booking management hook
+│   │   └── useCalendar.js        # Calendar functionality hook
+│   ├── contexts/                 # React contexts
+│   │   ├── AuthContext.jsx       # Authentication context
+│   │   └── BookingContext.jsx    # Booking context
+│   ├── utils/                    # Utility functions
+│   │   ├── apiConfig.js          # API configuration
+│   │   ├── auth.js               # Authentication utilities
+│   │   └── helpers.js            # General helpers
+│   └── styles/                   # CSS and styling
+│       ├── globals.css           # Global styles
+│       └── components.css        # Component styles
+├── api/                          # Vercel API routes
+│   ├── auth/                     # Authentication endpoints
+│   │   ├── login.js              # Login endpoint
+│   │   └── me.js                 # User info endpoint
+│   ├── business-hours.js         # Business hours API
+│   ├── rooms.js                  # Rooms API
+│   └── health.js                 # Health check API
+├── lib/                          # Shared libraries
+│   ├── neon-db.js                # Database connection
+│   └── db.js                     # Database utilities
+├── public/                       # Static assets
+│   ├── images/                   # Image assets
+│   ├── icons/                    # Icon assets
+│   └── favicon.ico               # Favicon
+├── docs/                         # Documentation
+│   ├── deployment/               # Deployment guides
+│   ├── troubleshooting/          # Fix guides
+│   └── development/              # Development guides
+├── config/                       # Configuration files
+│   ├── vercel.json              # Vercel configuration
+│   └── package.json              # Dependencies
+└── dist/                         # Build output
+```
 
-## 🎨 Available Scripts
+## 🎯 **Features**
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
+### **🎤 Core Features**
+- **Room Booking** - Easy room selection and time slot booking
+- **Real-time Calendar** - Live availability updates
+- **User Authentication** - Secure login and registration
+- **Responsive Design** - Works on all devices
+- **Booking Management** - View and modify bookings
 
-## 🌐 Production Deployment
+### **🔧 Technical Features**
+- **Vite Build System** - Fast development and building
+- **React 18** - Latest React features and performance
+- **Context API** - State management without external libraries
+- **Custom Hooks** - Reusable logic and state
+- **API Integration** - RESTful API communication
+- **Error Handling** - Comprehensive error management
 
-### Build
+## 🛠️ **Development**
+
+### **Available Scripts**
 ```bash
+# Development
+npm run dev              # Start development server
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run lint             # Run ESLint
+npm run lint:fix         # Fix ESLint issues
+
+# Vercel
+vercel dev               # Start Vercel development server
+vercel build             # Build for Vercel
+vercel deploy            # Deploy to Vercel
+```
+
+### **Environment Variables**
+Create a `.env.local` file:
+```env
+# API Configuration
+VITE_API_BASE_URL=/api
+VITE_WS_URL=
+
+# App Configuration
+VITE_APP_NAME=Boom Karaoke Booking
+VITE_APP_VERSION=1.0.0
+```
+
+### **API Endpoints**
+The application uses Vercel API routes for backend functionality:
+
+- **Health Check**: `GET /api/health`
+- **Business Hours**: `GET /api/business-hours`
+- **Rooms**: `GET /api/rooms`
+- **Login**: `POST /api/auth/login`
+- **User Info**: `GET /api/auth/me`
+
+## 🎨 **UI Components**
+
+### **Calendar Components**
+- `CalendarGrid` - Main calendar display
+- `TimeSlot` - Individual time slot
+- `BookingModal` - Booking form modal
+- `RoomSelector` - Room selection component
+
+### **Authentication Components**
+- `LoginForm` - User login form
+- `RegisterForm` - User registration form
+- `AuthGuard` - Route protection component
+
+### **Booking Components**
+- `BookingCard` - Booking display card
+- `BookingForm` - Booking creation form
+- `BookingList` - List of user bookings
+
+## 🔧 **Configuration**
+
+### **Vite Configuration**
+The project uses Vite for fast development and building. Configuration is in `vite.config.js`:
+
+```javascript
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    proxy: {
+      '/api': 'http://localhost:3000'
+    }
+  }
+})
+```
+
+### **Vercel Configuration**
+Vercel configuration is in `vercel.json`:
+
+```json
+{
+  "version": 2,
+  "buildCommand": "npm ci && npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
+}
+```
+
+## 🧪 **Testing**
+
+### **Local Testing**
+```bash
+# Start development server
+npm run dev
+
+# Test in browser
+open http://localhost:3000
+
+# Test API endpoints
+curl http://localhost:3000/api/health
+```
+
+### **Manual Testing Checklist**
+- [ ] Page loads without errors
+- [ ] Login form works with demo credentials
+- [ ] Calendar displays correctly
+- [ ] Room selection works
+- [ ] Booking flow completes
+- [ ] Responsive design works on mobile
+- [ ] No console errors
+
+## 🚀 **Deployment**
+
+### **Vercel Deployment**
+1. **Connect Repository** - Link to Vercel
+2. **Configure Build** - Set build command and output directory
+3. **Add Environment Variables** - Configure production settings
+4. **Deploy** - Automatic deployment on push
+
+### **Manual Build**
+```bash
+# Build for production
 npm run build
+
+# Preview build
+npm run preview
 ```
 
-### Deploy to Static Hosting
-The `dist/` folder contains static files that can be deployed to:
-- Netlify
-- Vercel
-- GitHub Pages
-- AWS S3
-- Any static hosting service
+## 📚 **Documentation**
 
-### Environment Variables for Production
-Set these in your hosting platform:
-- `VITE_API_BASE_URL`: Your production API URL
-- `VITE_APP_NAME`: Your app name
+### **Component Documentation**
+- Each component has JSDoc comments
+- Props and usage examples included
+- Type definitions for TypeScript support
 
-## 🔌 Connecting to Real Backend
+### **API Documentation**
+- All API endpoints documented
+- Request/response examples provided
+- Error handling documented
 
-To connect to a real backend instead of mock data:
+## 🐛 **Troubleshooting**
 
-1. **Update API Configuration**
-   ```javascript
-   // In src/lib/api.js
-   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://your-api.com/api';
-   ```
+### **Common Issues**
 
-2. **Set Environment Variable**
-   ```bash
-   VITE_API_BASE_URL=https://your-api.com/api
-   ```
+#### **Build Errors**
+```bash
+# Clear cache and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
 
-3. **Restore Real API Implementation**
-   Replace the mock API calls with real HTTP requests using axios.
+#### **API Connection Issues**
+- Check `VITE_API_BASE_URL` environment variable
+- Verify API routes are properly configured
+- Check browser network tab for errors
 
-## 🎭 Mock Data Features
+#### **Authentication Issues**
+- Verify JWT secret is configured
+- Check token expiration settings
+- Clear browser storage and retry
 
-### Sample Rooms
-- **Room A**: Standard room (4 people)
-- **Room B**: Premium room (6 people) 
-- **Room C**: VIP room (8 people)
+### **Debug Mode**
+```bash
+# Enable debug logging
+DEBUG=true npm run dev
+```
 
-### Sample Bookings
-- Pre-configured with realistic booking data
-- Various time slots and customer information
-- Different booking statuses
+## 🤝 **Contributing**
 
-### Business Hours
-- Configurable weekly schedule
-- Holiday exceptions support
-- Timezone handling
+### **Code Style**
+- Use functional components with hooks
+- Follow React best practices
+- Use meaningful component and variable names
+- Add JSDoc comments for complex functions
 
-## 🐛 Troubleshooting
+### **Git Workflow**
+1. Create feature branch
+2. Make changes
+3. Test thoroughly
+4. Commit with descriptive message
+5. Push and create pull request
 
-### Common Issues
+## 📄 **License**
 
-1. **Port Already in Use**
-   ```bash
-   # Kill process on port 3000
-   lsof -ti:3000 | xargs kill -9
-   ```
-
-2. **Dependencies Issues**
-   ```bash
-   # Clear cache and reinstall
-   rm -rf node_modules package-lock.json
-   npm install
-   ```
-
-3. **Build Errors**
-   ```bash
-   # Check for TypeScript/ESLint errors
-   npm run lint
-   ```
-
-## 📚 Technology Stack
-
-- **Frontend**: React 18, Vite
-- **Styling**: Tailwind CSS
-- **State Management**: React Query, Context API
-- **Routing**: React Router DOM
-- **Forms**: React Hook Form
-- **Calendar**: React Big Calendar
-- **Drag & Drop**: @dnd-kit
-- **Notifications**: React Hot Toast
-- **HTTP Client**: Axios
-- **Date Handling**: Moment.js
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is part of the Boom Karaoke system. See the main project for licensing information.
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the troubleshooting section
-2. Review the mock data configuration
-3. Check browser console for errors
-4. Ensure all dependencies are installed
+This project is licensed under the MIT License.
 
 ---
 
-**Note**: This is a standalone frontend with mock data. For production use, connect to a real backend API.
+**Built with ❤️ using React and Vite**
 
-## © Copyright
-
-© 2025 Sum Wing Samuel So. All rights reserved.
-
-
+*Last updated: September 2024*
