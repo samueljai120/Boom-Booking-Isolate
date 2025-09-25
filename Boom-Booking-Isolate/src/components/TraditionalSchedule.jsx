@@ -2,9 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { useTutorial } from '../contexts/TutorialContext';
+import { useSafeData } from '../utils/dataNormalization';
 import moment from 'moment-timezone';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { roomsAPI, bookingsAPI } from '../lib/api';
+import { roomsAPI, bookingsAPI } from '../lib/unifiedApiClient';
 import { Card, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -666,8 +667,9 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
-  const rooms = roomsData?.data || [];
-  const bookings = bookingsData?.data?.bookings || bookingsData?.data || [];
+  // Use safe data handling utilities
+  const { data: rooms } = useSafeData(roomsData, 'rooms');
+  const { data: bookings } = useSafeData(bookingsData, 'bookings');
 
   // Mutation for moving bookings with optimistic update
   const moveBookingMutation = useMutation({
@@ -678,7 +680,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
-        const oldBookings = previous?.data?.bookings || [];
+        // Bookings API returns {success: true, data: [...]} - data is the array directly
+        const oldBookings = previous?.data || [];
         const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId, targetRoomId, targetNewTimeIn, targetNewTimeOut } = variables || {};
         const sourceIdx = oldBookings.findIndex(b => b._id === bookingId);
         const targetIdx = targetBookingId ? oldBookings.findIndex(b => b._id === targetBookingId) : -1;
@@ -775,7 +778,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
-        const oldBookings = previous?.data?.bookings || [];
+        // Bookings API returns {success: true, data: [...]} - data is the array directly
+        const oldBookings = previous?.data || [];
         const { bookingId, newStartTime, newEndTime } = variables || {};
         const idx = oldBookings.findIndex(b => b._id === bookingId);
         if (idx === -1) return { previous };
@@ -834,14 +838,42 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
   });
 
   const normalizedBookings = useMemo(() => {
+    // Ensure bookings is an array before mapping
+    if (!Array.isArray(bookings)) {
+      console.warn('Bookings data is not an array:', bookings);
+      return [];
+    }
+    
     const mapped = bookings.map(b => ({
       ...b,
-      roomId: b.roomId || b.room,
-      room: b.room || b.roomId,
-      startTime: b.startTime || b.timeIn,
-      endTime: b.endTime || b.timeOut,
-      timeIn: b.timeIn || b.startTime,
-      timeOut: b.timeOut || b.endTime,
+      // Normalize field names from API response
+      _id: b.id || b._id,
+      id: b.id || b._id,
+      customerName: b.customer_name || b.customerName,
+      customerEmail: b.customer_email || b.customerEmail,
+      customerPhone: b.customer_phone || b.customerPhone,
+      phone: b.customer_phone || b.phone,
+      email: b.customer_email || b.email,
+      startTime: b.start_time || b.startTime || b.timeIn,
+      endTime: b.end_time || b.endTime || b.timeOut,
+      timeIn: b.start_time || b.startTime || b.timeIn,
+      timeOut: b.end_time || b.endTime || b.timeOut,
+      roomId: b.room_id || b.roomId || (b.room && typeof b.room === 'object' ? b.room._id : b.room),
+      room: b.room || {
+        _id: b.room_id,
+        id: b.room_id,
+        name: b.room_name,
+        capacity: b.capacity,
+        category: b.category,
+        description: b.description,
+        pricePerHour: b.pricePerHour,
+        isActive: b.isActive
+      },
+      totalPrice: parseFloat(b.total_price || b.totalPrice || 0),
+      status: b.status || 'confirmed',
+      notes: b.notes || '',
+      createdAt: b.created_at,
+      updatedAt: b.updated_at
     }));
 
     // Filter bookings that overlap with the selected date
@@ -860,7 +892,8 @@ const TraditionalSchedule = ({ selectedDate = new Date(2025, 8, 14), onDateChang
 
   // Only show big skeleton initially; while refetching, keep previous data
   const initialRoomsLoaded = !!roomsData?.data;
-  const isLoading = roomsLoading && !initialRoomsLoaded;
+  const initialBookingsLoaded = !!bookingsData?.data;
+  const isLoading = (roomsLoading || bookingsLoading) && (!initialRoomsLoaded || !initialBookingsLoaded);
   const hasError = roomsError || bookingsError;
   
 

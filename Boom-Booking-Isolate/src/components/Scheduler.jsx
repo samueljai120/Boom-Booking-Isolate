@@ -8,7 +8,8 @@ import { Button } from './ui/Button';
 import { Calendar as CalendarIcon, Clock, Users, Phone } from 'lucide-react';
 import BookingModal from './BookingModal';
 import { useQuery } from '@tanstack/react-query';
-import { bookingsAPI, roomsAPI } from '../lib/api';
+import { bookingsAPI, roomsAPI } from '../lib/unifiedApiClient';
+import { useSafeData } from '../utils/dataNormalization';
 
 const localizer = momentLocalizer(moment);
 
@@ -23,8 +24,6 @@ const Scheduler = ({ selectedDate, onDateChange }) => {
     queryFn: () => roomsAPI.getAll(),
   });
 
-  const rooms = roomsData?.data || [];
-
   // Fetch bookings for selected date
   const { data: bookingsData, refetch: refetchBookings, isLoading: bookingsLoading } = useQuery({
     queryKey: ['bookings', selectedDate],
@@ -32,27 +31,64 @@ const Scheduler = ({ selectedDate, onDateChange }) => {
     enabled: !!selectedDate,
   });
 
-  const bookings = bookingsData?.data?.bookings || [];
+  // Use safe data handling utilities
+  const { data: rooms } = useSafeData(roomsData, 'rooms');
+  const { data: bookings } = useSafeData(bookingsData, 'bookings');
 
   // Transform bookings for calendar
   const events = useMemo(() => {
-    return bookings.map(booking => ({
-      id: booking._id,
-      title: booking.customerName,
-      start: new Date(booking.startTime),
-      end: new Date(booking.endTime),
-      resource: {
-        roomId: booking.roomId._id,
-        roomName: booking.roomId?.name || booking.room?.name || booking.room_name || 'Unknown room',
-        roomType: booking.roomId.type,
-        capacity: booking.roomId.capacity,
-        color: booking.roomId.color,
-        phone: booking.phone,
-        source: booking.source,
-        notes: booking.notes,
-        duration: booking.durationMinutes,
-      },
-    }));
+    return bookings.map(booking => {
+      // Normalize booking data from API response
+      const normalizedBooking = {
+        _id: booking.id || booking._id,
+        id: booking.id || booking._id,
+        customerName: booking.customer_name || booking.customerName,
+        phone: booking.customer_phone || booking.phone,
+        email: booking.customer_email || booking.email,
+        startTime: booking.start_time || booking.startTime,
+        endTime: booking.end_time || booking.endTime,
+        roomId: booking.room_id ? {
+          _id: booking.room_id,
+          id: booking.room_id,
+          name: booking.room_name,
+          capacity: booking.capacity,
+          category: booking.category,
+          type: booking.category,
+          color: '#3B82F6'
+        } : booking.roomId,
+        room: booking.room || {
+          _id: booking.room_id,
+          id: booking.room_id,
+          name: booking.room_name,
+          capacity: booking.capacity,
+          category: booking.category,
+          type: booking.category,
+          color: '#3B82F6'
+        },
+        notes: booking.notes || '',
+        source: booking.source || 'web',
+        status: booking.status || 'confirmed',
+        totalPrice: parseFloat(booking.total_price || booking.totalPrice || 0)
+      };
+
+      return {
+        id: normalizedBooking._id,
+        title: normalizedBooking.customerName,
+        start: new Date(normalizedBooking.startTime),
+        end: new Date(normalizedBooking.endTime),
+        resource: {
+          roomId: normalizedBooking.roomId?._id || normalizedBooking.roomId?.id,
+          roomName: normalizedBooking.roomId?.name || normalizedBooking.room?.name || 'Unknown room',
+          roomType: normalizedBooking.roomId?.type || normalizedBooking.roomId?.category,
+          capacity: normalizedBooking.roomId?.capacity,
+          color: normalizedBooking.roomId?.color,
+          phone: normalizedBooking.phone,
+          source: normalizedBooking.source,
+          notes: normalizedBooking.notes,
+          duration: Math.round((new Date(normalizedBooking.endTime) - new Date(normalizedBooking.startTime)) / (1000 * 60)),
+        },
+      };
+    });
   }, [bookings]);
 
   // Get room type color

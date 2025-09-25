@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';

@@ -13,10 +13,10 @@ export function tenantContext(req, res, next) {
     };
   } else {
     // Default to demo tenant for now
-    req.tenant_id = '5ba3b120-e288-450d-97f2-cfc236e0894f';
+    req.tenant_id = 1; // Demo tenant ID from database
     req.tenant_context = {
       id: req.tenant_id,
-      name: 'Demo Karaoke',
+      name: 'Boom Karaoke Demo',
       subdomain: 'demo'
     };
   }

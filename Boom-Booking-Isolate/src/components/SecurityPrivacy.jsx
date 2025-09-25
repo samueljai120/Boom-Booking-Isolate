@@ -54,7 +54,7 @@ const SecurityPrivacy = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/security/settings');
+      const response = await fetch('http://localhost:3000/api/security/settings');
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);

@@ -1,79 +1,62 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { db } from '../database/init.js';
+import { pool } from '../database/postgres.js';
 
 const router = express.Router();
 
 // Get analytics overview
-router.get('/overview', (req, res) => {
-  const { period = '30d' } = req.query;
+router.get('/overview', async (req, res) => {
+  try {
+    const { period = '30d' } = req.query;
 
-  // Calculate period multiplier
-  const multiplier = period === '7d' ? 0.25 : period === '30d' ? 1 : period === '90d' ? 3 : 12;
+    // Calculate period multiplier
+    const multiplier = period === '7d' ? 0.25 : period === '30d' ? 1 : period === '90d' ? 3 : 12;
 
-  // Get basic stats
-  db.get('SELECT COUNT(*) as totalUsers FROM users', (err, userRow) => {
-    if (err) {
-      console.error('Error fetching user count:', err);
-      return res.status(500).json({ error: 'Failed to fetch analytics' });
-    }
+    // Get basic stats using PostgreSQL
+    const [userResult, bookingResult, roomResult, revenueResult] = await Promise.all([
+      pool.query('SELECT COUNT(*) as total_users FROM users'),
+      pool.query('SELECT COUNT(*) as total_bookings FROM bookings'),
+      pool.query('SELECT COUNT(*) as total_rooms FROM rooms'),
+      pool.query('SELECT SUM(total_price) as total_revenue FROM bookings WHERE total_price IS NOT NULL')
+    ]);
 
-    db.get('SELECT COUNT(*) as totalBookings FROM bookings', (err, bookingRow) => {
-      if (err) {
-        console.error('Error fetching booking count:', err);
-        return res.status(500).json({ error: 'Failed to fetch analytics' });
-      }
+    const revenue = Math.round((revenueResult.rows[0].total_revenue || 0) * multiplier);
+    const bookings = Math.round(parseInt(bookingResult.rows[0].total_bookings) * multiplier);
+    const users = Math.round(parseInt(userResult.rows[0].total_users) * multiplier);
 
-      db.get('SELECT COUNT(*) as totalRooms FROM rooms', (err, roomRow) => {
-        if (err) {
-          console.error('Error fetching room count:', err);
-          return res.status(500).json({ error: 'Failed to fetch analytics' });
+    res.json({
+      success: true,
+      data: {
+        revenue: {
+          current: revenue,
+          previous: Math.round(revenue * 0.85),
+          change: 15.4,
+          trend: 'up'
+        },
+        bookings: {
+          current: bookings,
+          previous: Math.round(bookings * 0.78),
+          change: 22.1,
+          trend: 'up'
+        },
+        users: {
+          current: users,
+          previous: Math.round(users * 0.92),
+          change: 8.2,
+          trend: 'up'
+        },
+        conversion: {
+          current: 12.5,
+          previous: 10.8,
+          change: 15.7,
+          trend: 'up'
         }
-
-        // Calculate revenue (simplified)
-        db.get('SELECT SUM(total_price) as totalRevenue FROM bookings WHERE total_price IS NOT NULL', (err, revenueRow) => {
-          if (err) {
-            console.error('Error fetching revenue:', err);
-            return res.status(500).json({ error: 'Failed to fetch analytics' });
-          }
-
-          const revenue = Math.round((revenueRow.totalRevenue || 0) * multiplier);
-          const bookings = Math.round(bookingRow.totalBookings * multiplier);
-          const users = Math.round(userRow.totalUsers * multiplier);
-
-          res.json({
-            success: true,
-            data: {
-              revenue: {
-                current: revenue,
-                previous: Math.round(revenue * 0.85),
-                change: 15.4,
-                trend: 'up'
-              },
-              bookings: {
-                current: bookings,
-                previous: Math.round(bookings * 0.78),
-                change: 22.1,
-                trend: 'up'
-              },
-              users: {
-                current: users,
-                previous: Math.round(users * 0.92),
-                change: 8.2,
-                trend: 'up'
-              },
-              conversion: {
-                current: 12.5,
-                previous: 10.8,
-                change: 15.7,
-                trend: 'up'
-              }
-            }
-          });
-        });
-      });
+      }
     });
-  });
+  } catch (error) {
+    console.error('Error fetching analytics overview:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
 });
 
 // Get revenue trend

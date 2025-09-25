@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Users, Clock, Calendar, Wifi, WifiOff } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { roomsAPI, bookingsAPI } from '../lib/api';
+import { roomsAPI, bookingsAPI } from '../lib/unifiedApiClient';
 
 const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 17)); // September 17, 2025
@@ -30,7 +30,8 @@ const Dashboard = () => {
   });
 
   const rooms = roomsData?.data || [];
-  const bookings = bookingsData?.data?.bookings || [];
+  // Bookings API returns {success: true, data: [...]} - data is the array directly
+  const bookings = bookingsData?.data || [];
 
   // Set up real-time updates
   useEffect(() => {

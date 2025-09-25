@@ -2,22 +2,16 @@
 import { sql, initDatabase } from '../lib/neon-db.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { setSecureCORSHeaders, handlePreflightRequest } from '../utils/cors.js';
 
 export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return handlePreflightRequest(res);
   }
+
+  // Set secure CORS headers
+  setSecureCORSHeaders(res);
 
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -66,13 +60,23 @@ export default async function handler(req, res) {
     }
 
     // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('JWT_SECRET environment variable is not set');
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error'
+      });
+    }
+
     const token = jwt.sign(
       { 
         id: user.id, 
         email: user.email, 
-        role: user.role 
+        role: user.role,
+        tenant_id: user.tenant_id || 1
       },
-      process.env.JWT_SECRET || 'fallback-secret',
+      jwtSecret,
       { expiresIn: '24h' }
     );
 

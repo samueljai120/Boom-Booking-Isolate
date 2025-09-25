@@ -38,7 +38,7 @@ const AnalyticsReporting = () => {
 
   const fetchAnalyticsData = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/analytics/overview');
+      const response = await fetch('http://localhost:3000/api/analytics/overview');
       const data = await response.json();
       if (data.success) {
         setReportData(data.data);

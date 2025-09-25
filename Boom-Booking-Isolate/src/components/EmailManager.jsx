@@ -28,7 +28,7 @@ const EmailManager = () => {
 
   const fetchEmailConfig = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/email/config');
+      const response = await fetch('http://localhost:3000/api/email/config');
       const config = await response.json();
       setEmailConfig(config);
     } catch (error) {
@@ -53,7 +53,7 @@ const EmailManager = () => {
 
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:5001/api/email/test', {
+      const response = await fetch('http://localhost:3000/api/email/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

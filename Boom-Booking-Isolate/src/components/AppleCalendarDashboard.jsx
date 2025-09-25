@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import moment from 'moment-timezone';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { roomsAPI, bookingsAPI, healthAPI } from '../lib/api';
-import { useAuth } from '../contexts/AuthContext';
+import { roomsAPI, bookingsAPI, healthAPI } from '../lib/unifiedApiClient';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
 import { Card, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
@@ -23,7 +23,7 @@ import {
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { useTutorial } from '../contexts/TutorialContext';
-import BookingModal from './BookingModal';
+import UnifiedBookingForm from './UnifiedBookingForm';
 import ReservationViewModal from './ReservationViewModal';
 import SettingsModal from './SettingsModal';
 import InstructionsModal from './InstructionsModal';
@@ -331,13 +331,36 @@ const DroppableSlot = ({ id, children, className, style, onClick, bookings = [],
 };
 
 const AppleCalendarDashboard = () => {
-  const { user } = useAuth();
+  const { user, login, loading: authLoading } = useAuth();
   const [activeId, setActiveId] = useState(null);
   const [draggedBooking, setDraggedBooking] = useState(null);
+  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
   
-  // Component initialization
-  
-  // Visual debug indicator - will be moved after bookings declaration
+  // Auto-login with demo credentials if user is not authenticated
+  React.useEffect(() => {
+    if (!user && !authLoading && !autoLoginAttempted) {
+      setAutoLoginAttempted(true);
+      const performDemoLogin = async () => {
+        try {
+          console.log('🔐 Auto-logging in with demo credentials...');
+          const result = await login({
+            email: 'demo@example.com',
+            password: 'demo123'
+          });
+          
+          if (result.success) {
+            console.log('✅ Auto-login successful');
+          } else {
+            console.log('❌ Auto-login failed:', result.error);
+          }
+        } catch (error) {
+          console.error('❌ Auto-login error:', error);
+        }
+      };
+      
+      performDemoLogin();
+    }
+  }, [user, authLoading, autoLoginAttempted, login]);
   
   // Component initialization
   React.useEffect(() => {
@@ -359,7 +382,8 @@ const AppleCalendarDashboard = () => {
   // Mini calendar month base (independent from selected date)
   const [calendarBaseDate, setCalendarBaseDate] = useState(new Date());
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBookingFormOpen, setIsBookingFormOpen] = useState(false);
+  const [bookingFormData, setBookingFormData] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -639,7 +663,8 @@ const AppleCalendarDashboard = () => {
   });
 
   const rooms = roomsData?.data || [];
-  const bookings = bookingsData?.data?.bookings || [];
+  // Bookings API returns {success: true, data: [...]} - data is the array directly
+  const bookings = bookingsData?.data || [];
   
   // Bookings data loaded
   
@@ -666,7 +691,8 @@ const AppleCalendarDashboard = () => {
       const previous = queryClient.getQueryData(['bookings']);
 
       try {
-        const oldBookings = previous?.data?.bookings || [];
+        // Bookings API returns {success: true, data: [...]} - data is the array directly
+        const oldBookings = previous?.data || [];
         const { bookingId, newRoomId, newTimeIn, newTimeOut, targetBookingId, targetNewTimeIn, targetNewTimeOut } = variables || {};
 
         // Find current records
@@ -793,7 +819,8 @@ const AppleCalendarDashboard = () => {
       await queryClient.cancelQueries({ queryKey: ['bookings'] });
       const previous = queryClient.getQueryData(['bookings']);
       try {
-        const oldBookings = previous?.data?.bookings || [];
+        // Bookings API returns {success: true, data: [...]} - data is the array directly
+        const oldBookings = previous?.data || [];
         const { bookingId, newStartTime, newEndTime } = variables || {};
         const idx = oldBookings.findIndex(b => b._id === bookingId);
         if (idx === -1) {
@@ -866,12 +893,34 @@ const AppleCalendarDashboard = () => {
     
     const mapped = bookings.map(b => ({
       ...b,
-      roomId: b.roomId || (b.room && typeof b.room === 'object' ? b.room._id : b.room),
-      room: b.room || b.roomId,
-      startTime: b.startTime || b.timeIn,
-      endTime: b.endTime || b.timeOut,
-      timeIn: b.timeIn || b.startTime,
-      timeOut: b.timeOut || b.endTime,
+      // Normalize field names from API response
+      _id: b.id || b._id,
+      id: b.id || b._id,
+      customerName: b.customer_name || b.customerName,
+      customerEmail: b.customer_email || b.customerEmail,
+      customerPhone: b.customer_phone || b.customerPhone,
+      phone: b.customer_phone || b.phone,
+      email: b.customer_email || b.email,
+      startTime: b.start_time || b.startTime || b.timeIn,
+      endTime: b.end_time || b.endTime || b.timeOut,
+      timeIn: b.start_time || b.startTime || b.timeIn,
+      timeOut: b.end_time || b.endTime || b.timeOut,
+      roomId: b.room_id || b.roomId || (b.room && typeof b.room === 'object' ? b.room._id : b.room),
+      room: b.room || {
+        _id: b.room_id,
+        id: b.room_id,
+        name: b.room_name,
+        capacity: b.capacity,
+        category: b.category,
+        description: b.description,
+        pricePerHour: b.pricePerHour,
+        isActive: b.isActive
+      },
+      totalPrice: parseFloat(b.total_price || b.totalPrice || 0),
+      status: b.status || 'confirmed',
+      notes: b.notes || '',
+      createdAt: b.created_at,
+      updatedAt: b.updated_at
     }));
 
     // Filter bookings that overlap with the selected date
@@ -1201,17 +1250,12 @@ const AppleCalendarDashboard = () => {
       return;
     }
     
-    setSelectedBooking({
-      start: startTime.toDate(),
-      end: endTime.toDate(),
-      resource: {
-        roomId: room._id || room.id,
-        roomName: room.name || 'Unnamed Room',
-        roomType: room.category,
-        capacity: room.capacity,
-      },
+    setBookingFormData({
+      selectedDate: selectedDate,
+      selectedTime: startTime.toDate(),
+      selectedRoom: room,
     });
-    setIsModalOpen(true);
+    setIsBookingFormOpen(true);
   };
 
   // Handle booking click - show read-only view first
@@ -1235,25 +1279,9 @@ const AppleCalendarDashboard = () => {
 
   // Handle edit from view modal
   const handleEditBooking = (booking) => {
-    setSelectedBooking({
-      id: booking._id,
-      title: booking.customerName,
-      start: new Date(booking.startTime),
-      end: new Date(booking.endTime),
-      resource: {
-        roomId: booking.roomId._id,
-        roomName: booking.roomId.name,
-        roomType: booking.roomId.type,
-        capacity: booking.roomId.capacity,
-        color: booking.roomId.color,
-        phone: booking.phone,
-        source: booking.source,
-        notes: booking.notes,
-        duration: booking.durationMinutes,
-      },
-    });
+    setSelectedBooking(booking);
     setIsViewModalOpen(false);
-    setIsModalOpen(true);
+    setIsBookingFormOpen(true);
   };
 
   // Helper function to find booking conflicts
@@ -1508,31 +1536,22 @@ const AppleCalendarDashboard = () => {
     });
   };
 
-  // Handle double click to resize/expand
+  // Handle double click to edit booking
   const handleBookingDoubleClick = (booking) => {
-    setSelectedBooking({
-      id: booking._id,
-      title: booking.customerName,
-      start: new Date(booking.startTime),
-      end: new Date(booking.endTime),
-      resource: {
-        roomId: booking.room?._id || booking.roomId?._id,
-        roomName: booking.room?.name || booking.roomId?.name,
-        roomType: booking.room?.type || booking.roomId?.type,
-        capacity: booking.room?.capacity || booking.roomId?.capacity,
-        color: booking.room?.color || booking.roomId?.color,
-        phone: booking.phone,
-        source: booking.source,
-        notes: booking.notes,
-        duration: booking.durationMinutes,
-      },
-    });
-    setIsModalOpen(true);
+    setSelectedBooking(booking);
+    setIsBookingFormOpen(true);
   };
 
   // Show loading state
-  if (isLoading) {
-    return <LoadingSkeleton type="schedule" />;
+  if (isLoading || authLoading || (!user && !autoLoginAttempted)) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   // Show error state
@@ -2066,17 +2085,12 @@ const AppleCalendarDashboard = () => {
         <button
           type="button"
           onClick={() => {
-            const weekday = selectedDate.getDay();
-            const dayHours = getBusinessHoursForDay(weekday);
-            const [openHour] = dayHours.openTime.split(':').map(Number);
-            const start = moment(selectedDate).startOf('hour');
-            const end = start.clone().add(1, 'hour');
-            setSelectedBooking({
-              start: start.toDate(),
-              end: end.toDate(),
-              resource: { roomId: rooms?.[0]?._id }
+            setBookingFormData({
+              selectedDate: selectedDate,
+              selectedTime: new Date(),
+              selectedRoom: rooms?.[0] || null,
             });
-            setIsModalOpen(true);
+            setIsBookingFormOpen(true);
           }}
           className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-blue-600 text-white shadow-xl hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 z-50 flex items-center justify-center"
           aria-label="New booking"
@@ -2115,17 +2129,21 @@ const AppleCalendarDashboard = () => {
           }}
         />
 
-        {/* Booking Modal */}
-        <BookingModal
-          isOpen={isModalOpen}
+        {/* Unified Booking Form */}
+        <UnifiedBookingForm
+          isOpen={isBookingFormOpen}
           onClose={() => {
-            setIsModalOpen(false);
-            setSelectedBooking(null);
+            setIsBookingFormOpen(false);
+            setBookingFormData(null);
           }}
           booking={selectedBooking}
           rooms={rooms}
+          selectedDate={bookingFormData?.selectedDate}
+          selectedTime={bookingFormData?.selectedTime}
+          selectedRoom={bookingFormData?.selectedRoom}
           onSuccess={() => {
-            setIsModalOpen(false);
+            setIsBookingFormOpen(false);
+            setBookingFormData(null);
             setSelectedBooking(null);
           }}
         />

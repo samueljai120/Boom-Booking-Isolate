@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { roomsAPI } from '../lib/api';
+import { roomsAPI } from '../lib/unifiedApiClient';
 
 // Hook to preload critical data
 export const usePreloadData = () => {
@@ -14,7 +14,8 @@ export const usePreloadData = () => {
   });
 
   return {
-    rooms: roomsQuery.data?.data?.rooms || [],
+    // Rooms API returns {success: true, data: [...]} - data is the array directly
+    rooms: roomsQuery.data?.data || [],
     isRoomsLoading: roomsQuery.isLoading,
     roomsError: roomsQuery.error,
   };

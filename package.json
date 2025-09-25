@@ -1,0 +1,46 @@
+{
+  "name": "boom-karaoke-booking-system",
+  "version": "1.0.0",
+  "description": "Boom Karaoke Booking System - Vercel + Neon PostgreSQL",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required for Vercel Functions'",
+    "start": "vercel dev",
+    "test": "echo 'Tests will be added later'",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.0",
+    "@modelcontextprotocol/sdk": "^0.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "vercel": "^32.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "karaoke",
+    "booking",
+    "vercel",
+    "neon",
+    "postgresql",
+    "serverless"
+  ],
+  "author": "Boom Karaoke",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/boom-karaoke/booking-system"
+  },
+  "bugs": {
+    "url": "https://github.com/boom-karaoke/booking-system/issues"
+  },
+  "homepage": "https://github.com/boom-karaoke/booking-system#readme"
+}

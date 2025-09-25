@@ -1,6 +1,13 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { pool } from '../database/postgres.js';
+import { 
+  createSuccessResponse, 
+  createErrorResponse, 
+  createValidationErrorResponse,
+  createNotFoundResponse,
+  createConflictResponse
+} from '../../src/utils/apiResponse.js';
 
 const router = express.Router();
 
@@ -45,10 +52,10 @@ router.get('/', async (req, res) => {
     query += ' ORDER BY b.start_time';
 
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    res.json(createSuccessResponse(result.rows));
   } catch (error) {
     console.error('Error fetching bookings:', error);
-    res.status(500).json({ error: 'Failed to fetch bookings' });
+    res.status(500).json(createErrorResponse('Failed to fetch bookings', 'FETCH_BOOKINGS_ERROR'));
   }
 });
 
@@ -67,29 +74,32 @@ router.get('/:id', async (req, res) => {
     const result = await pool.query(query, [id, req.tenant_id]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Booking not found' });
+      return res.status(404).json(createNotFoundResponse('Booking'));
     }
 
-    res.json({ success: true, data: result.rows[0] });
+    res.json(createSuccessResponse(result.rows[0]));
   } catch (error) {
     console.error('Error fetching booking:', error);
-    res.status(500).json({ error: 'Failed to fetch booking' });
+    res.status(500).json(createErrorResponse('Failed to fetch booking', 'FETCH_BOOKING_ERROR'));
   }
 });
 
 // Create new booking
 router.post('/', [
-  body('room_id').isUUID(),
-  body('customer_name').isLength({ min: 1 }).trim(),
+  body('room_id').notEmpty().withMessage('Room ID is required'),
+  body('customer_name').notEmpty().withMessage('Customer name is required'),
   body('customer_email').isEmail().normalizeEmail().optional(),
-  body('customer_phone').isLength({ min: 1 }).trim().optional(),
-  body('start_time').isISO8601(),
-  body('end_time').isISO8601(),
+  body('customer_phone').trim().optional(),
+  body('start_time').isISO8601().withMessage('Start time must be a valid ISO8601 date'),
+  body('end_time').isISO8601().withMessage('End time must be a valid ISO8601 date'),
   body('notes').trim().optional()
 ], async (req, res) => {
+  console.log('📥 Received booking data:', req.body);
+  
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+    console.log('❌ Validation errors:', errors.array());
+    return res.status(400).json(createValidationErrorResponse(errors.array()));
   }
 
   try {
@@ -105,14 +115,14 @@ router.post('/', [
     const conflictResult = await pool.query(conflictQuery, [room_id, req.tenant_id, end_time, start_time, start_time, end_time]);
 
     if (parseInt(conflictResult.rows[0].count) > 0) {
-      return res.status(400).json({ error: 'Time slot conflicts with existing booking' });
+      return res.status(400).json(createConflictResponse('Time slot conflicts with existing booking'));
     }
 
     // Get room price
     const roomResult = await pool.query('SELECT price_per_hour FROM rooms WHERE id = $1 AND tenant_id = $2', [room_id, req.tenant_id]);
 
     if (roomResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Room not found' });
+      return res.status(404).json(createNotFoundResponse('Room'));
     }
 
     const room = roomResult.rows[0];
@@ -144,10 +154,10 @@ router.post('/', [
 
     const fetchResult = await pool.query(fetchQuery, [booking.id, req.tenant_id]);
 
-    res.status(201).json({ success: true, data: fetchResult.rows[0] });
+    res.status(201).json(createSuccessResponse(fetchResult.rows[0], 'Booking created successfully'));
   } catch (error) {
     console.error('Error creating booking:', error);
-    res.status(500).json({ error: 'Failed to create booking' });
+    res.status(500).json(createErrorResponse('Failed to create booking', 'CREATE_BOOKING_ERROR'));
   }
 });
 
@@ -160,168 +170,158 @@ router.put('/:id', [
   body('end_time').isISO8601().optional(),
   body('status').isIn(['confirmed', 'cancelled', 'completed']).optional(),
   body('notes').trim().optional()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { id } = req.params;
-  const updates = req.body;
-
-  // Build dynamic update query
-  const updateFields = [];
-  const values = [];
-
-  Object.keys(updates).forEach(key => {
-    if (updates[key] !== undefined) {
-      updateFields.push(`${key} = ?`);
-      values.push(updates[key]);
-    }
-  });
-
-  if (updateFields.length === 0) {
-    return res.status(400).json({ error: 'No valid fields to update' });
-  }
-
-  updateFields.push('updated_at = CURRENT_TIMESTAMP');
-  values.push(id);
-
-  const query = `UPDATE bookings SET ${updateFields.join(', ')} WHERE id = ?`;
-
-  db.run(query, values, function(err) {
-    if (err) {
-      // console.error('Error updating booking:', err);
-      return res.status(500).json({ error: 'Failed to update booking' });
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    if (this.changes === 0) {
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Build dynamic update query with tenant isolation
+    const updateFields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined) {
+        updateFields.push(`${key} = $${paramIndex}`);
+        values.push(updates[key]);
+        paramIndex++;
+      }
+    });
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    values.push(req.tenant_id, id); // Add tenant_id and id as last parameters
+
+    const query = `UPDATE bookings SET ${updateFields.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Fetch updated booking
+    // Fetch updated booking with room details
     const fetchQuery = `
       SELECT b.*, r.name as room_name, r.capacity as room_capacity, r.category as room_category
       FROM bookings b
       JOIN rooms r ON b.room_id = r.id
-      WHERE b.id = ?
+      WHERE b.id = $1 AND b.tenant_id = $2
     `;
 
-    db.get(fetchQuery, [id], (err, row) => {
-      if (err) {
-        // console.error('Error fetching updated booking:', err);
-        return res.status(500).json({ error: 'Failed to fetch updated booking' });
-      }
+    const fetchResult = await pool.query(fetchQuery, [id, req.tenant_id]);
 
-      res.json({ success: true, data: row });
-    });
-  });
+    res.json({ success: true, data: fetchResult.rows[0] });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ error: 'Failed to update booking' });
+  }
 });
 
 // Cancel booking
-router.put('/:id/cancel', (req, res) => {
-  const { id } = req.params;
+router.put('/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  db.run(
-    'UPDATE bookings SET status = "cancelled", updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [id],
-    function(err) {
-      if (err) {
-        // console.error('Error cancelling booking:', err);
-        return res.status(500).json({ error: 'Failed to cancel booking' });
-      }
+    const result = await pool.query(
+      'UPDATE bookings SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *',
+      ['cancelled', id, req.tenant_id]
+    );
 
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Booking not found' });
-      }
-
-      res.json({ success: true, message: 'Booking cancelled successfully' });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
     }
-  );
+
+    res.json({ success: true, message: 'Booking cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
 });
 
 // Delete booking
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  db.run('DELETE FROM bookings WHERE id = ?', [id], function(err) {
-    if (err) {
-      // console.error('Error deleting booking:', err);
-      return res.status(500).json({ error: 'Failed to delete booking' });
-    }
+    const result = await pool.query(
+      'DELETE FROM bookings WHERE id = $1 AND tenant_id = $2 RETURNING *',
+      [id, req.tenant_id]
+    );
 
-    if (this.changes === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
     res.json({ success: true, message: 'Booking deleted successfully' });
-  });
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).json({ error: 'Failed to delete booking' });
+  }
 });
 
 // Move booking (change room and/or time)
 router.put('/:id/move', [
-  body('new_room_id').isInt({ min: 1 }),
-  body('new_start_time').isISO8601(),
-  body('new_end_time').isISO8601()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { id } = req.params;
-  const { new_room_id, new_start_time, new_end_time } = req.body;
-
-  // Check for conflicts in new time slot
-  const conflictQuery = `
-    SELECT COUNT(*) as count FROM bookings 
-    WHERE room_id = ? AND status != 'cancelled' AND id != ?
-    AND ((start_time < ? AND end_time > ?) OR (start_time < ? AND end_time > ?))
-  `;
-
-  db.get(conflictQuery, [new_room_id, id, new_end_time, new_start_time, new_start_time, new_end_time], (err, row) => {
-    if (err) {
-      // console.error('Error checking conflicts:', err);
-      return res.status(500).json({ error: 'Failed to check booking conflicts' });
+  body('new_room_id').isUUID().withMessage('Room ID must be a valid UUID'),
+  body('new_start_time').isISO8601().withMessage('Start time must be a valid ISO8601 date'),
+  body('new_end_time').isISO8601().withMessage('End time must be a valid ISO8601 date')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    if (row.count > 0) {
+    const { id } = req.params;
+    const { new_room_id, new_start_time, new_end_time } = req.body;
+
+    // Check for conflicts in new time slot with tenant isolation
+    const conflictQuery = `
+      SELECT COUNT(*) as count FROM bookings 
+      WHERE room_id = $1 AND tenant_id = $2 AND status != 'cancelled' AND id != $3
+      AND ((start_time < $4 AND end_time > $5) OR (start_time < $6 AND end_time > $7))
+    `;
+
+    const conflictResult = await pool.query(conflictQuery, [
+      new_room_id, req.tenant_id, id, new_end_time, new_start_time, new_start_time, new_end_time
+    ]);
+
+    if (parseInt(conflictResult.rows[0].count) > 0) {
       return res.status(400).json({ error: 'Time slot conflicts with existing booking' });
     }
 
-    // Update booking
-    db.run(
-      'UPDATE bookings SET room_id = ?, start_time = ?, end_time = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [new_room_id, new_start_time, new_end_time, id],
-      function(err) {
-        if (err) {
-          // console.error('Error moving booking:', err);
-          return res.status(500).json({ error: 'Failed to move booking' });
-        }
-
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'Booking not found' });
-        }
-
-        // Fetch updated booking
-        const fetchQuery = `
-          SELECT b.*, r.name as room_name, r.capacity as room_capacity, r.category as room_category
-          FROM bookings b
-          JOIN rooms r ON b.room_id = r.id
-          WHERE b.id = ?
-        `;
-
-        db.get(fetchQuery, [id], (err, row) => {
-          if (err) {
-            // console.error('Error fetching moved booking:', err);
-            return res.status(500).json({ error: 'Failed to fetch moved booking' });
-          }
-
-          res.json({ success: true, data: row });
-        });
-      }
+    // Update booking with tenant isolation
+    const updateResult = await pool.query(
+      'UPDATE bookings SET room_id = $1, start_time = $2, end_time = $3, updated_at = NOW() WHERE id = $4 AND tenant_id = $5 RETURNING *',
+      [new_room_id, new_start_time, new_end_time, id, req.tenant_id]
     );
-  });
+
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Fetch updated booking with room details
+    const fetchQuery = `
+      SELECT b.*, r.name as room_name, r.capacity as room_capacity, r.category as room_category
+      FROM bookings b
+      JOIN rooms r ON b.room_id = r.id
+      WHERE b.id = $1 AND b.tenant_id = $2
+    `;
+
+    const fetchResult = await pool.query(fetchQuery, [id, req.tenant_id]);
+
+    res.json({ success: true, data: fetchResult.rows[0] });
+  } catch (error) {
+    console.error('Error moving booking:', error);
+    res.status(500).json({ error: 'Failed to move booking' });
+  }
 });
 
 export default router;

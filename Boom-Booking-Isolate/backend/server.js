@@ -18,9 +18,13 @@ import healthRoutes from './routes/health.js';
 import tenantRoutes from './routes/tenants.js';
 import analyticsRoutes from './routes/analytics.js';
 import billingRoutes from './routes/billing.js';
+import stripeRoutes from './routes/stripe.js';
 import apiKeysRoutes from './routes/api-keys.js';
 import backupRoutes from './routes/backup.js';
 import formsRoutes from './routes/forms.js';
+
+// Import JWT authentication middleware
+import { authenticateToken } from './routes/auth.js';
 
 // Import database initialization
 import { initMultiTenantDatabase, createDefaultTenant, testConnection } from './database/postgres.js';
@@ -29,8 +33,22 @@ import { initMultiTenantDatabase, createDefaultTenant, testConnection } from './
 import { tenantContext } from './middleware/tenant.js';
 import { subdomainRouter, resolveTenant, validateTenant, trackUsage } from './middleware/subdomain.js';
 
+// Import environment validation
+import { checkEnvironment } from './utils/environmentValidator.js';
+
 // Load environment variables
 dotenv.config();
+
+// Validate environment variables on startup
+console.log('🚀 Starting Boom Karaoke Backend API...');
+if (!checkEnvironment()) {
+  console.error('❌ Environment validation failed. Please check your configuration.');
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  } else {
+    console.warn('⚠️ Continuing in development mode despite validation errors');
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,7 +57,12 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: process.env.CORS_ORIGIN || [
+      "http://localhost:3000",
+      "http://localhost:3001", 
+      "http://localhost:3002",
+      "http://localhost:5173"
+    ],
     methods: ["GET", "POST"]
   }
 });
@@ -49,7 +72,12 @@ const PORT = process.env.PORT || 5001;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  origin: process.env.CORS_ORIGIN || [
+    "http://localhost:3000",
+    "http://localhost:3001", 
+    "http://localhost:3002",
+    "http://localhost:5173"
+  ],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -69,14 +97,15 @@ app.use('/api', tenantContext);
 
 // Tenant-specific API Routes (require valid tenant)
 app.use('/api/auth', validateTenant, authRoutes);
-app.use('/api/rooms', validateTenant, roomsRoutes);
-app.use('/api/bookings', validateTenant, bookingsRoutes);
-app.use('/api/business-hours', validateTenant, businessHoursRoutes);
-app.use('/api/settings', validateTenant, settingsRoutes);
+app.use('/api/rooms', authenticateToken, validateTenant, roomsRoutes);
+app.use('/api/bookings', authenticateToken, validateTenant, bookingsRoutes);
+app.use('/api/business-hours', authenticateToken, validateTenant, businessHoursRoutes);
+app.use('/api/settings', authenticateToken, validateTenant, settingsRoutes);
 
 // Tenant-specific routes
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/billing', billingRoutes);
+app.use('/api/stripe', stripeRoutes);
 app.use('/api/api-keys', apiKeysRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/forms', formsRoutes);

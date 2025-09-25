@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { roomsAPI } from '../lib/api';
+import { roomsAPI } from '../lib/unifiedApiClient';
 import { useSettings } from '../contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import CustomSelect from './ui/CustomSelect';
+import UnifiedBookingForm from './UnifiedBookingForm';
 import { 
   Plus, 
   Edit, 
@@ -21,7 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  X
+  X,
+  Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -32,6 +34,8 @@ const RoomManagement = () => {
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingFormData, setBookingFormData] = useState(null);
   const queryClient = useQueryClient();
 
   // Fetch rooms
@@ -58,8 +62,12 @@ const RoomManagement = () => {
 
   // Create room mutation
   const createRoomMutation = useMutation({
-    mutationFn: (data) => roomsAPI.create(data),
+    mutationFn: (data) => {
+      console.log('🚀 Creating room with data:', data);
+      return roomsAPI.create(data);
+    },
     onSuccess: (resp) => {
+      console.log('✅ Room created successfully:', resp);
       // Invalidate queries to refetch the updated room list
       queryClient.invalidateQueries(['rooms']);
       queryClient.invalidateQueries(['room-categories']);
@@ -68,6 +76,7 @@ const RoomManagement = () => {
       setSelectedRoom(null);
     },
     onError: (error) => {
+      console.error('❌ Room creation failed:', error);
       toast.error(error.response?.data?.error || 'Failed to create room');
     },
   });
@@ -75,13 +84,11 @@ const RoomManagement = () => {
   // Update room mutation
   const updateRoomMutation = useMutation({
     mutationFn: ({ id, data }) => {
-      // Debug logging removed for clean version
-      // console.log('🚀 Update room mutation called with:', { id, data });
+      console.log('🚀 Updating room with ID:', id, 'Data:', data);
       return roomsAPI.update(id, data);
     },
     onSuccess: (resp) => {
-      // Debug logging removed for clean version
-      // console.log('✅ Room update successful:', resp);
+      console.log('✅ Room update successful:', resp);
       // Invalidate queries to refetch the updated room list
       queryClient.invalidateQueries(['rooms']);
       queryClient.invalidateQueries(['room-categories']);
@@ -90,7 +97,7 @@ const RoomManagement = () => {
       setSelectedRoom(null);
     },
     onError: (error) => {
-      // Room update failed - error handling removed for clean version
+      console.error('❌ Room update failed:', error);
       toast.error(error.response?.data?.error || 'Failed to update room');
     },
   });
@@ -108,6 +115,16 @@ const RoomManagement = () => {
       toast.error(error.response?.data?.error || 'Failed to delete room');
     },
   });
+
+  // Handle create booking for a specific room
+  const handleCreateBooking = (room) => {
+    setBookingFormData({
+      selectedRoom: room,
+      selectedDate: new Date(),
+      selectedTime: new Date(),
+    });
+    setShowBookingForm(true);
+  };
 
   const handleEdit = (room) => {
     setSelectedRoom(room);
@@ -322,6 +339,9 @@ const RoomManagement = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2 ml-4">
+                <Button variant="outline" size="sm" onClick={() => handleCreateBooking(room)} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                  <Calendar className="w-4 h-4 mr-1" /> Book
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => handleEdit(room)}>
                   <Edit className="w-4 h-4 mr-1" /> Edit
                 </Button>
@@ -379,6 +399,23 @@ const RoomManagement = () => {
           categories={categories}
         />
       )}
+
+      {/* Unified Booking Form */}
+      <UnifiedBookingForm
+        isOpen={showBookingForm}
+        onClose={() => {
+          setShowBookingForm(false);
+          setBookingFormData(null);
+        }}
+        rooms={rooms}
+        selectedDate={bookingFormData?.selectedDate}
+        selectedTime={bookingFormData?.selectedTime}
+        selectedRoom={bookingFormData?.selectedRoom}
+        onSuccess={() => {
+          setShowBookingForm(false);
+          setBookingFormData(null);
+        }}
+      />
     </div>
   );
 };
@@ -405,6 +442,15 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
   // Get room form fields configuration
   const roomFormFields = settings.roomFormFields || {};
   const customRoomFields = settings.customRoomFields || [];
+  
+  // Debug logging
+  console.log('🔧 RoomForm - Settings loaded:', !!settings);
+  console.log('🔧 RoomForm - roomFormFields:', roomFormFields);
+  console.log('🔧 RoomForm - Essential fields check:', {
+    name: roomFormFields.name?.visible,
+    capacity: roomFormFields.capacity?.visible,
+    category: roomFormFields.category?.visible
+  });
 
   // Update form data when room prop changes
   useEffect(() => {
@@ -464,13 +510,33 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // console.log (removed for clean version)('🔧 Form submitted with data:', formData);
+    
+    // Debug logging
+    console.log('🔧 Room form submitted with data:', formData);
+    
+    // Validate required fields
+    const requiredFields = ['name', 'capacity', 'category'];
+    const missingFields = requiredFields.filter(field => !formData[field] || formData[field].toString().trim() === '');
+    
+    if (missingFields.length > 0) {
+      console.error('❌ Missing required fields:', missingFields);
+      toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     // Provide server-compatible data, ensuring required fields exist
     const payload = {
       ...formData,
+      // Map frontend field names to backend API field names
+      price_per_hour: formData.hourlyRate || formData.pricePerHour || 0,
+      is_active: formData.status !== 'inactive',
+      // Keep both formats for compatibility
       isActive: formData.status !== 'inactive',
+      hourlyRate: formData.hourlyRate || formData.pricePerHour || 0,
+      pricePerHour: formData.hourlyRate || formData.pricePerHour || 0,
     };
-    // console.log (removed for clean version)('🔧 Form payload:', payload);
+    
+    console.log('🔧 Room form payload:', payload);
     onSave(payload);
   };
 
@@ -493,7 +559,18 @@ const RoomForm = ({ room, isEditing, onClose, onSave, categories, saving = false
 
   // Helper function to render form field based on configuration
   const renderFormField = (fieldKey, fieldConfig) => {
-    if (!fieldConfig?.visible) return null;
+    // Essential room fields should always be visible
+    const essentialRoomFields = ['name', 'capacity', 'category', 'status', 'hourlyRate'];
+    const isEssential = essentialRoomFields.includes(fieldKey);
+    
+    // Debug logging
+    console.log(`🔍 renderRoomField(${fieldKey}):`, {
+      fieldConfig,
+      isEssential,
+      willRender: fieldConfig?.visible || isEssential
+    });
+    
+    if (!fieldConfig?.visible && !isEssential) return null;
 
     const value = formData[fieldKey] ?? '';
     const label = fieldConfig.label || fieldKey;

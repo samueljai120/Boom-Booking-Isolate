@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Authentication Data</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #c82333; }
+        .success { color: #28a745; font-weight: bold; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Clear Authentication Data</h1>
+        <p class="info">This will clear all stored authentication data and reload the page.</p>
+        
+        <button onclick="clearAuth()">Clear Auth Data & Reload</button>
+        <button onclick="checkAuth()">Check Current Auth Data</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function clearAuth() {
+            // Clear all authentication-related data
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('currentTenant');
+            sessionStorage.clear();
+            
+            // Clear cookies (if any)
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            document.getElementById('result').innerHTML = '<div class="success">✅ Authentication data cleared! Reloading page...</div>';
+            
+            // Reload the page
+            setTimeout(() => {
+                window.location.href = 'http://localhost:5175/';
+            }, 1000);
+        }
+        
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('user');
+            const tenant = localStorage.getItem('currentTenant');
+            
+            let result = '<h3>Current Auth Data:</h3>';
+            result += `<p><strong>Token:</strong> ${token ? token.substring(0, 50) + '...' : 'None'}</p>`;
+            result += `<p><strong>User:</strong> ${user || 'None'}</p>`;
+            result += `<p><strong>Tenant:</strong> ${tenant || 'None'}</p>`;
+            
+            document.getElementById('result').innerHTML = result;
+        }
+        
+        // Auto-check on load
+        checkAuth();
+    </script>
+</body>
+</html>

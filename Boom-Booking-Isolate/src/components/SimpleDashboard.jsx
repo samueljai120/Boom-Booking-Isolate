@@ -7,7 +7,8 @@ import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Calendar, Clock, Users, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { roomsAPI, bookingsAPI } from '../lib/api';
+import { roomsAPI, bookingsAPI } from '../lib/unifiedApiClient';
+import { useSafeData } from '../utils/dataNormalization';
 
 const SimpleDashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date(2025, 8, 17)); // September 17, 2025
@@ -25,8 +26,9 @@ const SimpleDashboard = () => {
     queryFn: () => bookingsAPI.getAll({ date: selectedDate }),
   });
 
-  const rooms = roomsData?.data || [];
-  const bookings = bookingsData?.data?.bookings || [];
+  // Use safe data handling utilities
+  const { data: rooms } = useSafeData(roomsData, 'rooms');
+  const { data: bookings } = useSafeData(bookingsData, 'bookings');
 
   const handleSettingsClick = () => {
     setShowSettings(!showSettings);

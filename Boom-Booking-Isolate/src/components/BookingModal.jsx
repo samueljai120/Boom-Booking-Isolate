@@ -8,11 +8,57 @@ import { Badge } from './ui/Badge';
 import CustomSelect from './ui/CustomSelect';
 import { X, Calendar, Clock, Users, Phone, Mail, User, AlertCircle, Copy, FileText, DollarSign, Star, Tag } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingsAPI } from '../lib/api';
+import { bookingsAPI } from '../lib/unifiedApiClient';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
 import { useSettings } from '../contexts/SettingsContext';
 import toast from 'react-hot-toast';
+import { handleApiError } from '../utils/errorHandling';
 import BookingConfirmation from './BookingConfirmation';
+
+// Smart default field visibility configuration
+const getDefaultFieldVisibility = () => ({
+  customerName: { visible: true, required: true },
+  phone: { visible: true, required: true },
+  email: { visible: true, required: false },
+  partySize: { visible: true, required: false },
+  roomId: { visible: true, required: true },
+  startTime: { visible: true, required: true },
+  endTime: { visible: true, required: true },
+  source: { visible: true, required: false },
+  status: { visible: true, required: false },
+  priority: { visible: false, required: false },
+  basePrice: { visible: true, required: false },
+  additionalFees: { visible: false, required: false },
+  discount: { visible: false, required: false },
+  totalPrice: { visible: true, required: false },
+  notes: { visible: true, required: false },
+  specialRequests: { visible: false, required: false },
+});
+
+// Get smart default values for new bookings
+const getSmartDefaults = (rooms) => {
+  const now = moment();
+  const defaultEndTime = now.clone().add(1, 'hour');
+  
+  return {
+    customerName: '',
+    phone: '',
+    email: '',
+    partySize: '1',
+    source: 'walk_in',
+    startTime: now.format('YYYY-MM-DDTHH:mm'),
+    endTime: defaultEndTime.format('YYYY-MM-DDTHH:mm'),
+    status: 'confirmed',
+    priority: 'normal',
+    basePrice: '0',
+    additionalFees: '0',
+    discount: '0',
+    totalPrice: '0',
+    notes: '',
+    specialRequests: '',
+    roomId: (rooms && rooms.length > 0 ? rooms[0]._id || rooms[0].id : ''),
+  };
+};
 
 const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -21,6 +67,9 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   const queryClient = useQueryClient();
   const { getBusinessHoursForDay, isWithinBusinessHours, getTimeSlotsForDay } = useBusinessHours();
   const { settings } = useSettings();
+  
+  // Debug logging - reduced for performance
+  // console.log('🔧 BookingModal - Settings loaded:', !!settings);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     defaultValues: {
@@ -40,18 +89,33 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
       notes: '',
       specialRequests: '',
       roomId: '',
-    }
+    },
+    mode: 'onChange', // Enable real-time validation without clearing fields
+    shouldUnregister: false, // Keep form data when fields are unmounted
   });
 
-  // Reset form when booking changes
+  // Watch form data for persistence
+  const watchedFormData = watch();
+
+  // Save form data to localStorage to prevent data loss
   useEffect(() => {
+    const formDataToSave = { ...watchedFormData };
+    // Only save if there's actual user input
+    const hasUserInput = Object.values(formDataToSave).some(value => 
+      value && value.toString().trim() !== '' && value !== 'walk_in' && value !== 'confirmed' && value !== 'normal'
+    );
+    
+    if (hasUserInput && !booking) {
+      localStorage.setItem('bookingFormDraft', JSON.stringify(formDataToSave));
+    }
+  }, [watchedFormData, booking]);
+
+  // Reset form when booking changes - optimized to prevent unnecessary resets
+  useEffect(() => {
+    // Only reset form when booking prop actually changes (not on every render)
     if (booking) {
-      // Debug logging removed for clean version
-      // console.log('🔍 BookingModal: Booking object received:', booking);
       if (booking.id || booking._id) {
         // Editing existing booking
-        // Debug logging removed for clean version
-        // console.log('🔍 BookingModal: Editing existing booking, resetting form');
         setIsEditing(true);
         reset({
           customerName: booking.title || booking.customerName || '',
@@ -71,60 +135,45 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
           specialRequests: booking.resource?.specialRequests || booking.specialRequests || '',
           roomId: booking.resource?.roomId || booking.room?._id || booking.roomId || '',
         });
-        // Debug logging removed for clean version
-        // console.log('🔍 BookingModal: Form reset with values:', {
-        //   customerName: booking.title || booking.customerName || '',
-        //   phone: booking.resource?.phone || booking.phone || '',
-        //   email: booking.resource?.email || booking.email || '',
-        //   source: booking.resource?.source || booking.source || 'walk_in',
-        //   startTime: moment(booking.startTime || booking.start).format('YYYY-MM-DDTHH:mm'),
-        //   endTime: moment(booking.endTime || booking.end).format('YYYY-MM-DDTHH:mm'),
-        // });
-      } else {
-        // Creating new booking
-        setIsEditing(false);
-        reset({
-          customerName: '',
-          phone: '',
-          email: '',
-          partySize: '',
-          source: 'walk_in',
-          startTime: moment(booking.start).format('YYYY-MM-DDTHH:mm'),
-          endTime: moment(booking.end).format('YYYY-MM-DDTHH:mm'),
-          status: 'confirmed',
-          priority: 'normal',
-          basePrice: '',
-          additionalFees: '',
-          discount: '',
-          totalPrice: '',
-          notes: '',
-          specialRequests: '',
-          roomId: booking.resource?.roomId || '',
-        });
-      }
+        } else {
+          // Creating new booking with smart defaults
+          setIsEditing(false);
+          const smartDefaults = getSmartDefaults(rooms);
+          
+          // Override with booking-specific times if provided
+          reset({
+            ...smartDefaults,
+            startTime: moment(booking.start).format('YYYY-MM-DDTHH:mm'),
+            endTime: moment(booking.end).format('YYYY-MM-DDTHH:mm'),
+            roomId: booking.resource?.roomId || booking.roomId || smartDefaults.roomId,
+          });
+        }
     } else {
-      // No booking provided, reset to defaults
-      setIsEditing(false);
-      reset({
-        customerName: '',
-        phone: '',
-        email: '',
-        partySize: '',
-        source: 'walk_in',
-        startTime: '',
-        endTime: '',
-        status: 'confirmed',
-        priority: 'normal',
-        basePrice: '',
-        additionalFees: '',
-        discount: '',
-        totalPrice: '',
-        notes: '',
-        specialRequests: '',
-        roomId: '',
-      });
+      // No booking provided, reset to smart defaults only if not already in new booking mode
+      if (!isEditing) {
+        setIsEditing(false);
+        const smartDefaults = getSmartDefaults(rooms);
+        
+        // Try to restore saved form data first
+        const savedFormData = localStorage.getItem('bookingFormDraft');
+        if (savedFormData) {
+          try {
+            const parsedData = JSON.parse(savedFormData);
+            // Merge saved data with smart defaults
+            const mergedData = { ...smartDefaults, ...parsedData };
+            reset(mergedData);
+            // Clear the saved data after restoring
+            localStorage.removeItem('bookingFormDraft');
+          } catch (error) {
+            console.warn('Failed to parse saved form data:', error);
+            reset(smartDefaults);
+          }
+        } else {
+          reset(smartDefaults);
+        }
+      }
     }
-  }, [booking, reset]);
+  }, [booking?.id, booking?._id, booking?.start, booking?.end, rooms, reset, isEditing]);
 
   // Create booking mutation (optimistic)
   const createBookingMutation = useMutation({
@@ -162,15 +211,19 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     onError: (err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(['bookings'], ctx.previous);
       
-      // Show specific error messages
+      // Use standardized error handling
+      const errorInfo = handleApiError(err, {
+        fallbackMessage: 'Failed to create booking. Please try again.',
+        showToast: false // We'll handle specific messages manually
+      });
+      
+      // Show specific error messages for known error codes
       if (err.response?.data?.code === 'OUTSIDE_BUSINESS_HOURS') {
         toast.error('Booking time is outside business hours. Please check the schedule for available times.');
       } else if (err.response?.data?.code === 'TIME_SLOT_CONFLICT') {
         toast.error('This time slot is already booked. Please choose a different time.');
-      } else if (err.response?.data?.error) {
-        toast.error(err.response.data.error);
       } else {
-        toast.error('Failed to create booking. Please try again.');
+        toast.error(errorInfo.message);
       }
     },
     onSettled: () => {
@@ -179,13 +232,16 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     onSuccess: (data) => {
       toast.success('Booking created successfully');
       // Store the created booking for confirmation
-      const newBooking = data?.data?.booking || data?.data?.data?.booking || data?.data;
+      // Bookings API returns {success: true, data: {booking: {...}}}
+      const newBooking = data?.data?.booking || data?.data;
       if (newBooking) {
         setCreatedBooking(newBooking);
         setShowConfirmation(true);
       } else {
         onSuccess();
       }
+      // Clear any saved form data since booking was successful
+      localStorage.removeItem('bookingFormDraft');
     },
   });
 
@@ -229,15 +285,19 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     onError: (err, _vars, ctx) => {
       if (ctx?.previous) queryClient.setQueryData(['bookings'], ctx.previous);
       
-      // Show specific error messages
+      // Use standardized error handling
+      const errorInfo = handleApiError(err, {
+        fallbackMessage: 'Failed to update booking. Please try again.',
+        showToast: false // We'll handle specific messages manually
+      });
+      
+      // Show specific error messages for known error codes
       if (err.response?.data?.code === 'OUTSIDE_BUSINESS_HOURS') {
         toast.error('Booking time is outside business hours. Please check the schedule for available times.');
       } else if (err.response?.data?.code === 'TIME_SLOT_CONFLICT') {
         toast.error('This time slot is already booked. Please choose a different time.');
-      } else if (err.response?.data?.error) {
-        toast.error(err.response.data.error);
       } else {
-        toast.error('Failed to update booking. Please try again.');
+        toast.error(errorInfo.message);
       }
     },
     onSettled: () => {
@@ -246,7 +306,8 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     onSuccess: (data) => {
       toast.success('Booking updated successfully');
       // Store the updated booking for confirmation
-      const updatedBooking = data?.data?.booking || data?.data?.data?.booking || data?.data;
+      // Bookings API returns {success: true, data: {booking: {...}}}
+      const updatedBooking = data?.data?.booking || data?.data;
       if (updatedBooking) {
         setCreatedBooking(updatedBooking);
         setShowConfirmation(true);
@@ -288,6 +349,25 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   });
 
   const onSubmit = (data) => {
+    console.log('📝 Form data received:', data);
+    
+    // Validate required fields before processing
+    const requiredFields = ['customerName', 'roomId', 'startTime', 'endTime'];
+    const missingFields = requiredFields.filter(field => {
+      const value = data[field];
+      // Safe string check - handle both string and non-string values
+      if (value === null || value === undefined) return true;
+      if (typeof value === 'string') return value.trim() === '';
+      if (typeof value === 'number') return value === 0;
+      return !value;
+    });
+    
+    if (missingFields.length > 0) {
+      console.error('❌ Missing required fields:', missingFields);
+      toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     // Validate business hours before submission
     const startDate = new Date(data.startTime);
     const endDate = new Date(data.endTime);
@@ -305,23 +385,34 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
     
     // Align payload with backend API expectations
     const bookingData = {
-      customerName: data.customerName,
-      phone: data.phone,
-      email: data.email,
+      // Map frontend field names to backend API field names
+      customer_name: data.customerName,
+      customer_email: data.email || '',
+      customer_phone: data.phone || '',
+      room_id: data.roomId,
+      start_time: new Date(data.startTime).toISOString(),
+      end_time: new Date(data.endTime).toISOString(),
+      status: data.status || 'confirmed',
+      notes: data.notes || '',
+      total_price: data.totalPrice || 0,
+      // Additional fields for frontend compatibility
       partySize: data.partySize,
       source: data.source,
-      status: data.status,
       priority: data.priority,
       basePrice: data.basePrice,
       additionalFees: data.additionalFees,
       discount: data.discount,
-      totalPrice: data.totalPrice,
-      notes: data.notes,
       specialRequests: data.specialRequests,
+      // Legacy field names for compatibility
+      customerName: data.customerName,
+      phone: data.phone,
+      email: data.email,
       roomId: data.roomId,
       startTime: new Date(data.startTime).toISOString(),
       endTime: new Date(data.endTime).toISOString(),
     };
+
+    console.log('📤 Booking data being sent:', bookingData);
 
     if (isEditing) {
       updateBookingMutation.mutate({ id: booking._id || booking.id, data: bookingData });
@@ -352,13 +443,29 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
   const weekday = selectedDate.getDay();
   const dayHours = getBusinessHoursForDay(weekday);
 
-  // Helper function to render form fields based on settings
+  // Helper function to render form fields based on settings or smart defaults
   const renderFormField = (fieldKey, fieldConfig, register, errors, options = {}) => {
-    if (!fieldConfig?.visible) return null;
+    // Use smart defaults if no field config is provided
+    const defaultVisibility = getDefaultFieldVisibility();
+    const fieldVisibility = fieldConfig || defaultVisibility[fieldKey];
+    
+    // Essential fields should always be visible
+    const essentialFields = ['customerName', 'phone', 'partySize', 'roomId', 'startTime', 'endTime', 'notes'];
+    const isEssential = essentialFields.includes(fieldKey);
+    
+    // Debug logging - reduced for performance
+    // console.log(`🔍 renderFormField(${fieldKey}):`, {
+    //   fieldConfig,
+    //   fieldVisibility,
+    //   isEssential,
+    //   willRender: fieldVisibility?.visible || isEssential
+    // });
+    
+    if (!fieldVisibility?.visible && !isEssential) return null;
 
-    const isRequired = fieldConfig.required;
-    const label = fieldConfig.label || fieldKey;
-    const placeholder = fieldConfig.placeholder || `Enter ${label.toLowerCase()}`;
+    const isRequired = fieldVisibility.required;
+    const label = fieldConfig?.label || fieldKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+    const placeholder = fieldConfig?.placeholder || `Enter ${label.toLowerCase()}`;
     
     // Get validation rules based on field configuration
     const getValidationRules = () => {
@@ -468,17 +575,15 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Customer Information */}
-            {(settings.bookingFormFields.customerName?.visible || settings.bookingFormFields.phone?.visible || settings.bookingFormFields.email?.visible || settings.bookingFormFields.partySize?.visible) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Customer Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {renderFormField('customerName', settings.bookingFormFields.customerName, register, errors, { icon: <User className="w-4 h-4" /> })}
-                  {renderFormField('phone', settings.bookingFormFields.phone, register, errors, { icon: <Phone className="w-4 h-4" /> })}
-                  {renderFormField('email', settings.bookingFormFields.email, register, errors, { icon: <Mail className="w-4 h-4" /> })}
-                  {renderFormField('partySize', settings.bookingFormFields.partySize, register, errors, { icon: <Users className="w-4 h-4" /> })}
-                </div>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Customer Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {renderFormField('customerName', settings.bookingFormFields?.customerName, register, errors, { icon: <User className="w-4 h-4" /> })}
+                {renderFormField('phone', settings.bookingFormFields?.phone, register, errors, { icon: <Phone className="w-4 h-4" /> })}
+                {renderFormField('email', settings.bookingFormFields?.email, register, errors, { icon: <Mail className="w-4 h-4" /> })}
+                {renderFormField('partySize', settings.bookingFormFields?.partySize, register, errors, { icon: <Users className="w-4 h-4" /> })}
               </div>
-            )}
+            </div>
 
             {/* Custom Fields */}
             {settings.customBookingFields?.filter(field => field.visible).map((field) => (
@@ -491,25 +596,23 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
             ))}
 
             {/* Booking Details */}
-            {(settings.bookingFormFields.room?.visible || settings.bookingFormFields.room === true || settings.bookingFormFields.source?.visible || settings.bookingFormFields.source === true || settings.bookingFormFields.timeIn?.visible || settings.bookingFormFields.timeIn === true || settings.bookingFormFields.timeOut?.visible || settings.bookingFormFields.timeOut === true || settings.bookingFormFields.status?.visible || settings.bookingFormFields.status === true || settings.bookingFormFields.priority?.visible || settings.bookingFormFields.priority === true) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Booking Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.room?.visible && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {settings.bookingFormFields.room.label} {settings.bookingFormFields.room.required && '*'}
-                      </label>
-                      <CustomSelect
-                        value={watch('roomId')}
-                        onChange={(value) => setValue('roomId', value)}
-                        options={rooms
-                          .filter(r => r.status === 'active' && r.isBookable)
-                          .map(r => ({ value: r._id || r.id, label: `${r.name} (${r.capacity} max) - $${r.hourlyRate || 0}/hour` }))}
-                      />
-                    </div>
-                  )}
-                  {settings.bookingFormFields.source?.visible && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Booking Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Room Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Room Selection *
+                  </label>
+                  <CustomSelect
+                    value={watch('roomId')}
+                    onChange={(value) => setValue('roomId', value)}
+                    options={rooms
+                      ?.filter(r => r.status === 'active' && r.isBookable)
+                      .map(r => ({ value: r._id || r.id, label: `${r.name} (${r.capacity} max) - $${r.hourlyRate || 0}/hour` }))}
+                  />
+                </div>
+                  {(settings.bookingFormFields.source?.visible || !settings?.bookingFormFields) && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         {settings.bookingFormFields.source.label} {settings.bookingFormFields.source.required && '*'}
@@ -528,48 +631,46 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       />
                     </div>
                   )}
-                  {(settings.bookingFormFields.timeIn?.visible || settings.bookingFormFields.timeIn === true) && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {settings.bookingFormFields.timeIn?.label || 'Start time'} {(settings.bookingFormFields.timeIn?.required || settings.bookingFormFields.timeIn === true) && '*'}
-                      </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('startTime', { 
-                            required: (settings.bookingFormFields.timeIn?.required || settings.bookingFormFields.timeIn === true) ? 'Start time is required' : false 
-                          })}
-                          type="datetime-local"
-                          placeholder={settings.bookingFormFields.timeIn?.placeholder || 'Select start time'}
-                          className="pl-10"
-                        />
-                      </div>
-                      {errors.startTime && (
-                        <p className="text-sm text-red-500">{errors.startTime.message}</p>
-                      )}
-                    </div>
+                {/* Start Time */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Start Time *
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                      {...register('startTime', { 
+                        required: 'Start time is required'
+                      })}
+                      type="datetime-local"
+                      placeholder="Select start time"
+                      className="pl-10"
+                    />
+                  </div>
+                  {errors.startTime && (
+                    <p className="text-sm text-red-500">{errors.startTime.message}</p>
                   )}
-                  {(settings.bookingFormFields.timeOut?.visible || settings.bookingFormFields.timeOut === true) && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {settings.bookingFormFields.timeOut?.label || 'End time'} {(settings.bookingFormFields.timeOut?.required || settings.bookingFormFields.timeOut === true) && '*'}
-                      </label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <Input
-                          {...register('endTime', { 
-                            required: (settings.bookingFormFields.timeOut?.required || settings.bookingFormFields.timeOut === true) ? 'End time is required' : false 
-                          })}
-                          type="datetime-local"
-                          placeholder={settings.bookingFormFields.timeOut?.placeholder || 'Select end time'}
-                          className="pl-10"
-                        />
-                      </div>
-                      {errors.endTime && (
-                        <p className="text-sm text-red-500">{errors.endTime.message}</p>
-                      )}
-                    </div>
+                </div>
+                {/* End Time */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    End Time *
+                  </label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                    <Input
+                      {...register('endTime', { 
+                        required: 'End time is required'
+                      })}
+                      type="datetime-local"
+                      placeholder="Select end time"
+                      className="pl-10"
+                    />
+                  </div>
+                  {errors.endTime && (
+                    <p className="text-sm text-red-500">{errors.endTime.message}</p>
                   )}
+                </div>
                   {settings.bookingFormFields.status?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
@@ -604,12 +705,11 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       />
                     </div>
                   )}
-                </div>
               </div>
-            )}
+            </div>
 
             {/* Pricing */}
-            {(settings.bookingFormFields.basePrice?.visible || settings.bookingFormFields.additionalFees?.visible || settings.bookingFormFields.discount?.visible || settings.bookingFormFields.totalPrice?.visible) && (
+            {(settings.bookingFormFields.basePrice?.visible || settings.bookingFormFields.additionalFees?.visible || settings.bookingFormFields.discount?.visible || settings.bookingFormFields.totalPrice?.visible || !settings?.bookingFormFields) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Pricing</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -622,28 +722,21 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
             )}
 
             {/* Additional Information */}
-            {(settings.bookingFormFields.notes?.visible || settings.bookingFormFields.specialRequests?.visible) && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Additional Information</h3>
-                <div className="grid grid-cols-1 gap-4">
-                  {settings.bookingFormFields.notes?.visible && (
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">
-                        {settings.bookingFormFields.notes.label} {settings.bookingFormFields.notes.required && '*'}
-                      </label>
-                      <textarea
-                        {...register('notes', { 
-                          required: settings.bookingFormFields.notes.required ? 'Notes are required' : false 
-                        })}
-                        placeholder={settings.bookingFormFields.notes.placeholder}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        rows={3}
-                      />
-                      {errors.notes && (
-                        <p className="text-sm text-red-500">{errors.notes.message}</p>
-                      )}
-                    </div>
-                  )}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Additional Information</h3>
+              <div className="grid grid-cols-1 gap-4">
+                {/* Notes Field */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Notes
+                  </label>
+                  <textarea
+                    {...register('notes')}
+                    placeholder="Additional notes or special requests"
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
                   {settings.bookingFormFields.specialRequests?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
@@ -662,9 +755,8 @@ const BookingModal = ({ isOpen, onClose, booking, rooms, onSuccess }) => {
                       )}
                     </div>
                   )}
-                </div>
               </div>
-            )}
+            </div>
 
             {/* Available Time Slots Preview */}
             {!isBusinessClosed && availableTimeSlots.length > 0 && (

@@ -3,11 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { WebSocketProvider } from './contexts/WebSocketContext';
-import { SettingsProvider } from './contexts/SettingsContext';
-import { BusinessHoursProvider } from './contexts/BusinessHoursContext';
-import { BusinessInfoProvider } from './contexts/BusinessInfoContext';
+import { useAuth } from './contexts/SimplifiedAuthContext';
+import { UnifiedContextProvider } from './contexts/ContextProvider';
 import { TutorialProvider } from './contexts/TutorialContext';
 import AppleCalendarDashboard from './components/AppleCalendarDashboard';
 import InteractiveTutorial from './components/InteractiveTutorial';
@@ -89,42 +86,37 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
-      retry: (failureCount, error) => {
-        if (error.response?.status === 401) return false;
-        return failureCount < 3;
-      },
-    },
-  },
-});
+import { GLOBAL_QUERY_CONFIG } from './config/queryConfig';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-  
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return children;
-};
+// Create a client with optimized configuration
+const queryClient = new QueryClient(GLOBAL_QUERY_CONFIG);
 
 const AppContent = () => {
+  // Protected Route Component
+  const ProtectedRoute = ({ children }) => {
+    const { user, loading } = useAuth();
+    
+    if (loading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        </div>
+      );
+    }
+    
+    if (!user) {
+      return <Navigate to="/login" replace />;
+    }
+    
+    return children;
+  };
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <ScrollToTop />
       <Routes>
         {/* Public Routes */}
@@ -189,45 +181,36 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <WebSocketProvider>
-            <SettingsProvider>
-              <BusinessHoursProvider>
-                <BusinessInfoProvider>
-                  <div className="App">
-                    <AppContent />
-                    <ScrollToTopButton />
-                    <Toaster
-                      position="top-right"
-                      toastOptions={{
-                        duration: 4000,
-                        style: {
-                          background: '#363636',
-                          color: '#fff',
-                        },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#34C759',
-                            secondary: '#fff',
-                          },
-                        },
-                        error: {
-                          duration: 5000,
-                          iconTheme: {
-                            primary: '#FF3B30',
-                            secondary: '#fff',
-                          },
-                        },
-                      }}
-                    />
-                  </div>
-                </BusinessInfoProvider>
-              </BusinessHoursProvider>
-              {/* React Query Devtools hidden for demo */}
-            </SettingsProvider>
-          </WebSocketProvider>
-        </AuthProvider>
+        <UnifiedContextProvider>
+          <div className="App">
+            <AppContent />
+            <ScrollToTopButton />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#34C759',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  duration: 5000,
+                  iconTheme: {
+                    primary: '#FF3B30',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+          </div>
+        </UnifiedContextProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

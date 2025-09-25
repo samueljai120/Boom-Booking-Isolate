@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingsAPI, roomsAPI } from '../lib/api';
+import { bookingsAPI, roomsAPI } from '../lib/unifiedApiClient';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
+import { normalizeBookings, normalizeRooms, safeGet, isEmpty } from '../utils/dataNormalization';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -71,12 +72,7 @@ const BookingManagement = () => {
 
   const bookings = bookingsData?.data?.bookings || [];
   const normalizedBookings = useMemo(() => {
-    const mapped = bookings.map(b => ({
-      ...b,
-      roomId: b.roomId || b.room,
-      startTime: b.startTime || b.timeIn,
-      endTime: b.endTime || b.timeOut,
-    }));
+    const mapped = normalizeBookings(bookings);
 
     // Apply date filter using overlap logic (match schedule) only if date filter is set
     if (filterDate) {
@@ -84,22 +80,23 @@ const BookingManagement = () => {
       const selectedEnd = moment(filterDate).endOf('day');
       
       return mapped.filter(b => {
-        const bookingStart = moment(b.startTime || b.timeIn);
-        const bookingEnd = moment(b.endTime || b.timeOut);
+        const bookingStart = moment(b.startTime);
+        const bookingEnd = moment(b.endTime);
         return bookingStart.isBefore(selectedEnd) && bookingEnd.isAfter(selectedStart);
       });
     }
 
     return mapped;
   }, [bookings, filterDate]);
-  const rooms = roomsData?.data || [];
+  const rooms = normalizeRooms(roomsData?.data || []);
 
   // Create booking mutation
   const createBookingMutation = useMutation({
     mutationFn: (data) => bookingsAPI.create(data),
     onSuccess: (resp) => {
       // Optimistically merge the newly created booking for instant feedback
-      const newBooking = resp?.data?.booking || resp?.data?.data?.booking;
+      // Bookings API returns {success: true, data: {booking: {...}}}
+      const newBooking = resp?.data?.booking || resp?.data;
       if (newBooking) {
         queryClient.setQueryData(['bookings', { search: searchQuery, status: filterStatus, room: filterRoom, date: filterDate }], (old) => {
           const prev = old?.data?.bookings || [];
@@ -120,7 +117,8 @@ const BookingManagement = () => {
   const updateBookingMutation = useMutation({
     mutationFn: ({ id, data }) => bookingsAPI.update(id, data),
     onSuccess: (resp, variables) => {
-      const updated = resp?.data?.booking || resp?.data?.data?.booking;
+      // Bookings API returns {success: true, data: {booking: {...}}}
+      const updated = resp?.data?.booking || resp?.data;
       const updatedId = variables?.id;
       if (updated || updatedId) {
         queryClient.setQueryData(['bookings', { search: searchQuery, status: filterStatus, room: filterRoom, date: filterDate }], (old) => {
@@ -413,8 +411,11 @@ const BookingManagement = () => {
 
       {/* Bookings List */}
       <div className="space-y-4">
-        {normalizedBookings.map(booking => (
-          <Card key={booking._id} className="hover:shadow-md transition-shadow">
+        {normalizedBookings.map((booking, index) => {
+          // Ensure we have a unique key for React
+          const uniqueKey = booking._id || booking.id || `booking-${booking.customerName}-${booking.startTime}-${index}`;
+          return (
+          <Card key={uniqueKey} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -432,8 +433,8 @@ const BookingManagement = () => {
                         <span className="capitalize">{booking.status}</span>
                       </div>
                     </Badge>
-                    <Badge className={getSourceColor(booking.source)}>
-                      {booking.source.replace('_', ' ').toUpperCase()}
+                    <Badge className={getSourceColor(booking.source || 'web')}>
+                      {(booking.source || 'web').replace('_', ' ').toUpperCase()}
                     </Badge>
                   </div>
 
@@ -549,7 +550,8 @@ const BookingManagement = () => {
               </div>
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
       </div>
 
       {/* Empty State */}
@@ -589,34 +591,33 @@ const BookingManagement = () => {
         }}
       />
 
-      {/* Booking Form Modal */}
-      {showForm && (
-        <BookingForm
-          booking={selectedBooking}
-          isEditing={isEditing}
-          onClose={() => {
-            setShowForm(false);
-            setSelectedBooking(null);
-            setIsEditing(false);
-          }}
-          onSave={(data) => {
-            if (isEditing) {
-              updateBookingMutation.mutate({ id: selectedBooking._id, data });
-            } else {
-              createBookingMutation.mutate(data);
-            }
-          }}
-          saving={isEditing ? updateBookingMutation.isPending : createBookingMutation.isPending}
-          rooms={rooms}
-          isWithinBusinessHours={isWithinBusinessHours}
-        />
-      )}
+      {/* Booking Form Modal - Always rendered to preserve state */}
+      <BookingForm
+        isVisible={showForm}
+        booking={selectedBooking}
+        isEditing={isEditing}
+        onClose={() => {
+          setShowForm(false);
+          setSelectedBooking(null);
+          setIsEditing(false);
+        }}
+        onSave={(data) => {
+          if (isEditing) {
+            updateBookingMutation.mutate({ id: selectedBooking._id, data });
+          } else {
+            createBookingMutation.mutate(data);
+          }
+        }}
+        saving={isEditing ? updateBookingMutation.isPending : createBookingMutation.isPending}
+        rooms={rooms}
+        isWithinBusinessHours={isWithinBusinessHours}
+      />
     </div>
   );
 };
 
 // Booking Form Component
-const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = false, isWithinBusinessHours }) => {
+const BookingForm = ({ isVisible, booking, isEditing, onClose, onSave, rooms, saving = false, isWithinBusinessHours }) => {
   const { settings } = useSettings();
   const [formData, setFormData] = useState({
     customerName: '',
@@ -636,12 +637,13 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     discount: 0,
     totalPrice: 0,
   });
+  const [isFormInitialized, setIsFormInitialized] = useState(false);
 
-  // Get room form fields configuration
-  const roomFormFields = settings.roomFormFields || {};
+  // Memoize room form fields configuration to prevent re-renders
+  const roomFormFields = useMemo(() => settings.roomFormFields || {}, [settings.roomFormFields]);
 
-  // Helper function to format room option for dropdown
-  const formatRoomOption = (room) => {
+  // Memoize the format room option function to prevent re-renders
+  const formatRoomOption = useMemo(() => (room) => {
     if (!room) return 'Unknown room';
     
     const visibleFields = [];
@@ -673,11 +675,12 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     });
 
     return visibleFields.join(' ');
-  };
+  }, [roomFormFields]);
 
-  // Update form data when booking prop changes
+  // Initialize form data when modal opens or booking changes
   useEffect(() => {
     if (booking && isEditing) {
+      // Editing existing booking
       setFormData({
         customerName: booking.customerName || '',
         phone: booking.phone || '',
@@ -685,7 +688,7 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
         room: booking.roomId?._id || booking.room || '',
         timeIn: booking.startTime ? moment(booking.startTime).format('YYYY-MM-DDTHH:mm') : '',
         timeOut: booking.endTime ? moment(booking.endTime).format('YYYY-MM-DDTHH:mm') : '',
-        source: booking.source || 'walk_in',
+        source: booking.source || 'web',
         status: booking.status || 'confirmed',
         priority: booking.priority || 'normal',
         notes: booking.notes || '',
@@ -696,8 +699,8 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
         discount: typeof booking.discount === 'number' ? booking.discount : 0,
         totalPrice: typeof booking.totalPrice === 'number' ? booking.totalPrice : 0,
       });
-    } else if (!booking && !isEditing) {
-      // Reset form for new booking creation with sensible defaults
+    } else if (!booking && !isEditing && !isFormInitialized) {
+      // New booking - reset form for new booking creation only once
       const now = new Date();
       const defaultStartTime = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
       const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000); // 1 hour duration
@@ -720,8 +723,34 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
         discount: 0,
         totalPrice: 0,
       });
+      setIsFormInitialized(true);
     }
-  }, [booking, isEditing]);
+  }, [booking?.id, booking?._id, isEditing, isFormInitialized]);
+
+  // Reset form initialization when modal closes
+  useEffect(() => {
+    if (!isVisible) {
+      setIsFormInitialized(false);
+    }
+  }, [isVisible]);
+
+  // Memoize room options to prevent re-renders
+  const roomOptions = useMemo(() => {
+    return rooms
+      .filter(r => r.status === 'active' && r.isBookable)
+      .map(r => ({ value: r._id || r.id, label: formatRoomOption(r) }));
+  }, [rooms, formatRoomOption]);
+
+  // Memoize booking form fields to prevent re-renders
+  const bookingFormFields = useMemo(() => settings.bookingFormFields || {}, [settings.bookingFormFields]);
+  
+  // Memoize custom booking fields to prevent re-renders
+  const customBookingFields = useMemo(() => settings.customBookingFields || [], [settings.customBookingFields]);
+
+  // Simple field change handler like room form
+  const handleFieldChange = (fieldKey, value) => {
+    setFormData(prev => ({ ...prev, [fieldKey]: value }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -769,11 +798,29 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
     const totalPrice = basePrice + (formData.additionalFees || 0) - (formData.discount || 0);
 
     const bookingData = {
-      ...formData,
+      // Map frontend field names to backend API field names
+      customer_name: formData.customerName,
+      customer_email: formData.email && formData.email.trim() ? formData.email.trim() : null,
+      customer_phone: formData.phone && formData.phone.trim() ? formData.phone.trim() : null,
+      room_id: formData.room,
+      start_time: startTime.toISOString(),
+      end_time: endTime.toISOString(),
+      status: formData.status,
+      notes: formData.notes && formData.notes.trim() ? formData.notes.trim() : null,
+      total_price: Math.round(totalPrice * 100) / 100,
+      // Additional fields for frontend compatibility
       durationMinutes,
       basePrice: Math.round(basePrice * 100) / 100,
-      totalPrice: Math.round(totalPrice * 100) / 100,
-      // Send both legacy (timeIn/timeOut, room) and API (startTime/endTime, roomId) fields for compatibility
+      partySize: formData.partySize,
+      source: formData.source,
+      priority: formData.priority,
+      specialRequests: formData.specialRequests,
+      additionalFees: formData.additionalFees,
+      discount: formData.discount,
+      // Legacy field names for compatibility
+      customerName: formData.customerName,
+      phone: formData.phone,
+      email: formData.email,
       timeIn: startTime.toISOString(),
       timeOut: endTime.toISOString(),
       startTime: startTime.toISOString(),
@@ -782,91 +829,82 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
       room: formData.room
     };
 
+
     onSave(bookingData);
   };
 
-  // Helper function to render form fields based on settings
-  const renderFormField = (fieldKey, fieldConfig, value, onChange, options = {}) => {
+  // Helper function to render form field based on configuration (like room form)
+  const renderFormField = (fieldKey, fieldConfig) => {
     if (!fieldConfig?.visible) return null;
 
-    const isRequired = fieldConfig.required;
+    const value = formData[fieldKey] ?? '';
     const label = fieldConfig.label || fieldKey;
     const placeholder = fieldConfig.placeholder || `Enter ${label.toLowerCase()}`;
-    
-    return (
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          {label} {isRequired && '*'}
-        </label>
-        <div className="relative">
-          {options.icon && (
-            <div className="absolute left-3 top-3 w-4 h-4 text-gray-400">
-              {options.icon}
-            </div>
-          )}
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            className={options.icon ? "pl-10" : ""}
-            type={fieldConfig.type === 'email' ? 'email' : fieldConfig.type === 'tel' ? 'tel' : fieldConfig.type === 'number' ? 'number' : 'text'}
-          />
-        </div>
-      </div>
-    );
-  };
+    const required = fieldConfig.required || false;
+    const fieldType = fieldConfig.type || 'text';
 
-  const handleTimeChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Auto-calculate duration if both times are set
-    if (field === 'timeIn' && formData.timeOut) {
-      const startTime = new Date(value);
-      const endTime = new Date(formData.timeOut);
-      if (endTime > startTime) {
-        const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
-        const selectedRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === formData.room) : null);
-        const hourlyRate = selectedRoom?.hourlyRate || 25;
-        const basePrice = (durationMinutes / 60) * hourlyRate;
-        setFormData(prev => ({
-          ...prev,
-          basePrice: Math.round(basePrice * 100) / 100,
-          totalPrice: Math.round((basePrice + (prev.additionalFees || 0) - (prev.discount || 0)) * 100) / 100
-        }));
-      } else if (endTime <= startTime) {
-        // If end time is not after start time, automatically adjust end time to be 1 hour later
-        const adjustedEndTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-        setFormData(prev => ({
-          ...prev,
-          timeOut: adjustedEndTime.toISOString().slice(0, 16)
-        }));
-      }
-    } else if (field === 'timeOut' && formData.timeIn) {
-      const startTime = new Date(formData.timeIn);
-      const endTime = new Date(value);
-      if (endTime > startTime) {
-        const durationMinutes = Math.round((endTime - startTime) / (1000 * 60));
-        const selectedRoom = (rooms && Array.isArray(rooms) ? rooms.find(r => r._id === formData.room) : null);
-        const hourlyRate = selectedRoom?.hourlyRate || 25;
-        const basePrice = (durationMinutes / 60) * hourlyRate;
-        setFormData(prev => ({
-          ...prev,
-          basePrice: Math.round(basePrice * 100) / 100,
-          totalPrice: Math.round((basePrice + (prev.additionalFees || 0) - (prev.discount || 0)) * 100) / 100
-        }));
-      } else if (endTime <= startTime) {
-        // If end time is not after start time, automatically adjust end time to be 1 hour later
-        const adjustedEndTime = new Date(startTime.getTime() + 60 * 60 * 1000);
-        setFormData(prev => ({
-          ...prev,
-          timeOut: adjustedEndTime.toISOString().slice(0, 16)
-        }));
-      }
+    // Create handleChange function for this specific field (like room form)
+    const handleChange = (newValue) => {
+      setFormData(prev => ({ ...prev, [fieldKey]: newValue }));
+    };
+
+    switch (fieldType) {
+      case 'text':
+      case 'email':
+      case 'tel':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label} {required && '*'}</label>
+            <Input
+              value={value}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              required={required}
+              type={fieldType === 'email' ? 'email' : fieldType === 'tel' ? 'tel' : 'text'}
+            />
+          </div>
+        );
+
+      case 'number':
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label} {required && '*'}</label>
+            <Input
+              type="number"
+              value={value === 0 ? '' : value}
+              onChange={(e) => {
+                const numValue = e.target.value === '' ? 0 : parseInt(e.target.value);
+                handleChange(isNaN(numValue) ? 0 : numValue);
+              }}
+              placeholder={placeholder}
+              min="0"
+              required={required}
+            />
+          </div>
+        );
+
+      default:
+        return (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{label} {required && '*'}</label>
+            <Input
+              value={value}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder={placeholder}
+              required={required}
+            />
+          </div>
+        );
     }
   };
 
+  // Simple time change handler
+  const handleTimeChange = (field, value) => {
+    handleFieldChange(field, value);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${!isVisible ? 'hidden' : ''}`}>
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
         {/* Exit Button - Top Right Corner */}
         <Button
@@ -886,59 +924,53 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Customer Information */}
-            {(settings.bookingFormFields.customerName?.visible || settings.bookingFormFields.phone?.visible || settings.bookingFormFields.email?.visible || settings.bookingFormFields.partySize?.visible) && (
+            {(bookingFormFields.customerName?.visible || bookingFormFields.phone?.visible || bookingFormFields.email?.visible || bookingFormFields.partySize?.visible || !bookingFormFields) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Customer Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {renderFormField('customerName', settings.bookingFormFields.customerName, formData.customerName, (value) => setFormData(prev => ({ ...prev, customerName: value })))}
-                  {renderFormField('phone', settings.bookingFormFields.phone, formData.phone, (value) => {
-                    // Only allow digits and optional + at the beginning
-                    const cleanValue = value.replace(/[^\d+]/g, '');
-                    setFormData(prev => ({ ...prev, phone: cleanValue }));
-                  })}
-                  {renderFormField('email', settings.bookingFormFields.email, formData.email, (value) => setFormData(prev => ({ ...prev, email: value })))}
-                  {renderFormField('partySize', settings.bookingFormFields.partySize, formData.partySize, (value) => setFormData(prev => ({ ...prev, partySize: parseInt(value) })))}
+                  {renderFormField('customerName', bookingFormFields.customerName)}
+                  {renderFormField('phone', bookingFormFields.phone)}
+                  {renderFormField('email', bookingFormFields.email)}
+                  {renderFormField('partySize', bookingFormFields.partySize)}
                 </div>
               </div>
             )}
 
             {/* Custom Fields */}
-            {settings.customBookingFields?.filter(field => field.visible).map((field) => (
-              <div key={field.id} className="space-y-4">
+            {customBookingFields?.filter(field => field.visible).map((field, index) => (
+              <div key={field.id || field.name || `custom-field-${index}`} className="space-y-4">
                 <h3 className="text-lg font-semibold">Additional Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {renderFormField(field.name, field, formData[field.name] || '', (value) => setFormData(prev => ({ ...prev, [field.name]: value })))}
+                  {renderFormField(field.name, field)}
                 </div>
               </div>
             ))}
 
             {/* Booking Details */}
-            {(settings.bookingFormFields.room?.visible || settings.bookingFormFields.source?.visible || settings.bookingFormFields.timeIn?.visible || settings.bookingFormFields.timeOut?.visible || settings.bookingFormFields.status?.visible || settings.bookingFormFields.priority?.visible) && (
+            {(bookingFormFields.room?.visible || bookingFormFields.source?.visible || bookingFormFields.timeIn?.visible || bookingFormFields.timeOut?.visible || bookingFormFields.status?.visible || bookingFormFields.priority?.visible || !bookingFormFields) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Booking Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {settings.bookingFormFields.room?.visible && (
+                  {bookingFormFields.room?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.room.label} {settings.bookingFormFields.room.required && '*'}
+                        {bookingFormFields.room.label} {bookingFormFields.room.required && '*'}
                       </label>
-                      <CustomSelect
-                        value={formData.room}
-                        onChange={(value) => setFormData(prev => ({ ...prev, room: value }))}
-                        options={rooms
-                          .filter(r => r.status === 'active' && r.isBookable)
-                          .map(r => ({ value: r._id || r.id, label: formatRoomOption(r) }))}
-                      />
+                        <CustomSelect
+                          value={formData.room}
+                          onChange={(value) => handleFieldChange('room', value)}
+                          options={roomOptions}
+                        />
                     </div>
                   )}
-                  {settings.bookingFormFields.source?.visible && (
+                  {bookingFormFields.source?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.source.label} {settings.bookingFormFields.source.required && '*'}
+                        {bookingFormFields.source.label} {bookingFormFields.source.required && '*'}
                       </label>
                       <CustomSelect
                         value={formData.source}
-                        onChange={(value) => setFormData(prev => ({ ...prev, source: value }))}
+                        onChange={(value) => handleFieldChange('source', value)}
                         options={[
                           { value: 'walk_in', label: 'Walk-in' },
                           { value: 'phone', label: 'Phone' },
@@ -950,42 +982,42 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.timeIn?.visible && (
+                  {bookingFormFields.timeIn?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.timeIn.label} {settings.bookingFormFields.timeIn.required && '*'}
+                        {bookingFormFields.timeIn.label} {bookingFormFields.timeIn.required && '*'}
                       </label>
                       <Input
                         type="datetime-local"
                         value={formData.timeIn}
                         onChange={(e) => handleTimeChange('timeIn', e.target.value)}
-                        placeholder={settings.bookingFormFields.timeIn.placeholder}
-                        required={settings.bookingFormFields.timeIn.required}
+                        placeholder={bookingFormFields.timeIn.placeholder}
+                        required={bookingFormFields.timeIn.required}
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.timeOut?.visible && (
+                  {bookingFormFields.timeOut?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.timeOut.label} {settings.bookingFormFields.timeOut.required && '*'}
+                        {bookingFormFields.timeOut.label} {bookingFormFields.timeOut.required && '*'}
                       </label>
                       <Input
                         type="datetime-local"
                         value={formData.timeOut}
                         onChange={(e) => handleTimeChange('timeOut', e.target.value)}
-                        placeholder={settings.bookingFormFields.timeOut.placeholder}
-                        required={settings.bookingFormFields.timeOut.required}
+                        placeholder={bookingFormFields.timeOut.placeholder}
+                        required={bookingFormFields.timeOut.required}
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.status?.visible && (
+                  {bookingFormFields.status?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.status.label} {settings.bookingFormFields.status.required && '*'}
+                        {bookingFormFields.status.label} {bookingFormFields.status.required && '*'}
                       </label>
                       <CustomSelect
                         value={formData.status}
-                        onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                        onChange={(value) => handleFieldChange('status', value)}
                         options={[
                           { value: 'confirmed', label: 'Confirmed' },
                           { value: 'pending', label: 'Pending' },
@@ -996,14 +1028,14 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.priority?.visible && (
+                  {bookingFormFields.priority?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.priority.label} {settings.bookingFormFields.priority.required && '*'}
+                        {bookingFormFields.priority.label} {bookingFormFields.priority.required && '*'}
                       </label>
                       <CustomSelect
                         value={formData.priority}
-                        onChange={(value) => setFormData(prev => ({ ...prev, priority: value }))}
+                        onChange={(value) => handleFieldChange('priority', value)}
                         options={[
                           { value: 'low', label: 'Low' },
                           { value: 'normal', label: 'Normal' },
@@ -1018,15 +1050,15 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
             )}
 
             {/* Pricing */}
-            {(settings.bookingFormFields.basePrice?.visible || settings.bookingFormFields.additionalFees?.visible || settings.bookingFormFields.discount?.visible || settings.bookingFormFields.totalPrice?.visible) && (
+            {(bookingFormFields.basePrice?.visible || bookingFormFields.additionalFees?.visible || bookingFormFields.discount?.visible || bookingFormFields.totalPrice?.visible || !bookingFormFields) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Pricing</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {renderFormField('basePrice', settings.bookingFormFields.basePrice, formData.basePrice, (value) => setFormData(prev => ({ ...prev, basePrice: parseFloat(value) })))}
-                  {renderFormField('additionalFees', settings.bookingFormFields.additionalFees, formData.additionalFees, (value) => setFormData(prev => ({ ...prev, additionalFees: parseFloat(value) })))}
-                  {renderFormField('discount', settings.bookingFormFields.discount, formData.discount, (value) => setFormData(prev => ({ ...prev, discount: parseFloat(value) })))}
+                  {renderFormField('basePrice', bookingFormFields.basePrice)}
+                  {renderFormField('additionalFees', bookingFormFields.additionalFees)}
+                  {renderFormField('discount', bookingFormFields.discount)}
                 </div>
-                {settings.bookingFormFields.totalPrice?.visible && (
+                {bookingFormFields.totalPrice?.visible && (
                   <div className="text-lg font-semibold text-gray-900">
                     Total: ${Number(formData.totalPrice || 0).toFixed(2)}
                   </div>
@@ -1035,33 +1067,33 @@ const BookingForm = ({ booking, isEditing, onClose, onSave, rooms, saving = fals
             )}
 
             {/* Additional Information */}
-            {(settings.bookingFormFields.notes?.visible || settings.bookingFormFields.specialRequests?.visible) && (
+            {(bookingFormFields.notes?.visible || bookingFormFields.specialRequests?.visible || !settings?.bookingFormFields) && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Additional Information</h3>
                 <div className="space-y-4">
-                  {settings.bookingFormFields.notes?.visible && (
+                  {bookingFormFields.notes?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.notes.label} {settings.bookingFormFields.notes.required && '*'}
+                        {bookingFormFields.notes.label} {bookingFormFields.notes.required && '*'}
                       </label>
                       <textarea
                         value={formData.notes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder={settings.bookingFormFields.notes.placeholder}
+                        onChange={(e) => handleFieldChange('notes', e.target.value)}
+                        placeholder={bookingFormFields.notes.placeholder}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         rows="3"
                       />
                     </div>
                   )}
-                  {settings.bookingFormFields.specialRequests?.visible && (
+                  {bookingFormFields.specialRequests?.visible && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
-                        {settings.bookingFormFields.specialRequests.label} {settings.bookingFormFields.specialRequests.required && '*'}
+                        {bookingFormFields.specialRequests.label} {bookingFormFields.specialRequests.required && '*'}
                       </label>
                       <textarea
                         value={formData.specialRequests}
-                        onChange={(e) => setFormData(prev => ({ ...prev, specialRequests: e.target.value }))}
-                        placeholder={settings.bookingFormFields.specialRequests.placeholder}
+                        onChange={(e) => handleFieldChange('specialRequests', e.target.value)}
+                        placeholder={bookingFormFields.specialRequests.placeholder}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         rows="2"
                       />

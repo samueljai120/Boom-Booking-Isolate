@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 
 const SettingsContext = createContext();
 
@@ -89,20 +89,20 @@ export const SettingsProvider = ({ children }) => {
           bookingFormFields: {
             customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
             phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
-            email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+            email: { visible: false, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
             partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
             room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
-            source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+            source: { visible: false, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
             timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
             timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
-            status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
-            priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
-            basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
-            additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
-            discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
-            totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
+            status: { visible: false, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+            priority: { visible: false, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+            basePrice: { visible: false, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+            additionalFees: { visible: false, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
+            discount: { visible: false, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+            totalPrice: { visible: false, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
             notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
-            specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
+            specialRequests: { visible: false, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
           },
           customBookingFields: [],
           // Room form fields configuration
@@ -188,20 +188,20 @@ export const SettingsProvider = ({ children }) => {
       bookingFormFields: {
         customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
         phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
-        email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+        email: { visible: false, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
         partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
         room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
-        source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+        source: { visible: false, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
         timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
         timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
-        status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
-        priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
-        basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
-        additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
-        discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
-        totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
+        status: { visible: false, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+        priority: { visible: false, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+        basePrice: { visible: false, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+        additionalFees: { visible: false, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
+        discount: { visible: false, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+        totalPrice: { visible: false, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
         notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
-        specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
+        specialRequests: { visible: false, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
       },
       // Confirmation template settings
       confirmationTemplate: {
@@ -239,7 +239,7 @@ export const SettingsProvider = ({ children }) => {
 
   // Settings are now initialized from localStorage on mount
 
-  // Force save updated field labels on first load
+  // Force save updated field labels on first load - run only once
   useEffect(() => {
     const savedSettings = localStorage.getItem('karaoke-settings');
     if (savedSettings) {
@@ -278,14 +278,14 @@ export const SettingsProvider = ({ children }) => {
         setSettings(updatedSettings);
       }
     }
-  }, []);
+  }, []); // Empty dependency array - runs only once on mount
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('karaoke-settings', JSON.stringify(settings));
   }, [settings]);
 
-  const updateSetting = (key, value) => {
+  const updateSetting = useCallback((key, value) => {
     setSettings(prev => {
       const newSettings = {
         ...prev,
@@ -299,18 +299,18 @@ export const SettingsProvider = ({ children }) => {
       
       return newSettings;
     });
-  };
+  }, []);
 
-  const toggleLayoutOrientation = () => {
+  const toggleLayoutOrientation = useCallback(() => {
     setSettings(prev => ({
       ...prev,
       layoutOrientation: prev.layoutOrientation === 'rooms-x-time-y' 
         ? 'rooms-y-time-x' 
         : 'rooms-x-time-y'
     }));
-  };
+  }, []);
 
-  const updateBookingFormField = (fieldName, property, value) => {
+  const updateBookingFormField = useCallback((fieldName, property, value) => {
     setSettings(prev => ({
       ...prev,
       bookingFormFields: {
@@ -321,7 +321,7 @@ export const SettingsProvider = ({ children }) => {
         }
       }
     }));
-  };
+  }, []);
 
   const addCustomBookingField = (field) => {
     setSettings(prev => ({
@@ -447,20 +447,20 @@ export const SettingsProvider = ({ children }) => {
       bookingFormFields: {
         customerName: { visible: true, required: true, label: 'Customer name', placeholder: 'Enter customer name', validation: 'required' },
         phone: { visible: true, required: true, label: 'Phone number', placeholder: 'Enter phone number', validation: 'phone' },
-        email: { visible: true, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
+        email: { visible: false, required: false, label: 'Email address', placeholder: 'Enter email address', validation: 'email' },
         partySize: { visible: true, required: false, label: 'Party size', placeholder: 'Number of people', validation: 'number' },
         room: { visible: true, required: true, label: 'Room selection', placeholder: 'Select a room', validation: 'required' },
-        source: { visible: true, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
+        source: { visible: false, required: false, label: 'Booking source', placeholder: 'How did they book?', validation: 'none' },
         timeIn: { visible: true, required: true, label: 'Start time', placeholder: 'Select start time', validation: 'required' },
         timeOut: { visible: true, required: true, label: 'End time', placeholder: 'Select end time', validation: 'required' },
-        status: { visible: true, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
-        priority: { visible: true, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
-        basePrice: { visible: true, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
-        additionalFees: { visible: true, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
-        discount: { visible: true, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
-        totalPrice: { visible: true, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
+        status: { visible: false, required: false, label: 'Status', placeholder: 'Booking status', validation: 'none' },
+        priority: { visible: false, required: false, label: 'Priority', placeholder: 'Booking priority', validation: 'none' },
+        basePrice: { visible: false, required: false, label: 'Base price', placeholder: 'Base price amount', validation: 'currency' },
+        additionalFees: { visible: false, required: false, label: 'Additional fees', placeholder: 'Extra charges', validation: 'currency' },
+        discount: { visible: false, required: false, label: 'Discount', placeholder: 'Discount amount', validation: 'currency' },
+        totalPrice: { visible: false, required: false, label: 'Total price', placeholder: 'Total amount', validation: 'currency' },
         notes: { visible: true, required: false, label: 'Notes', placeholder: 'Additional notes', validation: 'none' },
-        specialRequests: { visible: true, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
+        specialRequests: { visible: false, required: false, label: 'Special requests', placeholder: 'Special requirements', validation: 'none' },
       },
       // Room form fields configuration
       roomFormFields: {
@@ -511,7 +511,7 @@ export const SettingsProvider = ({ children }) => {
   };
 
   // Save current form field configurations as defaults
-  const saveAsDefaultFormFields = () => {
+  const saveAsDefaultFormFields = useCallback(() => {
     setSettings(prev => ({
       ...prev,
       defaultBookingFormFields: JSON.parse(JSON.stringify(prev.bookingFormFields)),
@@ -520,7 +520,7 @@ export const SettingsProvider = ({ children }) => {
       defaultCustomRoomFields: JSON.parse(JSON.stringify(prev.customRoomFields || [])),
       formFieldsSavedAt: new Date().toISOString()
     }));
-  };
+  }, []);
 
   // Reset form fields to saved defaults
   const resetToDefaultFormFields = () => {
@@ -551,7 +551,7 @@ export const SettingsProvider = ({ children }) => {
     });
   };
 
-  const value = {
+  const value = useMemo(() => ({
     settings,
     updateSetting,
     toggleLayoutOrientation,
@@ -570,7 +570,13 @@ export const SettingsProvider = ({ children }) => {
     resetSettings,
     saveAsDefaultFormFields,
     resetToDefaultFormFields,
-  };
+  }), [
+    settings,
+    updateSetting,
+    toggleLayoutOrientation,
+    updateBookingFormField,
+    saveAsDefaultFormFields,
+  ]);
 
   return (
     <SettingsContext.Provider value={value}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -64,7 +64,7 @@ const RegisterPage = () => {
         toast.success('Registration successful! Welcome to Boom Booking!');
         navigate('/dashboard');
       } else {
-        toast.error(result.message || 'Registration failed');
+        toast.error(result.error || 'Registration failed');
       }
     } catch (error) {
       toast.error('An error occurred during registration');

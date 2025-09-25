@@ -1,286 +1,268 @@
-# 🎤 Boom Karaoke Booking System
+# Boom Karaoke Booking System
 
-> **Professional karaoke room booking platform with real-time scheduling and management**
+A modern, serverless booking system for karaoke venues built with Vercel Functions and Neon PostgreSQL.
 
-[![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com)
-[![React](https://img.shields.io/badge/React-18.0+-blue?style=for-the-badge&logo=react)](https://reactjs.org)
-[![Node.js](https://img.shields.io/badge/Node.js-18.0+-green?style=for-the-badge&logo=node.js)](https://nodejs.org)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue?style=for-the-badge&logo=postgresql)](https://postgresql.org)
+## 🚀 Features
 
-## 📋 **Table of Contents**
+- **Serverless Architecture**: Built with Vercel Functions for scalability
+- **PostgreSQL Database**: Powered by Neon for reliable data storage
+- **JWT Authentication**: Secure user authentication and authorization
+- **Real-time Updates**: Live booking updates with polling mechanism
+- **Responsive UI**: Modern, mobile-friendly interface
+- **Multi-tenant Ready**: Designed for multiple venues
 
-- [🎯 Overview](#-overview)
-- [✨ Features](#-features)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [📁 Project Structure](#-project-structure)
-- [🔧 Configuration](#-configuration)
-- [🌐 Deployment](#-deployment)
-- [🧪 Testing](#-testing)
-- [📚 Documentation](#-documentation)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+## 🏗️ Architecture
 
-## 🎯 **Overview**
+- **Frontend**: HTML, CSS (Tailwind), Vanilla JavaScript
+- **Backend**: Vercel Serverless Functions
+- **Database**: Neon PostgreSQL
+- **Authentication**: JWT tokens
+- **Deployment**: Vercel Platform
 
-Boom Karaoke Booking System is a modern, full-stack web application designed for karaoke room management and booking. Built with React, Node.js, and PostgreSQL, it provides a seamless experience for both customers and administrators.
+## 📋 Prerequisites
 
-### **Key Highlights:**
-- 🎵 **Real-time Booking** - Live calendar with instant availability
-- 📱 **Responsive Design** - Works perfectly on all devices
-- 🔐 **Secure Authentication** - JWT-based user management
-- 💳 **Payment Integration** - Ready for payment processing
-- 📊 **Analytics Dashboard** - Business insights and reporting
-- 🌐 **Multi-tenant Ready** - Scalable for multiple locations
-
-## ✨ **Features**
-
-### **🎤 Customer Features**
-- **Room Booking** - Easy room selection and time slot booking
-- **Real-time Calendar** - Live availability updates
-- **User Authentication** - Secure login and registration
-- **Booking Management** - View and modify existing bookings
-- **Room Details** - Comprehensive room information and amenities
-
-### **🏢 Admin Features**
-- **Room Management** - Add, edit, and manage karaoke rooms
-- **Booking Oversight** - Monitor and manage all bookings
-- **Business Hours** - Configure operating hours and availability
-- **Analytics Dashboard** - Business performance insights
-- **User Management** - Customer account administration
-
-### **🔧 Technical Features**
-- **RESTful API** - Clean, well-documented API endpoints
-- **Real-time Updates** - WebSocket integration for live updates
-- **Database Integration** - PostgreSQL with Neon serverless
-- **Responsive UI** - Mobile-first design approach
-- **Error Handling** - Comprehensive error management
-- **Security** - CORS protection and input validation
-
-## 🏗️ **Architecture**
-
-### **Frontend (React + Vite)**
-```
-src/
-├── components/          # Reusable UI components
-├── pages/              # Application pages
-├── hooks/              # Custom React hooks
-├── utils/              # Utility functions
-├── contexts/           # React contexts
-└── styles/             # CSS and styling
-```
-
-### **Backend (Vercel Functions)**
-```
-api/
-├── auth/               # Authentication endpoints
-├── rooms/              # Room management
-├── bookings/           # Booking management
-└── health/             # System health checks
-```
-
-### **Database (Neon PostgreSQL)**
-- **Users** - Customer and admin accounts
-- **Rooms** - Karaoke room information
-- **Bookings** - Reservation data
-- **Business Hours** - Operating schedule
-
-## 🚀 **Quick Start**
-
-### **Prerequisites**
-- Node.js 18.0 or higher
-- npm or yarn package manager
+- Node.js 18+ 
+- Vercel CLI
+- Neon PostgreSQL database
 - Git
 
-### **1. Clone the Repository**
+## 🛠️ Setup Instructions
+
+### 1. Clone the Repository
+
 ```bash
-git clone https://github.com/samueljai120/Advanced-Calendar.git
-cd Advanced-Calendar
+git clone <repository-url>
+cd boom-karaoke-booking-system
 ```
 
-### **2. Install Dependencies**
-```bash
-# Install frontend dependencies
-cd Boom-Booking-Isolate
-npm install
+### 2. Install Dependencies
 
-# Install backend dependencies (if needed)
-cd backend
+```bash
 npm install
 ```
 
-### **3. Environment Setup**
+### 3. Database Setup
+
+1. Create a Neon PostgreSQL database
+2. Copy the connection string
+3. Run the database schema:
+
+```bash
+# Connect to your Neon database and run:
+psql "your-neon-connection-string" -f Boom-Booking-Isolate/database-schema.sql
+```
+
+### 4. Environment Configuration
+
 Create a `.env.local` file in the root directory:
+
 ```env
 # Database Configuration
-DATABASE_URL=your_neon_database_url
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_EXPIRES_IN=30d
+DATABASE_URL=postgresql://username:password@hostname:port/database
 
-# API Configuration
-VITE_API_BASE_URL=/api
-VITE_WS_URL=
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-here
+
+# Environment
+NODE_ENV=development
 ```
 
-### **4. Start Development Server**
+### 5. Local Development
+
 ```bash
-# Start Vercel development server (recommended)
+# Install Vercel CLI if you haven't already
+npm install -g vercel
+
+# Start local development server
 vercel dev
-
-# OR start regular development server
-npm run dev
 ```
 
-### **5. Access the Application**
-- **Frontend**: http://localhost:3000
-- **API Health**: http://localhost:3000/api/health
+The application will be available at `http://localhost:3000`
 
-## 📁 **Project Structure**
+### 6. Deploy to Vercel
 
-```
-Ver alpha scale up/
-├── Boom-Booking-Isolate/          # Main React application
-│   ├── src/                       # Source code
-│   ├── public/                    # Static assets
-│   ├── api/                       # Vercel API routes
-│   ├── lib/                       # Shared libraries
-│   └── package.json               # Dependencies
-├── docs/                          # Documentation
-│   ├── business/                  # Business documents
-│   ├── development/               # Development guides
-│   ├── deployment/                # Deployment guides
-│   └── troubleshooting/           # Fix guides
-├── config/                        # Configuration files
-│   ├── vercel.json               # Vercel configuration
-│   ├── railway.json              # Railway configuration
-│   └── package.json              # Root dependencies
-├── assets/                        # Static assets
-├── scripts/                       # Utility scripts
-└── dist/                          # Build output
-```
-
-## 🔧 **Configuration**
-
-### **Environment Variables**
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `DATABASE_URL` | Neon PostgreSQL connection string | Yes | - |
-| `JWT_SECRET` | Secret key for JWT tokens | Yes | - |
-| `JWT_EXPIRES_IN` | JWT token expiration time | No | 7d |
-| `JWT_REFRESH_EXPIRES_IN` | Refresh token expiration | No | 30d |
-| `VITE_API_BASE_URL` | Frontend API base URL | No | /api |
-| `VITE_WS_URL` | WebSocket URL | No | - |
-
-### **Database Setup**
-1. Create a Neon PostgreSQL database
-2. Copy the connection string to `DATABASE_URL`
-3. The application will automatically initialize tables
-
-## 🌐 **Deployment**
-
-### **Vercel Deployment (Recommended)**
-1. **Connect Repository** - Link your GitHub repository to Vercel
-2. **Configure Environment** - Add environment variables in Vercel dashboard
-3. **Deploy** - Automatic deployment on every push to main branch
-
-### **Manual Deployment**
 ```bash
-# Build the application
-npm run build
-
 # Deploy to Vercel
 vercel --prod
+
+# Set environment variables in Vercel dashboard
+vercel env add DATABASE_URL
+vercel env add JWT_SECRET
 ```
 
-### **Environment Variables for Production**
-Add these variables in your Vercel dashboard:
-- `DATABASE_URL` - Your Neon database URL
-- `JWT_SECRET` - Secure JWT secret key
-- `JWT_EXPIRES_IN` - Token expiration (e.g., 7d)
-- `JWT_REFRESH_EXPIRES_IN` - Refresh token expiration (e.g., 30d)
+## 🎯 API Endpoints
 
-## 🧪 **Testing**
+### Authentication
+- `POST /api/auth/login` - User login
+- `GET /api/auth/me` - Get current user info
 
-### **Local Testing**
+### Rooms
+- `GET /api/rooms` - List all rooms
+- `POST /api/rooms` - Create new room
+- `PUT /api/rooms/:id` - Update room
+- `DELETE /api/rooms/:id` - Delete room
+
+### Bookings
+- `GET /api/bookings` - List bookings
+- `POST /api/bookings` - Create booking
+- `PUT /api/bookings/:id` - Update booking
+- `DELETE /api/bookings/:id` - Delete booking
+- `PUT /api/bookings/:id/move` - Move booking to different time/room
+- `PUT /api/bookings/:id/cancel` - Cancel booking
+- `GET /api/bookings/updates` - Get real-time booking updates
+
+### Business Hours
+- `GET /api/business-hours` - Get business hours
+- `PUT /api/business-hours` - Update business hours
+
+### Health
+- `GET /api/health` - Health check
+
+## 🔐 Default Credentials
+
+For testing purposes, use these demo credentials:
+
+- **Email**: `demo@example.com`
+- **Password**: `demo123`
+
+## 📊 Database Schema
+
+The system uses a multi-tenant PostgreSQL schema with the following main tables:
+
+- `tenants` - Venue information
+- `users` - User accounts
+- `rooms` - Karaoke rooms
+- `bookings` - Booking records
+- `business_hours` - Operating hours
+- `settings` - System settings
+
+## 🚀 Deployment
+
+### Vercel Deployment
+
+1. Connect your repository to Vercel
+2. Set environment variables in Vercel dashboard:
+   - `DATABASE_URL`
+   - `JWT_SECRET`
+3. Deploy automatically on push to main branch
+
+### Environment Variables
+
+Required environment variables:
+
+- `DATABASE_URL` - Neon PostgreSQL connection string
+- `JWT_SECRET` - Secret key for JWT token signing
+
+## 🧪 Testing
+
+### Manual Testing
+
+1. Start the development server: `vercel dev`
+2. Open `http://localhost:3000`
+3. Login with demo credentials
+4. Test booking creation and management
+
+### API Testing
+
+Use tools like Postman or curl to test API endpoints:
+
 ```bash
-# Test API endpoints
+# Test health endpoint
 curl http://localhost:3000/api/health
-curl http://localhost:3000/api/business-hours
-curl http://localhost:3000/api/rooms
 
-# Test authentication
+# Test login
 curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@example.com","password":"demo123"}'
 ```
 
-### **Frontend Testing**
-1. Open http://localhost:3000
-2. Test login with demo credentials
-3. Verify calendar functionality
-4. Test booking flow
+## 🔧 Development
 
-## 📚 **Documentation**
+### Project Structure
 
-### **Available Documentation**
-- **[Local Testing Guide](docs/development/LOCAL_TESTING_GUIDE.md)** - Complete local testing instructions
-- **[Neon Database Setup](docs/development/NEON_DATABASE_SETUP_GUIDE.md)** - Database configuration
-- **[Deployment Guides](docs/deployment/)** - Various deployment options
-- **[Troubleshooting](docs/troubleshooting/)** - Common issues and solutions
-- **[Business Plans](docs/business/)** - Business strategy and planning
+```
+├── api/                    # Vercel Functions
+│   ├── auth/              # Authentication endpoints
+│   ├── bookings/          # Booking endpoints
+│   ├── business-hours.js  # Business hours endpoint
+│   ├── health.js          # Health check
+│   └── rooms.js           # Rooms endpoint
+├── Boom-Booking-Isolate/  # Legacy system (reference)
+├── docs/                  # Documentation
+├── index.html             # Frontend application
+├── package.json           # Dependencies
+└── vercel.json           # Vercel configuration
+```
 
-### **API Documentation**
-- **Health Check**: `GET /api/health`
-- **Business Hours**: `GET /api/business-hours`
-- **Rooms**: `GET /api/rooms`
-- **Login**: `POST /api/auth/login`
-- **User Info**: `GET /api/auth/me`
+### Adding New Features
 
-## 🤝 **Contributing**
+1. Create new API endpoints in the `api/` directory
+2. Update the frontend in `index.html`
+3. Test locally with `vercel dev`
+4. Deploy to Vercel
 
-We welcome contributions! Please follow these steps:
+## 🐛 Troubleshooting
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit changes**: `git commit -m 'Add amazing feature'`
-4. **Push to branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
+### Common Issues
 
-### **Development Guidelines**
-- Follow existing code style
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting
+1. **Database Connection Errors**
+   - Verify `DATABASE_URL` is correct
+   - Check if Neon database is accessible
+   - Ensure database schema is properly set up
 
-## 📄 **License**
+2. **Authentication Issues**
+   - Verify `JWT_SECRET` is set
+   - Check token expiration
+   - Ensure user exists in database
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+3. **CORS Issues**
+   - CORS is configured for all origins in development
+   - For production, update CORS settings as needed
 
-## 🆘 **Support**
+### Debug Mode
 
-### **Getting Help**
-- 📖 **Documentation**: Check the [docs/](docs/) directory
-- 🐛 **Issues**: Report bugs on [GitHub Issues](https://github.com/samueljai120/Advanced-Calendar/issues)
-- 💬 **Discussions**: Join our [GitHub Discussions](https://github.com/samueljai120/Advanced-Calendar/discussions)
+Enable debug logging by setting:
+```env
+NODE_ENV=development
+```
 
-### **Common Issues**
-- **CORS Errors**: Ensure API base URL is set correctly
-- **Database Connection**: Verify DATABASE_URL is properly configured
-- **Build Errors**: Check Node.js version compatibility
+## 📈 Performance
+
+- **Serverless Functions**: Auto-scaling based on demand
+- **Database Connection Pooling**: Managed by Neon
+- **Caching**: Implemented at function level
+- **CDN**: Automatic with Vercel deployment
+
+## 🔒 Security
+
+- **JWT Authentication**: Secure token-based auth
+- **Password Hashing**: bcrypt for password security
+- **SQL Injection Protection**: Parameterized queries
+- **CORS Configuration**: Proper cross-origin settings
+
+## 📝 License
+
+MIT License - see LICENSE file for details
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## 📞 Support
+
+For support and questions:
+- Create an issue in the repository
+- Check the documentation in `/docs`
+- Review the troubleshooting guide
+
+## 🎉 Success!
+
+Your Boom Karaoke Booking System is now ready for production use!
 
 ---
 
-## 🎉 **Acknowledgments**
-
-- **React Team** - For the amazing frontend framework
-- **Vercel** - For seamless deployment and hosting
-- **Neon** - For serverless PostgreSQL database
-- **Open Source Community** - For the incredible tools and libraries
-
----
-
-**Built with ❤️ for the karaoke community**
-
-*Last updated: September 2024*
+**Built with ❤️ for karaoke venues worldwide**

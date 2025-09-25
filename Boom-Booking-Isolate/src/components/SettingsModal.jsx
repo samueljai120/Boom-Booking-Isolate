@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import moment from 'moment';
 import { useSettings } from '../contexts/SettingsContext';
 import { useBusinessHours } from '../contexts/BusinessHoursContext';
-import { roomsAPI, bookingsAPI } from '../lib/api';
+import { roomsAPI, bookingsAPI } from '../lib/unifiedApiClient';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -570,16 +570,35 @@ const createExampleData = async (getBusinessHoursForDay) => {
         try {
           const roomId = createdRooms[bookingData.roomIndex]._id || createdRooms[bookingData.roomIndex].id;
           const bookingPayload = {
-            ...bookingData,
-            roomId: roomId,
+            // Map frontend field names to backend API field names
+            customer_name: bookingData.customerName,
+            customer_email: bookingData.email,
+            customer_phone: bookingData.phone,
+            room_id: roomId,
+            start_time: bookingData.startTime,
+            end_time: bookingData.endTime,
+            status: bookingData.status || 'confirmed',
+            notes: bookingData.notes || '',
+            total_price: 0, // Will be calculated
+            // Additional fields for frontend compatibility
+            partySize: bookingData.partySize,
+            source: bookingData.source,
             basePrice: (bookingData.partySize * 5) + Math.floor(Math.random() * 20),
             additionalFees: Math.floor(Math.random() * 10),
             discount: Math.floor(Math.random() * 5),
-            totalPrice: 0 // Will be calculated
+            // Legacy field names for compatibility
+            customerName: bookingData.customerName,
+            phone: bookingData.phone,
+            email: bookingData.email,
+            roomId: roomId,
+            startTime: bookingData.startTime,
+            endTime: bookingData.endTime,
           };
           
           // Calculate total price
-          bookingPayload.totalPrice = bookingPayload.basePrice + bookingPayload.additionalFees - bookingPayload.discount;
+          const calculatedTotal = bookingPayload.basePrice + bookingPayload.additionalFees - bookingPayload.discount;
+          bookingPayload.total_price = calculatedTotal;
+          bookingPayload.totalPrice = calculatedTotal;
           
           await bookingsAPI.create(bookingPayload);
         } catch (error) {

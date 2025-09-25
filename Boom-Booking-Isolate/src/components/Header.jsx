@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
+import { useTenant } from '../contexts/TenantContext';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import TenantSwitcher from './TenantSwitcher';
+import UserProfile from './UserProfile';
 import { 
   Calendar, 
   Settings, 
@@ -14,10 +17,12 @@ import {
 
 const Header = ({ onSettingsClick }) => {
   const { user, logout } = useAuth();
+  const { currentTenant } = useTenant();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
+    setIsMenuOpen(false);
   };
 
   return (
@@ -36,36 +41,8 @@ const Header = ({ onSettingsClick }) => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            onClick={onSettingsClick}
-            className="flex items-center space-x-2"
-          >
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </Button>
-
-          <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="text-sm">
-                <div className="font-medium text-gray-900">{user?.username}</div>
-                <div className="text-gray-500 capitalize">{user?.role}</div>
-              </div>
-            </div>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              title="Logout"
-              className="hover:bg-red-50 hover:text-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-            </Button>
-          </div>
+          <TenantSwitcher />
+          <UserProfile onSettingsClick={onSettingsClick} />
         </div>
 
         {/* Mobile Menu Button */}
@@ -102,8 +79,9 @@ const Header = ({ onSettingsClick }) => {
                   <User className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <div className="font-medium text-gray-900">{user?.username}</div>
-                  <div className="text-sm text-gray-500 capitalize">{user?.role}</div>
+                  <div className="font-medium text-gray-900">{user?.name || user?.username}</div>
+                  <div className="text-sm text-gray-500">{user?.email}</div>
+                  <div className="text-xs text-gray-500 capitalize">{user?.role}</div>
                 </div>
               </div>
               <Button

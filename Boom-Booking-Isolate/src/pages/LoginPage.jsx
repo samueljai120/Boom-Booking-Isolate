@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent } from '../components/ui/Card';
@@ -12,7 +12,24 @@ const LoginPage = () => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  
+  // Safe auth hook usage with error boundary
+  let authContext;
+  try {
+    authContext = useAuth();
+  } catch (error) {
+    console.error('AuthContext not available:', error);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+          <p className="text-gray-600">Initializing authentication...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { login } = authContext;
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -32,7 +49,7 @@ const LoginPage = () => {
         toast.success('Login successful!');
         navigate('/dashboard');
       } else {
-        toast.error(result.message || 'Login failed');
+        toast.error(result.error || 'Login failed');
       }
     } catch (error) {
       toast.error('An error occurred during login');

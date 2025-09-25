@@ -125,39 +125,52 @@ export async function initMultiTenantDatabase() {
     await initClient.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     await initClient.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
     
-    // Create tenants table
+    // Create tenants table (using existing schema with integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS tenants (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        subdomain VARCHAR(100) UNIQUE NOT NULL,
+        slug VARCHAR(100) UNIQUE NOT NULL,
         domain VARCHAR(255),
-        plan_type VARCHAR(50) DEFAULT 'basic',
-        status VARCHAR(20) DEFAULT 'active',
-        settings JSONB DEFAULT '{}',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        email VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        address TEXT,
+        city VARCHAR(100),
+        state VARCHAR(50),
+        zip_code VARCHAR(20),
+        country VARCHAR(50) DEFAULT 'US',
+        timezone VARCHAR(50) DEFAULT 'America/New_York',
+        currency VARCHAR(3) DEFAULT 'USD',
+        logo_url VARCHAR(500),
+        website VARCHAR(255),
+        description TEXT,
+        is_active BOOLEAN DEFAULT TRUE,
+        subscription_plan VARCHAR(50) DEFAULT 'free',
+        max_rooms INTEGER DEFAULT 1,
+        max_bookings_per_month INTEGER DEFAULT 50,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    // Create tenant users table
+    // Create tenant users table (using integer IDs to match tenants table)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS tenant_users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-        user_id UUID NOT NULL,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL,
         role VARCHAR(50) DEFAULT 'user',
         permissions JSONB DEFAULT '{}',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, user_id)
       )
     `);
     
-    // Create global users table
+    // Create global users table (using integer IDs to match existing schema)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
@@ -166,17 +179,18 @@ export async function initMultiTenantDatabase() {
         email_verified BOOLEAN DEFAULT FALSE,
         mfa_enabled BOOLEAN DEFAULT FALSE,
         mfa_secret VARCHAR(255),
-        last_login TIMESTAMP WITH TIME ZONE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        last_login TIMESTAMP,
+        tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    // Create rooms table with tenant isolation
+    // Create rooms table with tenant isolation (using integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS rooms (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
         name VARCHAR(255) NOT NULL,
         capacity INTEGER NOT NULL,
         category VARCHAR(100) NOT NULL,
@@ -184,74 +198,74 @@ export async function initMultiTenantDatabase() {
         price_per_hour DECIMAL(10,2) DEFAULT 0,
         is_active BOOLEAN DEFAULT TRUE,
         settings JSONB DEFAULT '{}',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    // Create bookings table with tenant isolation
+    // Create bookings table with tenant isolation (using integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS bookings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-        room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        room_id INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
         customer_name VARCHAR(255) NOT NULL,
         customer_email VARCHAR(255),
         customer_phone VARCHAR(20),
-        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP NOT NULL,
         status VARCHAR(20) DEFAULT 'confirmed',
         notes TEXT,
         total_price DECIMAL(10,2),
         metadata JSONB DEFAULT '{}',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
-    // Create business hours table with tenant isolation
+    // Create business hours table with tenant isolation (using integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS business_hours (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
         day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
         open_time TIME NOT NULL,
         close_time TIME NOT NULL,
         is_closed BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, day_of_week)
       )
     `);
     
-    // Create settings table with tenant isolation
+    // Create settings table with tenant isolation (using integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS settings (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
         key VARCHAR(255) NOT NULL,
         value TEXT NOT NULL,
         type VARCHAR(50) DEFAULT 'string',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(tenant_id, key)
       )
     `);
     
-    // Create audit log table
+    // Create audit log table (using integer IDs)
     await initClient.query(`
       CREATE TABLE IF NOT EXISTS audit_logs (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
-        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         action VARCHAR(100) NOT NULL,
         resource_type VARCHAR(100) NOT NULL,
-        resource_id UUID,
+        resource_id INTEGER,
         old_values JSONB,
         new_values JSONB,
         ip_address INET,
         user_agent TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
@@ -293,7 +307,7 @@ async function enableRowLevelSecurity(client) {
     await client.query(`
       CREATE POLICY tenant_isolation_policy ON ${table}
       FOR ALL TO PUBLIC
-      USING (tenant_id = current_setting('app.current_tenant_id')::UUID)
+      USING (tenant_id = current_setting('app.current_tenant_id')::INTEGER)
     `);
   }
   
@@ -375,7 +389,7 @@ async function createIndexes(client) {
   console.log('✅ Database indexes created successfully');
 }
 
-// Set current tenant context for RLS
+// Set current tenant context for RLS (using integer IDs)
 export function setTenantContext(tenantId) {
   return `SET app.current_tenant_id = '${tenantId}'`;
 }
@@ -388,7 +402,7 @@ export async function createDefaultTenant() {
     
     // Check if default tenant exists
     const tenantExists = await tenantClient.query(
-      'SELECT id FROM tenants WHERE subdomain = $1',
+      'SELECT id FROM tenants WHERE slug = $1',
       ['demo']
     );
     
@@ -399,21 +413,15 @@ export async function createDefaultTenant() {
     
     // Create default tenant
     const tenantResult = await tenantClient.query(`
-      INSERT INTO tenants (name, subdomain, plan_type, status, settings)
+      INSERT INTO tenants (name, slug, email, subscription_plan, is_active)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `, [
       'Demo Karaoke',
       'demo',
+      'demo@example.com',
       'professional',
-      'active',
-      JSON.stringify({
-        timezone: 'America/New_York',
-        currency: 'USD',
-        booking_advance_days: 30,
-        booking_min_duration: 60,
-        booking_max_duration: 480
-      })
+      true
     ]);
     
     const tenantId = tenantResult.rows[0].id;
@@ -422,11 +430,11 @@ export async function createDefaultTenant() {
     const bcrypt = await import('bcryptjs');
     const hashedPassword = bcrypt.hashSync('demo123', 10);
     
-    const userResult = await client.query(`
-      INSERT INTO users (email, password, name, email_verified)
-      VALUES ($1, $2, $3, $4)
+    const userResult = await tenantClient.query(`
+      INSERT INTO users (email, password, name, email_verified, tenant_id)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
-    `, ['demo@example.com', hashedPassword, 'Demo Admin', true]);
+    `, ['demo@example.com', hashedPassword, 'Demo Admin', true, tenantId]);
     
     const userId = userResult.rows[0].id;
     

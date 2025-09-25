@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimplifiedAuthContext';
 import { toast } from 'react-hot-toast';
 
 const AIAnalyticsDashboard = () => {
@@ -16,18 +16,73 @@ const AIAnalyticsDashboard = () => {
   const fetchAIInsights = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/ai/insights', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setInsights(result.data);
-      } else {
-        throw new Error('Failed to fetch AI insights');
-      }
+      
+      // Use mock data for now since the AI insights API is not implemented
+      const mockInsights = {
+        summary: {
+          totalBookings: 45,
+          totalRevenue: 1250.00,
+          avgBookingValue: 27.78,
+          timeframe: timeframe,
+          period: {
+            start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            end: new Date().toISOString()
+          }
+        },
+        forecast: {
+          nextWeekBookings: 52,
+          nextWeekRevenue: 1444.00,
+          confidence: 85
+        },
+        trends: {
+          bookingTrend: [
+            { date: '2025-09-18', bookings: 6, revenue: 150.00 },
+            { date: '2025-09-19', bookings: 8, revenue: 200.00 },
+            { date: '2025-09-20', bookings: 7, revenue: 175.00 },
+            { date: '2025-09-21', bookings: 9, revenue: 225.00 },
+            { date: '2025-09-22', bookings: 5, revenue: 125.00 },
+            { date: '2025-09-23', bookings: 6, revenue: 150.00 },
+            { date: '2025-09-24', bookings: 4, revenue: 100.00 }
+          ],
+          roomPerformance: [
+            { roomName: 'Room A', category: 'Standard', bookings: 20, revenue: 500.00, avgDuration: 2.5 },
+            { roomName: 'Room B', category: 'Premium', bookings: 15, revenue: 525.00, avgDuration: 2.8 },
+            { roomName: 'Room C', category: 'VIP', bookings: 10, revenue: 500.00, avgDuration: 3.0 }
+          ],
+          peakHours: [
+            { hour: 19, bookings: 12 },
+            { hour: 20, bookings: 15 },
+            { hour: 18, bookings: 10 },
+            { hour: 21, bookings: 8 },
+            { hour: 17, bookings: 6 }
+          ]
+        },
+        recommendations: [
+          {
+            type: 'optimization',
+            title: 'Peak Hour Optimization',
+            description: 'Consider offering promotions during off-peak hours (except 19:00 and 20:00) to maximize utilization.',
+            impact: 'medium',
+            effort: 'low'
+          },
+          {
+            type: 'revenue',
+            title: 'Room Category Analysis',
+            description: 'Your Premium rooms are performing best. Consider expanding this category.',
+            impact: 'high',
+            effort: 'medium'
+          },
+          {
+            type: 'efficiency',
+            title: 'Booking Duration Optimization',
+            description: 'Average booking duration is 2.8 hours. Consider offering shorter time slots for better turnover.',
+            impact: 'medium',
+            effort: 'low'
+          }
+        ]
+      };
+      
+      setInsights(mockInsights);
     } catch (error) {
       console.error('Error fetching AI insights:', error);
       toast.error('Failed to load AI insights');

@@ -1,6 +1,12 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { pool } from '../database/postgres.js';
+import { 
+  createSuccessResponse, 
+  createErrorResponse, 
+  createValidationErrorResponse,
+  createNotFoundResponse
+} from '../../src/utils/apiResponse.js';
 
 const router = express.Router();
 
@@ -10,7 +16,7 @@ router.get('/', async (req, res) => {
     const { category, is_active } = req.query;
     
     let query = 'SELECT * FROM rooms WHERE tenant_id = $1';
-    const params = [req.tenant_id || '5ba3b120-e288-450d-97f2-cfc236e0894f']; // Default tenant for now
+    const params = [req.tenant_id || 1]; // Use tenant_id from authentication or default to 1
     let paramIndex = 2;
 
     if (category) {
@@ -28,29 +34,63 @@ router.get('/', async (req, res) => {
     query += ' ORDER BY name';
 
     const result = await pool.query(query, params);
-    res.json({ success: true, data: result.rows });
+    
+    // Normalize room data for frontend compatibility
+    const rooms = result.rows.map(row => ({
+      ...row,
+      // Ensure tenant_id is included for validation
+      tenant_id: row.tenant_id,
+      // Ensure both ID formats are available
+      _id: row.id,
+      // Map pricing fields
+      pricePerHour: parseFloat(row.price_per_hour || 0),
+      hourlyRate: parseFloat(row.price_per_hour || 0),
+      // Map status fields
+      isActive: row.is_active,
+      status: row.is_active ? 'active' : 'inactive',
+      isBookable: row.is_active
+    }));
+    
+    res.json(createSuccessResponse(rooms));
   } catch (error) {
     console.error('Error fetching rooms:', error);
-    res.status(500).json({ error: 'Failed to fetch rooms' });
+    res.status(500).json(createErrorResponse('Failed to fetch rooms', 'FETCH_ROOMS_ERROR'));
   }
 });
 
 // Get room by ID
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  db.get('SELECT * FROM rooms WHERE id = ?', [id], (err, row) => {
-    if (err) {
-      // console.error('Error fetching room:', err);
-      return res.status(500).json({ error: 'Failed to fetch room' });
+    const result = await pool.query(
+      'SELECT * FROM rooms WHERE id = $1 AND tenant_id = $2',
+      [id, req.tenant_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json(createNotFoundResponse('Room'));
     }
 
-    if (!row) {
-      return res.status(404).json({ error: 'Room not found' });
-    }
+    const room = result.rows[0];
+    
+    // Normalize room data for frontend compatibility
+    const normalizedRoom = {
+      ...room,
+      tenant_id: room.tenant_id,
+      _id: room.id,
+      pricePerHour: parseFloat(room.price_per_hour || 0),
+      hourlyRate: parseFloat(room.price_per_hour || 0),
+      isActive: room.is_active,
+      status: room.is_active ? 'active' : 'inactive',
+      isBookable: room.is_active
+    };
 
-    res.json({ success: true, data: row });
-  });
+    res.json(createSuccessResponse(normalizedRoom));
+  } catch (error) {
+    console.error('Error fetching room:', error);
+    res.status(500).json(createErrorResponse('Failed to fetch room', 'FETCH_ROOM_ERROR'));
+  }
 });
 
 // Create new room
@@ -59,37 +99,43 @@ router.post('/', [
   body('capacity').isInt({ min: 1 }),
   body('category').isLength({ min: 1 }).trim(),
   body('price_per_hour').isFloat({ min: 0 }).optional()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { name, capacity, category, description, price_per_hour } = req.body;
-
-  db.run(
-    'INSERT INTO rooms (name, capacity, category, description, price_per_hour) VALUES (?, ?, ?, ?, ?)',
-    [name, capacity, category, description || null, price_per_hour || 0],
-    function(err) {
-      if (err) {
-        // console.error('Error creating room:', err);
-        return res.status(500).json({ error: 'Failed to create room' });
-      }
-
-      res.status(201).json({
-        success: true,
-        data: {
-          id: this.lastID,
-          name,
-          capacity,
-          category,
-          description,
-          price_per_hour: price_per_hour || 0,
-          is_active: 1
-        }
-      });
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-  );
+
+    const { name, capacity, category, description, price_per_hour } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO rooms (tenant_id, name, capacity, category, description, price_per_hour) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING *`,
+      [req.tenant_id, name, capacity, category, description || null, price_per_hour || 0]
+    );
+
+    const room = result.rows[0];
+    
+    // Normalize room data for frontend compatibility
+    const normalizedRoom = {
+      ...room,
+      _id: room.id,
+      pricePerHour: parseFloat(room.price_per_hour || 0),
+      hourlyRate: parseFloat(room.price_per_hour || 0),
+      isActive: room.is_active,
+      status: room.is_active ? 'active' : 'inactive',
+      isBookable: room.is_active
+    };
+
+    res.status(201).json({
+      success: true,
+      data: normalizedRoom
+    });
+  } catch (error) {
+    console.error('Error creating room:', error);
+    res.status(500).json({ error: 'Failed to create room' });
+  }
 });
 
 // Update room
@@ -98,113 +144,112 @@ router.put('/:id', [
   body('capacity').isInt({ min: 1 }).optional(),
   body('category').isLength({ min: 1 }).trim().optional(),
   body('price_per_hour').isFloat({ min: 0 }).optional()
-], (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  const { id } = req.params;
-  const updates = req.body;
-  
-  // Build dynamic update query
-  const updateFields = [];
-  const values = [];
-
-  Object.keys(updates).forEach(key => {
-    if (updates[key] !== undefined) {
-      updateFields.push(`${key} = ?`);
-      values.push(updates[key]);
-    }
-  });
-
-  if (updateFields.length === 0) {
-    return res.status(400).json({ error: 'No valid fields to update' });
-  }
-
-  updateFields.push('updated_at = CURRENT_TIMESTAMP');
-  values.push(id);
-
-  const query = `UPDATE rooms SET ${updateFields.join(', ')} WHERE id = ?`;
-
-  db.run(query, values, function(err) {
-    if (err) {
-      // console.error('Error updating room:', err);
-      return res.status(500).json({ error: 'Failed to update room' });
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
-    if (this.changes === 0) {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    // Build dynamic update query with tenant isolation
+    const updateFields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    Object.keys(updates).forEach(key => {
+      if (updates[key] !== undefined) {
+        updateFields.push(`${key} = $${paramIndex}`);
+        values.push(updates[key]);
+        paramIndex++;
+      }
+    });
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    updateFields.push(`updated_at = NOW()`);
+    values.push(req.tenant_id, id); // Add tenant_id and id as last parameters
+
+    const query = `UPDATE rooms SET ${updateFields.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    // Fetch updated room
-    db.get('SELECT * FROM rooms WHERE id = ?', [id], (err, row) => {
-      if (err) {
-        // console.error('Error fetching updated room:', err);
-        return res.status(500).json({ error: 'Failed to fetch updated room' });
-      }
+    const room = result.rows[0];
+    
+    // Normalize room data for frontend compatibility
+    const normalizedRoom = {
+      ...room,
+      _id: room.id,
+      pricePerHour: parseFloat(room.price_per_hour || 0),
+      hourlyRate: parseFloat(room.price_per_hour || 0),
+      isActive: room.is_active,
+      status: room.is_active ? 'active' : 'inactive',
+      isBookable: room.is_active
+    };
 
-      res.json({ success: true, data: row });
-    });
-  });
+    res.json({ success: true, data: normalizedRoom });
+  } catch (error) {
+    console.error('Error updating room:', error);
+    res.status(500).json({ error: 'Failed to update room' });
+  }
 });
 
 // Delete room
-router.delete('/:id', (req, res) => {
-  const { id } = req.params;
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  // Check if room has active bookings
-  db.get(
-    'SELECT COUNT(*) as count FROM bookings WHERE room_id = ? AND status != "cancelled"',
-    [id],
-    (err, row) => {
-      if (err) {
-        // console.error('Error checking room bookings:', err);
-        return res.status(500).json({ error: 'Failed to check room bookings' });
-      }
+    // Check if room has active bookings with tenant isolation
+    const bookingCheck = await pool.query(
+      'SELECT COUNT(*) as count FROM bookings WHERE room_id = $1 AND tenant_id = $2 AND status != $3',
+      [id, req.tenant_id, 'cancelled']
+    );
 
-      if (row.count > 0) {
-        return res.status(400).json({ 
-          error: 'Cannot delete room with active bookings' 
-        });
-      }
-
-      // Soft delete (set is_active to false)
-      db.run(
-        'UPDATE rooms SET is_active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [id],
-        function(err) {
-          if (err) {
-            // console.error('Error deleting room:', err);
-            return res.status(500).json({ error: 'Failed to delete room' });
-          }
-
-          if (this.changes === 0) {
-            return res.status(404).json({ error: 'Room not found' });
-          }
-
-          res.json({ success: true, message: 'Room deleted successfully' });
-        }
-      );
+    if (parseInt(bookingCheck.rows[0].count) > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete room with active bookings' 
+      });
     }
-  );
+
+    // Soft delete (set is_active to false) with tenant isolation
+    const result = await pool.query(
+      'UPDATE rooms SET is_active = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2 RETURNING *',
+      [id, req.tenant_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    res.json({ success: true, message: 'Room deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting room:', error);
+    res.status(500).json({ error: 'Failed to delete room' });
+  }
 });
 
 // Get room categories
-router.get('/categories/list', (req, res) => {
-  db.all(
-    'SELECT DISTINCT category FROM rooms WHERE is_active = 1 ORDER BY category',
-    [],
-    (err, rows) => {
-      if (err) {
-        // console.error('Error fetching categories:', err);
-        return res.status(500).json({ error: 'Failed to fetch categories' });
-      }
+router.get('/categories/list', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT DISTINCT category FROM rooms WHERE is_active = true AND tenant_id = $1 ORDER BY category',
+      [req.tenant_id]
+    );
 
-      const categories = rows.map(row => row.category);
-      res.json({ success: true, data: categories });
-    }
-  );
+    const categories = result.rows.map(row => row.category);
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: 'Failed to fetch categories' });
+  }
 });
 
 export default router;

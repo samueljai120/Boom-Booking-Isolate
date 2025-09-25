@@ -31,11 +31,63 @@ const SubscriptionDashboard = () => {
 
   const fetchSubscriptionData = async () => {
     try {
-      const response = await fetch(`/api/subscription/status/${tenantId}`);
-      const data = await response.json();
-      if (data.success) {
-        setSubscriptionData(data.data);
-      }
+      // Use mock data for now since the subscription API is not implemented
+      const mockSubscriptionData = {
+        plan: {
+          name: 'Professional',
+          tier: 'professional',
+          price: 29.99,
+          currency: 'USD',
+          billingCycle: 'monthly',
+          features: [
+            'Unlimited Bookings',
+            'Advanced Analytics',
+            'Custom Branding',
+            'Email Notifications',
+            'API Access'
+          ]
+        },
+        status: 'active',
+        currentPeriod: {
+          start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+          end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString()
+        },
+        usage: {
+          bookings: {
+            used: 45,
+            limit: -1,
+            percentage: 0
+          },
+          rooms: {
+            used: 3,
+            limit: 10,
+            percentage: 30
+          },
+          users: {
+            used: 1,
+            limit: 5,
+            percentage: 20
+          },
+          storage: {
+            used: 150,
+            limit: 1000,
+            percentage: 15
+          }
+        },
+        nextBilling: {
+          date: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString(),
+          amount: 29.99
+        },
+        paymentMethod: {
+          type: 'card',
+          last4: '4242',
+          brand: 'visa',
+          expMonth: 12,
+          expYear: 2025
+        }
+      };
+      
+      setSubscriptionData(mockSubscriptionData);
     } catch (error) {
       console.error('Error fetching subscription data:', error);
     } finally {
@@ -45,11 +97,82 @@ const SubscriptionDashboard = () => {
 
   const fetchUpgradeOptions = async () => {
     try {
-      const response = await fetch(`/api/subscription/upgrade-options/${tenantId}`);
-      const data = await response.json();
-      if (data.success) {
-        setUpgradeOptions(data.data);
-      }
+      // Use mock data for now since the upgrade options API is not implemented
+      const mockUpgradeOptions = {
+        currentPlan: {
+          name: 'Professional',
+          tier: 'professional',
+          price: 29.99
+        },
+        availablePlans: [
+          {
+            name: 'Starter',
+            tier: 'starter',
+            price: 9.99,
+            billingCycle: 'monthly',
+            features: [
+              'Up to 50 Bookings/Month',
+              'Basic Analytics',
+              'Email Support',
+              '3 Rooms'
+            ],
+            limits: {
+              bookings: 50,
+              rooms: 3,
+              users: 2,
+              storage: 500
+            },
+            popular: false
+          },
+          {
+            name: 'Professional',
+            tier: 'professional',
+            price: 29.99,
+            billingCycle: 'monthly',
+            features: [
+              'Unlimited Bookings',
+              'Advanced Analytics',
+              'Custom Branding',
+              'Email Notifications',
+              'API Access',
+              '10 Rooms',
+              'Priority Support'
+            ],
+            limits: {
+              bookings: -1,
+              rooms: 10,
+              users: 5,
+              storage: 1000
+            },
+            popular: true,
+            current: true
+          },
+          {
+            name: 'Enterprise',
+            tier: 'enterprise',
+            price: 99.99,
+            billingCycle: 'monthly',
+            features: [
+              'Everything in Professional',
+              'Unlimited Rooms',
+              'Advanced Integrations',
+              'Custom Reporting',
+              'Dedicated Support',
+              'White-label Options',
+              'SLA Guarantee'
+            ],
+            limits: {
+              bookings: -1,
+              rooms: -1,
+              users: -1,
+              storage: 5000
+            },
+            popular: false
+          }
+        ]
+      };
+      
+      setUpgradeOptions(mockUpgradeOptions);
     } catch (error) {
       console.error('Error fetching upgrade options:', error);
     }

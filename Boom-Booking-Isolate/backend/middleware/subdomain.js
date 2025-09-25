@@ -76,11 +76,22 @@ export async function resolveTenant(req, res, next) {
 
 // Tenant validation middleware
 export function validateTenant(req, res, next) {
-  if (!req.tenant) {
+  // Allow access if tenant_id is set by tenantContext middleware (for localhost/landing page)
+  if (!req.tenant && !req.tenant_id) {
     return res.status(400).json({
       error: 'No tenant context',
       message: 'This endpoint requires a valid tenant subdomain'
     });
+  }
+  
+  // If we have tenant_id but no tenant object, create a basic tenant object
+  if (!req.tenant && req.tenant_id) {
+    req.tenant = {
+      id: req.tenant_id,
+      name: req.tenant_context?.name || 'Default Tenant',
+      subdomain: req.tenant_context?.subdomain || 'demo',
+      status: 'active'
+    };
   }
   
   // Check if tenant is active

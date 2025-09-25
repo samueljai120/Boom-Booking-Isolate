@@ -1,21 +1,15 @@
 // Vercel API Route: /api/rooms
-import { sql, initDatabase } from '../lib/neon-db.js';
+import { sql, initDatabase } from '../lib/neon-db-simplified.js';
+import { setSecureCORSHeaders, handlePreflightRequest } from '../utils/cors.js';
 
 export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
-
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return handlePreflightRequest(res);
   }
+
+  // Set secure CORS headers
+  setSecureCORSHeaders(res);
 
   try {
     // Initialize database if needed
@@ -23,7 +17,7 @@ export default async function handler(req, res) {
     
     // Get rooms from database
     const result = await sql`
-      SELECT id, name, capacity, category, description, price_per_hour, is_active
+      SELECT id, name, capacity, category, description, price_per_hour, is_active, amenities
       FROM rooms
       WHERE is_active = true
       ORDER BY id
@@ -36,21 +30,60 @@ export default async function handler(req, res) {
       category: row.category,
       description: row.description,
       pricePerHour: parseFloat(row.price_per_hour),
-      isActive: row.is_active
+      hourlyRate: parseFloat(row.price_per_hour),
+      isActive: row.is_active,
+      is_active: row.is_active,
+      status: row.is_active ? 'active' : 'inactive',
+      isBookable: row.is_active,
+      amenities: row.amenities || []
     }));
 
     res.status(200).json({
       success: true,
-      data: rooms
+      data: rooms,
+      count: rooms.length
     });
   } catch (error) {
     console.error('Database error:', error);
     
     // Fallback to static data
     const rooms = [
-      { id: 1, name: 'Room A', capacity: 4, category: 'Standard', isActive: true },
-      { id: 2, name: 'Room B', capacity: 6, category: 'Premium', isActive: true },
-      { id: 3, name: 'Room C', capacity: 8, category: 'VIP', isActive: true }
+      { 
+        id: 1, 
+        name: 'Room A', 
+        capacity: 4, 
+        category: 'Standard', 
+        isActive: true,
+        is_active: true,
+        status: 'active',
+        isBookable: true,
+        hourlyRate: 25,
+        pricePerHour: 25
+      },
+      { 
+        id: 2, 
+        name: 'Room B', 
+        capacity: 6, 
+        category: 'Premium', 
+        isActive: true,
+        is_active: true,
+        status: 'active',
+        isBookable: true,
+        hourlyRate: 35,
+        pricePerHour: 35
+      },
+      { 
+        id: 3, 
+        name: 'Room C', 
+        capacity: 8, 
+        category: 'VIP', 
+        isActive: true,
+        is_active: true,
+        status: 'active',
+        isBookable: true,
+        hourlyRate: 50,
+        pricePerHour: 50
+      }
     ];
 
     res.status(200).json({

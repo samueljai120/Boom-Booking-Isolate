@@ -48,7 +48,7 @@ const PushNotifications = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/push-notifications/settings');
+      const response = await fetch('http://localhost:3000/api/push-notifications/settings');
       const data = await response.json();
       if (data.success) {
         setSettings(data.data);
@@ -68,7 +68,7 @@ const PushNotifications = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5001/api/push-notifications/test', {
+      const response = await fetch('http://localhost:3000/api/push-notifications/test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ const PushNotifications = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5001/api/push-notifications/settings', {
+      const response = await fetch('http://localhost:3000/api/push-notifications/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

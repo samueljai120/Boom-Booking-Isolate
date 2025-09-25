@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { businessHoursAPI } from '../lib/api';
-import { useAuth } from './AuthContext';
+import { businessHoursAPI } from '../lib/unifiedApiClient';
+import { useAuth } from './SimplifiedAuthContext';
 import toast from 'react-hot-toast';
 
 const BusinessHoursContext = createContext();
@@ -24,8 +24,9 @@ export const BusinessHoursProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const response = await businessHoursAPI.get();
-      if (response.data.success) {
-        const businessHours = response.data.data?.businessHours || response.data.businessHours || [];
+      if (response.success) {
+        // API returns {success: true, data: [...]} where data is the array directly
+        const businessHours = response.data || [];
         setBusinessHours(businessHours);
       } else {
         throw new Error('Failed to fetch business hours');
@@ -46,8 +47,8 @@ export const BusinessHoursProvider = ({ children }) => {
     try {
       setError(null);
       const response = await businessHoursAPI.update({ businessHours: newBusinessHours });
-      if (response.data.success) {
-        setBusinessHours(response.data.businessHours);
+      if (response.success) {
+        setBusinessHours(response.data);
         toast.success('Business hours updated successfully');
         return true;
       } else {
