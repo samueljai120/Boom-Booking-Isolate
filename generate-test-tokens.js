@@ -41,4 +41,3 @@ console.log('curl -H "Authorization: Bearer ' + demoToken + '" http://localhost:
 console.log('curl -H "Authorization: Bearer ' + testVenue2Token + '" http://localhost:3000/api/rooms');
 console.log('curl -H "Authorization: Bearer ' + newVenueToken + '" http://localhost:3000/api/rooms');
 
-
