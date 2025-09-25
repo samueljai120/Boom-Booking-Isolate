@@ -1,505 +1,157 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boom Karaoke Booking System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .booking-slot {
-            transition: all 0.2s ease;
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>Boom Booking - Smart Karaoke Venue Management System | Increase Revenue by 40%</title>
+    <meta name="title" content="Boom Booking - Smart Karaoke Venue Management System | Increase Revenue by 40%" />
+    <meta name="description" content="The smartest booking system for karaoke venues. Real-time scheduling, mobile optimization, and enterprise security. Increase revenue by 40% with AI-powered venue management." />
+    <meta name="keywords" content="karaoke booking, venue management, scheduling software, entertainment business, booking system, karaoke software, venue booking, real-time scheduling, mobile booking, enterprise security" />
+    <meta name="author" content="Boom Booking" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://boom-booking.com/" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://boom-booking.com/" />
+    <meta property="og:title" content="Boom Booking - Smart Karaoke Venue Management System" />
+    <meta property="og:description" content="Increase revenue by 40% with our AI-powered karaoke booking system. Real-time scheduling, mobile optimization, and enterprise security for entertainment venues." />
+    <meta property="og:image" content="https://boom-booking.com/images/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Boom Booking" />
+    <meta property="og:locale" content="en_US" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://boom-booking.com/" />
+    <meta property="twitter:title" content="Boom Booking - Smart Karaoke Venue Management" />
+    <meta property="twitter:description" content="The smartest booking system for karaoke venues. Real-time scheduling, mobile optimization, and enterprise security." />
+    <meta property="twitter:image" content="https://boom-booking.com/images/twitter-image.jpg" />
+    <meta property="twitter:creator" content="@boombooking" />
+    <meta property="twitter:site" content="@boombooking" />
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="msapplication-TileColor" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Boom Booking" />
+    
+    <!-- Preconnect to external domains for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- DNS Prefetch for better performance -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+    
+    <!-- Preload critical resources -->
+    <link rel="modulepreload" href="/src/main.jsx" />
+    <link rel="stylesheet" href="/src/index.css" />
+    
+    <!-- Resource hints for better loading -->
+    <link rel="prefetch" href="/dashboard" />
+    <link rel="prefetch" href="/pricing" />
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Boom Booking",
+      "description": "Smart karaoke venue management system with real-time scheduling, mobile optimization, and enterprise security. Increase revenue by 40% with AI-powered venue management.",
+      "url": "https://boom-booking.com",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "softwareVersion": "1.0.0",
+      "datePublished": "2024-12-01",
+      "dateModified": "2024-12-01",
+      "author": {
+        "@type": "Organization",
+        "name": "Boom Booking",
+        "url": "https://boom-booking.com"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free Plan",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Perfect for getting started with 1 room and 50 bookings per month"
+        },
+        {
+          "@type": "Offer",
+          "name": "Basic Plan",
+          "price": "19",
+          "priceCurrency": "USD",
+          "description": "For growing businesses with 5 rooms and 500 bookings per month"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro Plan",
+          "price": "49",
+          "priceCurrency": "USD",
+          "description": "For established venues with 20 rooms and 2,000 bookings per month"
+        },
+        {
+          "@type": "Offer",
+          "name": "Business Plan",
+          "price": "99",
+          "priceCurrency": "USD",
+          "description": "For multi-location chains with unlimited rooms and bookings"
         }
-        .booking-slot:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        .booking-slot.booked {
-            background-color: #fef2f2;
-            border-color: #fca5a5;
-        }
-        .booking-slot.available {
-            background-color: #f0fdf4;
-            border-color: #86efac;
-        }
-        .booking-slot.selected {
-            background-color: #dbeafe;
-            border-color: #60a5fa;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <div class="min-h-screen">
-        <!-- Header -->
-        <header class="bg-white shadow-sm border-b">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center py-4">
-                    <div class="flex items-center">
-                        <h1 class="text-2xl font-bold text-gray-900">Boom Karaoke</h1>
-                        <span class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                            Booking System
-                        </span>
-                    </div>
-                    <div class="flex items-center space-x-4">
-                        <div id="user-info" class="hidden">
-                            <span class="text-sm text-gray-600">Welcome, </span>
-                            <span id="user-name" class="font-medium text-gray-900"></span>
-                        </div>
-                        <button id="login-btn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                            Login
-                        </button>
-                        <button id="logout-btn" class="hidden bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">
-                            Logout
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </header>
-
-        <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Login Form -->
-            <div id="login-form" class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">Login to Continue</h2>
-                <form id="login-form-element">
-                    <div class="mb-4">
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input type="email" id="email" name="email" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               placeholder="demo@example.com">
-                    </div>
-                    <div class="mb-6">
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                        <input type="password" id="password" name="password" required 
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                               placeholder="demo123">
-                    </div>
-                    <button type="submit" 
-                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        Login
-                    </button>
-                </form>
-                <div class="mt-4 text-sm text-gray-600">
-                    <p>Demo credentials:</p>
-                    <p>Email: demo@example.com</p>
-                    <p>Password: demo123</p>
-                </div>
-            </div>
-
-            <!-- Booking System -->
-            <div id="booking-system" class="hidden">
-                <!-- Room Selection -->
-                <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Select a Room</h2>
-                    <div id="rooms-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <!-- Rooms will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Calendar -->
-                <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Select Date & Time</h2>
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <div class="mb-4">
-                            <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                            <input type="date" id="booking-date" 
-                                   class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div class="mb-4">
-                            <label for="booking-time" class="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
-                            <input type="time" id="booking-time" 
-                                   class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <div class="mb-4">
-                            <label for="booking-duration" class="block text-sm font-medium text-gray-700 mb-2">Duration (hours)</label>
-                            <select id="booking-duration" 
-                                    class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="1">1 hour</option>
-                                <option value="2">2 hours</option>
-                                <option value="3">3 hours</option>
-                                <option value="4">4 hours</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Customer Information -->
-                <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Customer Information</h2>
-                    <div class="bg-white rounded-lg shadow-md p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="customer-name" class="block text-sm font-medium text-gray-700 mb-2">Name *</label>
-                                <input type="text" id="customer-name" required 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="customer-email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                                <input type="email" id="customer-email" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="customer-phone" class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                                <input type="tel" id="customer-phone" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="booking-notes" class="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-                                <input type="text" id="booking-notes" 
-                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Booking Summary -->
-                <div class="mb-8">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Booking Summary</h2>
-                    <div id="booking-summary" class="bg-white rounded-lg shadow-md p-6">
-                        <div class="space-y-2">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Room:</span>
-                                <span id="summary-room" class="font-medium">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Date:</span>
-                                <span id="summary-date" class="font-medium">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Time:</span>
-                                <span id="summary-time" class="font-medium">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Duration:</span>
-                                <span id="summary-duration" class="font-medium">-</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Price per hour:</span>
-                                <span id="summary-price-per-hour" class="font-medium">-</span>
-                            </div>
-                            <div class="flex justify-between border-t pt-2">
-                                <span class="text-lg font-bold">Total:</span>
-                                <span id="summary-total" class="text-lg font-bold text-blue-600">-</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex justify-end space-x-4">
-                    <button id="check-availability-btn" 
-                            class="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
-                        Check Availability
-                    </button>
-                    <button id="create-booking-btn" 
-                            class="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        Create Booking
-                    </button>
-                </div>
-
-                <!-- Bookings List -->
-                <div class="mt-12">
-                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Recent Bookings</h2>
-                    <div id="bookings-list" class="space-y-4">
-                        <!-- Bookings will be loaded here -->
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span class="text-gray-700">Loading...</span>
-        </div>
-    </div>
-
-    <!-- Success/Error Messages -->
-    <div id="message-container" class="fixed top-4 right-4 z-50">
-        <!-- Messages will be shown here -->
-    </div>
-
-    <script>
-        // Global variables
-        let currentUser = null;
-        let currentToken = null;
-        let selectedRoom = null;
-        let rooms = [];
-
-        // API Base URL
-        const API_BASE = '/api';
-
-        // Utility functions
-        function showMessage(message, type = 'info') {
-            const container = document.getElementById('message-container');
-            const messageEl = document.createElement('div');
-            messageEl.className = `mb-2 p-4 rounded-md ${type === 'error' ? 'bg-red-100 text-red-700' : type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`;
-            messageEl.textContent = message;
-            container.appendChild(messageEl);
-            
-            setTimeout(() => {
-                messageEl.remove();
-            }, 5000);
-        }
-
-        function showLoading() {
-            document.getElementById('loading-overlay').classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.add('hidden');
-        }
-
-        // API functions
-        async function apiCall(endpoint, options = {}) {
-            const url = `${API_BASE}${endpoint}`;
-            const config = {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(currentToken && { 'Authorization': `Bearer ${currentToken}` })
-                },
-                ...options
-            };
-
-            try {
-                const response = await fetch(url, config);
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.message || 'API request failed');
-                }
-                
-                return data;
-            } catch (error) {
-                console.error('API call failed:', error);
-                throw error;
-            }
-        }
-
-        // Authentication functions
-        async function login(email, password) {
-            try {
-                showLoading();
-                const response = await apiCall('/auth/login', {
-                    method: 'POST',
-                    body: JSON.stringify({ email, password })
-                });
-
-                currentUser = response.data.user;
-                currentToken = response.data.token;
-                
-                showMessage('Login successful!', 'success');
-                showBookingSystem();
-                loadRooms();
-                loadBookings();
-            } catch (error) {
-                showMessage(error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function logout() {
-            currentUser = null;
-            currentToken = null;
-            showLoginForm();
-            showMessage('Logged out successfully', 'info');
-        }
-
-        // UI functions
-        function showLoginForm() {
-            document.getElementById('login-form').classList.remove('hidden');
-            document.getElementById('booking-system').classList.add('hidden');
-            document.getElementById('user-info').classList.add('hidden');
-            document.getElementById('login-btn').classList.remove('hidden');
-            document.getElementById('logout-btn').classList.add('hidden');
-        }
-
-        function showBookingSystem() {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('booking-system').classList.remove('hidden');
-            document.getElementById('user-info').classList.remove('hidden');
-            document.getElementById('login-btn').classList.add('hidden');
-            document.getElementById('logout-btn').classList.remove('hidden');
-            
-            if (currentUser) {
-                document.getElementById('user-name').textContent = currentUser.name;
-            }
-        }
-
-        // Room functions
-        async function loadRooms() {
-            try {
-                const response = await apiCall('/rooms?active_only=true');
-                rooms = response.data;
-                renderRooms();
-            } catch (error) {
-                showMessage('Failed to load rooms: ' + error.message, 'error');
-            }
-        }
-
-        function renderRooms() {
-            const container = document.getElementById('rooms-list');
-            container.innerHTML = rooms.map(room => `
-                <div class="room-card p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition-colors ${selectedRoom?.id === room.id ? 'border-blue-500 bg-blue-50' : ''}" 
-                     onclick="selectRoom(${room.id})">
-                    <h3 class="font-semibold text-lg">${room.name}</h3>
-                    <p class="text-gray-600">${room.category}</p>
-                    <p class="text-sm text-gray-500">Capacity: ${room.capacity} people</p>
-                    <p class="text-sm text-gray-500">$${room.price_per_hour}/hour</p>
-                </div>
-            `).join('');
-        }
-
-        function selectRoom(roomId) {
-            selectedRoom = rooms.find(room => room.id === roomId);
-            renderRooms();
-            updateBookingSummary();
-        }
-
-        // Booking functions
-        async function loadBookings() {
-            try {
-                const response = await apiCall('/bookings');
-                renderBookings(response.data);
-            } catch (error) {
-                showMessage('Failed to load bookings: ' + error.message, 'error');
-            }
-        }
-
-        function renderBookings(bookings) {
-            const container = document.getElementById('bookings-list');
-            if (bookings.length === 0) {
-                container.innerHTML = '<p class="text-gray-500">No bookings found.</p>';
-                return;
-            }
-
-            container.innerHTML = bookings.map(booking => `
-                <div class="bg-white rounded-lg shadow-md p-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="font-semibold">${booking.customer_name}</h3>
-                            <p class="text-gray-600">${booking.room_name}</p>
-                            <p class="text-sm text-gray-500">
-                                ${new Date(booking.start_time).toLocaleDateString()} 
-                                ${new Date(booking.start_time).toLocaleTimeString()} - 
-                                ${new Date(booking.end_time).toLocaleTimeString()}
-                            </p>
-                        </div>
-                        <div class="text-right">
-                            <span class="px-2 py-1 text-xs font-medium rounded-full ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
-                                ${booking.status}
-                            </span>
-                            <p class="text-sm font-medium text-gray-900">$${booking.total_price}</p>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function updateBookingSummary() {
-            const date = document.getElementById('booking-date').value;
-            const time = document.getElementById('booking-time').value;
-            const duration = document.getElementById('booking-duration').value;
-
-            if (selectedRoom && date && time) {
-                const startTime = new Date(`${date}T${time}`);
-                const endTime = new Date(startTime.getTime() + (parseInt(duration) * 60 * 60 * 1000));
-                const totalPrice = selectedRoom.price_per_hour * parseInt(duration);
-
-                document.getElementById('summary-room').textContent = selectedRoom.name;
-                document.getElementById('summary-date').textContent = startTime.toLocaleDateString();
-                document.getElementById('summary-time').textContent = `${startTime.toLocaleTimeString()} - ${endTime.toLocaleTimeString()}`;
-                document.getElementById('summary-duration').textContent = `${duration} hours`;
-                document.getElementById('summary-price-per-hour').textContent = `$${selectedRoom.price_per_hour}`;
-                document.getElementById('summary-total').textContent = `$${totalPrice.toFixed(2)}`;
-            }
-        }
-
-        async function createBooking() {
-            if (!selectedRoom) {
-                showMessage('Please select a room', 'error');
-                return;
-            }
-
-            const customerName = document.getElementById('customer-name').value;
-            const customerEmail = document.getElementById('customer-email').value;
-            const customerPhone = document.getElementById('customer-phone').value;
-            const bookingNotes = document.getElementById('booking-notes').value;
-            const date = document.getElementById('booking-date').value;
-            const time = document.getElementById('booking-time').value;
-            const duration = document.getElementById('booking-duration').value;
-
-            if (!customerName || !date || !time) {
-                showMessage('Please fill in all required fields', 'error');
-                return;
-            }
-
-            try {
-                showLoading();
-                
-                const startTime = new Date(`${date}T${time}`);
-                const endTime = new Date(startTime.getTime() + (parseInt(duration) * 60 * 60 * 1000));
-
-                const bookingData = {
-                    room_id: selectedRoom.id,
-                    customer_name: customerName,
-                    customer_email: customerEmail || null,
-                    customer_phone: customerPhone || null,
-                    start_time: startTime.toISOString(),
-                    end_time: endTime.toISOString(),
-                    notes: bookingNotes || null
-                };
-
-                await apiCall('/bookings', {
-                    method: 'POST',
-                    body: JSON.stringify(bookingData)
-                });
-
-                showMessage('Booking created successfully!', 'success');
-                loadBookings();
-                
-                // Reset form
-                document.getElementById('customer-name').value = '';
-                document.getElementById('customer-email').value = '';
-                document.getElementById('customer-phone').value = '';
-                document.getElementById('booking-notes').value = '';
-                
-            } catch (error) {
-                showMessage('Failed to create booking: ' + error.message, 'error');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Event listeners
-        document.getElementById('login-form-element').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            login(email, password);
-        });
-
-        document.getElementById('logout-btn').addEventListener('click', logout);
-
-        document.getElementById('booking-date').addEventListener('change', updateBookingSummary);
-        document.getElementById('booking-time').addEventListener('change', updateBookingSummary);
-        document.getElementById('booking-duration').addEventListener('change', updateBookingSummary);
-
-        document.getElementById('create-booking-btn').addEventListener('click', createBooking);
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            // Set default date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('booking-date').value = today;
-            
-            // Set default time to next hour
-            const nextHour = new Date();
-            nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
-            document.getElementById('booking-time').value = nextHour.toTimeString().slice(0, 5);
-        });
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "150",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "featureList": [
+        "Real-time booking management",
+        "Mobile-optimized interface",
+        "Multi-user role management",
+        "Analytics and reporting",
+        "Calendar integration",
+        "Enterprise security",
+        "API access",
+        "Custom branding"
+      ]
+    }
     </script>
-</body>
+    
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'GA_MEASUREMENT_ID', {
+        page_title: 'Boom Booking - Smart Karaoke Venue Management',
+        page_location: window.location.href,
+        send_page_view: true
+      });
+    </script>
+    
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
+  </head>
+  <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
