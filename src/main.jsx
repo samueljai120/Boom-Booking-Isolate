@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+import App from './StandaloneLanding.jsx'
 import { initClientLogReporter } from './utils/logReporter'
 
 initClientLogReporter({ enabled: true })

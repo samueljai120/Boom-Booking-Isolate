@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: boom-karaoke-booking
+    env: node
+    buildCommand: npm install
+    startCommand: npm start

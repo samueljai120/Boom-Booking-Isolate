@@ -1,0 +1,5 @@
+[build]
+  nixPkgs = ["nodejs", "npm"]
+
+[deploy]
+  startCommand = "npm start"
